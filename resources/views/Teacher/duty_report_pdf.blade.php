@@ -8,7 +8,7 @@
         .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #940000; padding-bottom: 10px; }
         .school-name { font-size: 18px; font-weight: bold; color: #940000; text-transform: uppercase; }
         .report-title { font-size: 14px; font-weight: bold; margin-top: 10px; background: #f8f9fa; padding: 5px; }
-        
+
         .info-table { width: 100%; margin-bottom: 20px; }
         .info-table td { padding: 5px; }
         .label { font-weight: bold; color: #555; width: 15%; }
@@ -22,7 +22,7 @@
         .observations-grid { width: 100%; border-collapse: collapse; margin-top: 10px; }
         .observations-grid td { vertical-align: top; padding: 10px; border: 1px solid #eee; width: 50%; }
         .obs-title { font-weight: bold; color: #940000; margin-bottom: 5px; border-bottom: 1px solid #eee; }
-        
+
         .footer { position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 9px; color: #777; border-top: 1px solid #eee; padding-top: 5px; }
         .status-stamp { position: absolute; top: 100px; right: 50px; border: 3px solid #ccc; padding: 10px; font-size: 20px; font-weight: bold; color: #ccc; transform: rotate(-15deg); text-transform: uppercase; border-radius: 5px; opacity: 0.3; }
         .status-approved { border-color: green; color: green; }
@@ -145,12 +145,7 @@
     <div style="margin-top: 30px;">
         <table style="width: 100%;">
             <tr>
-                <td style="width: 50%;">
-                    <div style="font-weight: bold;">Teacher's Signature:</div>
-                    <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 150px; height: 15px;"></div>
-                    <div style="font-size: 9px; margin-top: 5px;">{{ $teacher->first_name }} {{ $teacher->last_name }}</div>
-                </td>
-                <td style="width: 50%; text-align: right;">
+                <td style="width: 100%; text-align: right;">
                     <div style="font-weight: bold;">Admin / Headmaster's Signature:</div>
                     @if($report->signature_image)
                         <div style="margin-top: 5px;">

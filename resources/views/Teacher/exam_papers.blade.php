@@ -10,7 +10,7 @@
     .text-primary-custom {
         color: #940000 !important;
     }
-    
+
     /* Timeline styles for approval chain */
     .timeline {
         position: relative;
@@ -44,7 +44,7 @@
     .timeline-badge.pending { border-color: #ffc107; background: #ffc107; }
     .timeline-badge.rejected { border-color: #dc3545; background: #dc3545; }
     .timeline-badge.current { border-color: #940000; background: #fff; box-shadow: 0 0 0 4px rgba(148, 0, 0, 0.1); }
-    
+
     .timeline-panel {
         margin-left: 70px;
         padding: 15px;
@@ -52,7 +52,7 @@
         border-radius: 4px;
         background: #fff;
     }
-    
+
     /* Font and Border Radius Resets */
     div, .card, .exam-widget-card, .btn, .nav-link, .alert {
         border-radius: 0 !important;
@@ -206,7 +206,7 @@
             max-width: 100% !important;
             overflow-x: hidden;
         }
-        
+
         .row {
             margin-left: 0 !important;
             margin-right: 0 !important;
@@ -221,7 +221,7 @@
             max-width: 100% !important;
             flex: 0 0 100% !important;
         }
-        
+
         .card-body {
             padding: 0.75rem;
         }
@@ -277,7 +277,7 @@
             max-width: 100%;
             box-sizing: border-box;
         }
-        
+
         /* Table to cards for pending uploads */
         #pending-uploads .table-responsive {
             border: none;
@@ -287,7 +287,7 @@
         #pending-uploads .table-responsive table thead {
             display: none;
         }
-        
+
         #pending-uploads .table-responsive table tbody tr {
             display: block;
             margin-bottom: 1.5rem;
@@ -297,7 +297,7 @@
             background: #fff;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
-        
+
         #pending-uploads .table-responsive table tbody td {
             display: block;
             text-align: left !important;
@@ -305,7 +305,7 @@
             padding: 8px 0;
             position: relative;
         }
-        
+
         #pending-uploads .table-responsive table tbody td::before {
             content: attr(data-label);
             font-weight: 700;
@@ -320,7 +320,7 @@
             width: 100%;
             margin-top: 10px;
         }
-        
+
         .modal-dialog {
             margin: 0.5rem;
             max-width: calc(100% - 1rem) !important;
@@ -410,7 +410,7 @@
         align-items: center;
         justify-content: center;
     }
-    
+
     .form-control {
         display: block; /* reset flex for input */
     }
@@ -449,7 +449,7 @@
             @if(isset($rejectionNotifications) && count($rejectionNotifications) > 0)
                 @foreach($rejectionNotifications as $notification)
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                        <i class="bi bi-x-circle"></i> 
+                        <i class="bi bi-x-circle"></i>
                         <strong>Examination Rejected:</strong> {{ $notification['message'] }}
                         @if(isset($notification['reason']))
                             <br><small><strong>Reason:</strong> {{ $notification['reason'] }}</small>
@@ -509,7 +509,7 @@
                                                 <option value="">Select Examination</option>
                                                 @foreach($examinations as $exam)
                                                     <option value="{{ $exam->examID }}">
-                                                        {{ $exam->exam_name }} 
+                                                        {{ $exam->exam_name }}
                                                         @if($exam->term)
                                                             - {{ ucfirst(str_replace('_', ' ', $exam->term)) }}
                                                         @endif
@@ -525,7 +525,7 @@
                                                 <option value="">No examinations available</option>
                                             </select>
                                             <div class="alert alert-warning mt-2">
-                                                <i class="bi bi-exclamation-triangle"></i> 
+                                                <i class="bi bi-exclamation-triangle"></i>
                                                 <strong>No examinations available:</strong> There are no examinations with upload paper enabled at the moment. Please contact the administrator to enable upload paper for examinations.
                                             </div>
                                         @endif
@@ -680,8 +680,8 @@
                             @foreach($pendingSlots as $slot)
                                 @php
                                     $subjectName = $slot->classSubject->subject->subject_name ?? 'N/A';
-                                    $classNameRaw = $slot->classSubject->subclass 
-                                        ? ($slot->classSubject->subclass->class->class_name ?? '') . ' ' . ($slot->classSubject->subclass->subclass_name ?? '') 
+                                    $classNameRaw = $slot->classSubject->subclass
+                                        ? ($slot->classSubject->subclass->class->class_name ?? '') . ' ' . ($slot->classSubject->subclass->subclass_name ?? '')
                                         : ($slot->classSubject->class->class_name ?? '');
                                     $fullSubjectDisplay = $subjectName . ' - ' . trim($classNameRaw);
                                 @endphp
@@ -729,7 +729,7 @@
 
                                         <!-- Upload Button -->
                                         <div class="exam-card-actions">
-                                            <button class="btn btn-exam-action btn-sm upload-pending-btn" 
+                                            <button class="btn btn-exam-action btn-sm upload-pending-btn"
                                                 data-exam-id="{{ $slot->examID }}"
                                                 data-class-subject-id="{{ $slot->class_subjectID }}"
                                                 data-test-week="{{ $slot->test_week }}"
@@ -806,7 +806,7 @@
                                              data-term="{{ $paper->examination->term ?? '' }}"
                                              data-year="{{ $paper->examination->year ?? '' }}"
                                              data-exam-id="{{ $paper->examID }}">
-                                            
+
                                             <!-- Top: Status badge -->
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <span class="exam-type-badge">
@@ -814,7 +814,7 @@
                                                 </span>
                                                 <span class="badge badge-status-{{ $paper->status }}">
                                                     @if($paper->status == 'wait_approval' || $paper->status == 'pending')
-                                                        <i class="bi bi-clock-history"></i> 
+                                                        <i class="bi bi-clock-history"></i>
                                                         @if($paper->status == 'pending' && $paper->current_approval_order)
                                                             Awaiting: {{ $paper->current_step_name }}
                                                         @else
@@ -932,7 +932,7 @@
                                 <option value="">Select Examination</option>
                                 @foreach($examinations as $exam)
                                     <option value="{{ $exam->examID }}">
-                                        {{ $exam->exam_name }} 
+                                        {{ $exam->exam_name }}
                                         @if($exam->term)
                                             - {{ ucfirst(str_replace('_', ' ', $exam->term)) }}
                                         @endif
@@ -948,7 +948,7 @@
                                 <option value="">No examinations available</option>
                             </select>
                             <div class="alert alert-warning mt-2">
-                                <i class="bi bi-exclamation-triangle"></i> 
+                                <i class="bi bi-exclamation-triangle"></i>
                                 <strong>No examinations available:</strong> There are no examinations with upload paper enabled at the moment. Please contact the administrator to enable upload paper for examinations.
                             </div>
                         @endif
@@ -1143,37 +1143,37 @@
 </div>
 
 <script>
-$(document).ready(function() {
+jQuery(document).ready(function($) {
     // Handle View Chain
     $('.btn-view-chain').on('click', function() {
         const paperId = $(this).data('paper-id');
         const examId = $(this).data('exam-id');
-        
+
         $('#viewChainModal').modal('show');
         $('#chainTimelineContent').html('<div class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x text-primary-custom"></i><p>Loading chain details...</p></div>');
-        
+
         $.ajax({
             url: "{{ url('view_paper_approval_chain') }}/" + examId,
             method: 'GET',
             data: { paper_id: paperId },
             success: function(response) {
                 let html = '<ul class="timeline">';
-                
+
                 // Approval Chain Config from Examination
                 const chain = response.chain;
                 const logs = response.logs || [];
                 const currentOrder = response.current_order;
-                
+
                 chain.forEach(function(step) {
                     let statusClass = 'pending';
                     let statusText = 'Pending';
                     let comment = '';
                     let approver = '';
                     let date = '';
-                    
+
                     // Check if we have a log entry for this step
                     const log = logs.find(l => l.approval_order === step.approval_order);
-                    
+
                     if (log) {
                         if (log.status === 'approved') {
                             statusClass = 'approved';
@@ -1192,9 +1192,9 @@ $(document).ready(function() {
                             statusText = 'Awaiting Approval';
                         }
                     }
-                    
-                    let roleName = step.special_role_type ? 
-                        step.special_role_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+
+                    let roleName = step.special_role_type ?
+                        step.special_role_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) :
                         (step.role ? step.role.name : 'Unknown Role');
 
                     let contentHtml = '';
@@ -1222,7 +1222,7 @@ $(document).ready(function() {
                         </li>
                     `;
                 });
-                
+
                 html += '</ul>';
                 $('#chainTimelineContent').html(html);
             },
@@ -1667,28 +1667,28 @@ $(document).ready(function() {
 
         // Set Exam - this will trigger the change event that shows test fields
         $('#selected_exam').val(examID);
-        
+
         // Manually trigger the exam change logic
         const examName = $('#selected_exam').find('option:selected').text();
         const isWeeklyTest = examName.includes('Weekly Test');
         const isMonthlyTest = examName.includes('Monthly Test');
         const isTestType = isWeeklyTest || isMonthlyTest;
-        
+
         if (isTestType) {
             // Show test fields, hide regular subject selection
             $('#test_fields_container').show();
             $('#regular_subject_container').hide();
             $('#class_subject').prop('required', false);
             $('#test_subject').prop('required', true);
-            
+
             // Load available periods for the current year
             const currentYear = $('#test_year').val() || new Date().getFullYear();
             const fullSubjectDisplay = $(this).data('full-subject-display');
             const testWeekRange = $(this).data('test-week-range');
             const displayWeek = testWeekRange ? `${testWeek} (${testWeekRange})` : testWeek;
-            
+
             // DIRECTLY SET VALUES FIRST (Instant Feedback)
-            
+
             // 1. Set Period (Test Week)
             const $periodSelect = $('#test_period');
             // Ensure option exists
@@ -1698,7 +1698,7 @@ $(document).ready(function() {
                  $periodSelect.append(`<option value="${testWeek}">${displayWeek}</option>`);
             }
             $periodSelect.val(testWeek);
-            
+
             // 2. Set Subject
             const $subjectSelect = $('#test_subject');
             if ($subjectSelect.find(`option[value="${classSubjectID}"]`).length === 0) {
@@ -1706,7 +1706,7 @@ $(document).ready(function() {
                  $subjectSelect.append(`<option value="${classSubjectID}">${fullSubjectDisplay}</option>`);
             }
             $subjectSelect.val(classSubjectID);
-            
+
             // 3. Set Date
             $('#test_date').val(testDate);
 
@@ -1725,14 +1725,14 @@ $(document).ready(function() {
                         // Remember current selection
                         const selectedPeriod = $periodSelect.val();
                         $periodSelect.html('<option value="">Select Period</option>');
-                        
+
                         let periodExists = false;
                         response.periods.forEach(function(period) {
                             const displayText = period.range ? `${period.week} (${period.range})` : period.week;
                             $periodSelect.append(`<option value="${period.week}">${displayText}</option>`);
                             if (period.week === selectedPeriod) periodExists = true;
                         });
-                        
+
                         // Restore selection if valid, otherwise keep what we injected if not in list (edge case)
                         if (periodExists) {
                             $periodSelect.val(selectedPeriod);
@@ -1740,7 +1740,7 @@ $(document).ready(function() {
                              $periodSelect.append(`<option value="${selectedPeriod}">${displayWeek}</option>`);
                              $periodSelect.val(selectedPeriod);
                         }
-                        
+
                         // Load subjects for this week (Background)
                         $.ajax({
                             url: '/get_scheduled_subjects',
@@ -1754,13 +1754,13 @@ $(document).ready(function() {
                                     // Remember current subject
                                     const selectedSubject = $subjectSelect.val();
                                     $subjectSelect.html('<option value="">Select Subject</option>');
-                                    
+
                                     let subjectExists = false;
                                     subjectResponse.subjects.forEach(function(subject) {
                                         $subjectSelect.append(`<option value="${subject.class_subjectID}">${subject.subject_name} - ${subject.class_display}</option>`);
                                         if (subject.class_subjectID == selectedSubject) subjectExists = true;
                                     });
-                                    
+
                                     // Restore selection
                                     if (subjectExists) {
                                         $subjectSelect.val(selectedSubject);
@@ -1775,7 +1775,7 @@ $(document).ready(function() {
                 }
             });
         }
-        
+
         // Fetch allowed classes
         fetchAllowedClasses(examID);
         fetchExistingPapers(examID);
@@ -1787,19 +1787,19 @@ $(document).ready(function() {
     $('#selected_exam').on('change', function() {
         const examID = $(this).val();
         const examName = $(this).find('option:selected').text();
-        
+
         // Check if this is a Weekly Test or Monthly Test
         const isWeeklyTest = examName.includes('Weekly Test');
         const isMonthlyTest = examName.includes('Monthly Test');
         const isTestType = isWeeklyTest || isMonthlyTest;
-        
+
         if (isTestType) {
             // Show test fields, hide regular subject selection
             $('#test_fields_container').show();
             $('#regular_subject_container').hide();
             $('#class_subject').prop('required', false);
             $('#test_subject').prop('required', true);
-            
+
             // Load available periods for the current year
             const currentYear = $('#test_year').val() || new Date().getFullYear();
             loadAvailablePeriods(currentYear, isWeeklyTest ? 'weekly_test' : 'monthly_test', examID);
@@ -1809,12 +1809,12 @@ $(document).ready(function() {
             $('#regular_subject_container').show();
             $('#class_subject').prop('required', true);
             $('#test_subject').prop('required', false);
-            
+
             // Clear test fields
             $('#test_period').html('<option value="">Select Period</option>');
             $('#test_subject').html('<option value="">Select a period first</option>');
         }
-        
+
         fetchAllowedClasses(examID);
         fetchExistingPapers(examID);
     });
@@ -1825,7 +1825,7 @@ $(document).ready(function() {
         const examName = $('#selected_exam').find('option:selected').text();
         const isWeeklyTest = examName.includes('Weekly Test');
         const isMonthlyTest = examName.includes('Monthly Test');
-        
+
         if (year && (isWeeklyTest || isMonthlyTest)) {
             loadAvailablePeriods(year, isWeeklyTest ? 'weekly_test' : 'monthly_test');
         }
@@ -1835,7 +1835,7 @@ $(document).ready(function() {
     $('#test_period').on('change', function() {
         const period = $(this).val();
         const examID = $('#selected_exam').val();
-        
+
         if (period && examID) {
             loadScheduledSubjects(examID, period);
         } else {
@@ -1857,7 +1857,7 @@ $(document).ready(function() {
                 if (response.success && response.periods) {
                     const $periodSelect = $('#test_period');
                     $periodSelect.html('<option value="">Select Period</option>');
-                    
+
                     response.periods.forEach(function(period) {
                         $periodSelect.append(`<option value="${period.id}">${period.text}</option>`);
                     });
@@ -1883,7 +1883,7 @@ $(document).ready(function() {
                 if (response.success && response.subjects) {
                     const $subjectSelect = $('#test_subject');
                     $subjectSelect.html('<option value="">Select Subject</option>');
-                    
+
                     if (response.subjects.length === 0) {
                         $subjectSelect.html('<option value="">No subjects scheduled for this period</option>');
                     } else {
@@ -1975,8 +1975,8 @@ $(document).ready(function() {
     function submitExamPaper(form, isModal) {
         const examID = isModal ? $('#modal_selected_exam').val() : $('#selected_exam').val();
         const isTestMode = !isModal && $('#test_fields_container').is(':visible');
-        const classSubjectID = isModal 
-            ? $('#modal_class_subject').val() 
+        const classSubjectID = isModal
+            ? $('#modal_class_subject').val()
             : (isTestMode ? $('#test_subject').val() : $('#class_subject').val());
         const existingUploadId = isModal ? $('#existing_upload_modal').val() : $('#existing_upload_main').val();
 
@@ -2106,7 +2106,7 @@ $(document).ready(function() {
         const testWeek = isModal ? $('#modal_test_week').val() : $('#test_period').val();
         const testDate = isModal ? $('#modal_test_date').val() : $('#test_date').val();
         const placeholderId = $('#placeholder_id').val();
-        
+
         if (testWeek) {
             formData.append('test_week', testWeek);
         }
