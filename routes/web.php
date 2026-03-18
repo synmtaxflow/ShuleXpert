@@ -158,11 +158,11 @@ Route::post('auth/otp/verify', [Auth::class, 'verifyOtp'])->name('auth.otp.verif
 Route::post('auth/otp/resend', [Auth::class, 'resendOtp'])->name('auth.otp.resend');
 
 // logut route
-Route::get('logout', [Auth::class, 'logout'])->name('logout');
+Route::match(['get', 'post'], 'logout', [Auth::class, 'logout'])->name('logout');
 
 // Admin: Change Password
 Route::get('admin/change-password', [AdminController::class, 'changePasswordForm'])->name('admin.change_password');
-Route::post('admin/change-password', [AdminController::class, 'changePassword'])->name('admin.change_password.store');
+Route::post('admin/change-password', [AdminController::class, 'changePassword'])->name('admin.change_password.update');
 
 // Admin Routes
 Route::get('AdminDashboard', [AdminController::class, 'AdminDashboard'])->name('AdminDashboard');

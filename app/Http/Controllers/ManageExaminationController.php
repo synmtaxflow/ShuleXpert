@@ -56,13 +56,13 @@ class ManageExaminationController extends Controller
             ->selectRaw('YEAR(start_date) as year')
             ->distinct()
             ->pluck('year');
-        
+
         $endYears = DB::table('examinations')
             ->where('schoolID', $schoolID)
             ->selectRaw('YEAR(end_date) as year')
             ->distinct()
             ->pluck('year');
-            
+
         $years = $startYears->merge($endYears)->unique()->sortDesc();
 
         return view('Teacher.supervise_exams', [
@@ -121,7 +121,7 @@ class ManageExaminationController extends Controller
             ->map(function($paper) {
                 $currentStep = null;
                 $isDirect = $paper->examination && $paper->examination->no_approval_required;
-                
+
                 if ($isDirect) {
                     $paper->current_step_name = 'Directly Approved';
                     return $paper;
@@ -132,10 +132,10 @@ class ManageExaminationController extends Controller
                         ->where('examID', $paper->examID)
                         ->where('approval_order', $paper->current_approval_order)
                         ->first();
-                    
+
                     if ($chainStep) {
-                        $currentStep = $chainStep->special_role_type ? 
-                            ucwords(str_replace('_', ' ', $chainStep->special_role_type)) : 
+                        $currentStep = $chainStep->special_role_type ?
+                            ucwords(str_replace('_', ' ', $chainStep->special_role_type)) :
                             (DB::table('roles')->where('id', $chainStep->role_id)->value('name') ?? 'Unknown Role');
                     }
                 }
@@ -146,7 +146,7 @@ class ManageExaminationController extends Controller
         // Get pending upload slots for this teacher (current week and next week only)
         $today = now()->startOfDay();
         $nextWeekEnd = now()->addWeek()->endOfWeek();
-        
+
         $pendingSlots = ExamPaper::where('teacherID', $teacherID)
             ->where('status', 'pending')
             ->whereNull('file_path')
@@ -390,7 +390,7 @@ class ManageExaminationController extends Controller
             'view_exam_results',
             'update_results_status',
         ];
-        
+
         $hasAnyPermission = false;
         if ($user === 'Admin') {
             $hasAnyPermission = true;
@@ -402,7 +402,7 @@ class ManageExaminationController extends Controller
                 }
             }
         }
-        
+
         if (! $hasAnyPermission) {
             return redirect()->back()->with('error', 'You do not have permission to access examinations.');
         }
@@ -496,19 +496,19 @@ class ManageExaminationController extends Controller
                 $exam->total_weeks_count = 0;
                 $exam->test_end_date_range = null;
                 $exam->test_breakdown = [];
-                
+
                 if ($exam->exam_category === 'test') {
                     // 1. Try to get data from exam_papers first (this represents actual generated slots)
                     $latestPaper = \App\Models\ExamPaper::where('examID', $exam->examID)
                         ->orderByDesc('test_date')
                         ->first();
-                    
+
                     if ($latestPaper) {
                         try {
                             $maxDate = \Carbon\Carbon::parse($latestPaper->test_date);
                             $weekNumStr = str_replace('Week ', '', $latestPaper->test_week);
                             $exam->total_weeks_count = (int)$weekNumStr;
-                            
+
                             // Get range for this specific latest paper if available
                             if ($latestPaper->test_week_range) {
                                 $exam->test_end_date_range = "Week {$weekNumStr} ({$latestPaper->test_week_range})";
@@ -530,14 +530,14 @@ class ManageExaminationController extends Controller
                             $breakdown = [];
                             foreach ($subclassLatestDates as $subclassID => $papers) {
                                 if (!$subclassID) continue;
-                                
+
                                 $latest = $papers->sortByDesc('test_date')->first();
                                 $sc = $latest->classSubject->subclass;
                                 if (!$sc) continue;
 
                                 $name = $sc->class->class_name . ' ' . $sc->subclass_name;
                                 $wNum = str_replace('Week ', '', $latest->test_week);
-                                
+
                                 $range = "";
                                 if ($latest->test_week_range) {
                                     $range = $latest->test_week_range;
@@ -554,14 +554,14 @@ class ManageExaminationController extends Controller
                                     'sort_date' => $latest->test_date
                                 ];
                             }
-                            
+
                             // Sort breakdown so the subclass finishing latest is at the top in the list
                             usort($breakdown, function($a, $b) {
                                 return strcmp($b['sort_date'], $a['sort_date']);
                             });
-                            
+
                             $exam->test_breakdown = $breakdown;
-                            
+
                         } catch (\Exception $e) {
                             \Log::error("Error calculating test stats: " . $e->getMessage());
                         }
@@ -574,13 +574,13 @@ class ManageExaminationController extends Controller
                             $finalWeekStart = $startDate->copy()->addWeeks($maxWeekSchedule - 1)->startOfWeek();
                             $finalWeekEnd = $finalWeekStart->copy()->endOfWeek();
                             $exam->test_end_date_range = "Week {$maxWeekSchedule} (" . $finalWeekStart->format('M d') . ' - ' . $finalWeekEnd->format('M d, Y') . ")";
-                            
+
                             // Simple breakdown from schedules
                             $classSchedules = \App\Models\WeeklyTestSchedule::where('examID', $exam->examID)
                                 ->select('scope_id', 'scope', DB::raw('max(week_number) as max_week'))
                                 ->groupBy('scope_id', 'scope')
                                 ->get();
-                                
+
                             foreach ($classSchedules as $cs) {
                                 $name = "";
                                 if ($cs->scope === 'class') {
@@ -590,10 +590,10 @@ class ManageExaminationController extends Controller
                                     $sc = \App\Models\Subclass::with('class')->find($cs->scope_id);
                                     $name = $sc ? ($sc->class->class_name . " " . $sc->subclass_name) : "Stream " . $cs->scope_id;
                                 } else { $name = "School Wide"; }
-                                
+
                                 $wStart = $startDate->copy()->addWeeks($cs->max_week - 1)->startOfWeek();
                                 $wEnd = $wStart->copy()->endOfWeek();
-                                
+
                                 $breakdown[] = [
                                     'name' => $name,
                                     'week' => $cs->max_week,
@@ -684,7 +684,7 @@ class ManageExaminationController extends Controller
             'view_exam_results',
             'update_results_status',
         ];
-        
+
         $hasAnyPermission = false;
         if ($user === 'Admin') {
             $hasAnyPermission = true;
@@ -696,7 +696,7 @@ class ManageExaminationController extends Controller
                 }
             }
         }
-        
+
         if (! $hasAnyPermission) {
             return response()->json(['error' => 'You do not have permission to access examinations.'], 403);
         }
@@ -972,8 +972,8 @@ class ManageExaminationController extends Controller
 
             // Check if user can approve exams
             // If user is Admin, has approve_exam permission, OR has examination_create permission, exam is approved automatically
-            $canApprove = ($userType === 'Admin') || 
-                         $this->hasPermission('approve_exam') || 
+            $canApprove = ($userType === 'Admin') ||
+                         $this->hasPermission('approve_exam') ||
                          $this->hasPermission('examination_create');
 
             // If user has create permission, exam is approved automatically (no need for approval)
@@ -1131,14 +1131,14 @@ class ManageExaminationController extends Controller
                             $hasElected = SubjectElector::where('studentID', $student->studentID)
                                 ->where('classSubjectID', $classSubject->class_subjectID)
                                 ->exists();
-                            
+
                             // Skip if student hasn't elected this optional subject
                             if (!$hasElected) {
                                 continue;
                             }
                         }
                         // If subject is Required or null, continue normally and assign to results
-                        
+
                         $results[] = [
                             'studentID' => $student->studentID,
                             'examID' => $examination->examID,
@@ -1155,7 +1155,7 @@ class ManageExaminationController extends Controller
             } elseif ($request->exam_category === 'special_exams') {
                 // Special Exams: Only students from included classes
                 $includeClassIds = $request->include_class_ids ?? [];
-                
+
                 if (empty($includeClassIds)) {
                     throw new \Exception('No classes selected for special examination.');
                 }
@@ -1201,14 +1201,14 @@ class ManageExaminationController extends Controller
                             $hasElected = SubjectElector::where('studentID', $student->studentID)
                                 ->where('classSubjectID', $classSubject->class_subjectID)
                                 ->exists();
-                            
+
                             // Skip if student hasn't elected this optional subject
                             if (!$hasElected) {
                                 continue;
                             }
                         }
                         // If subject is Required or null, continue normally and assign to results
-                        
+
                         $results[] = [
                             'studentID' => $student->studentID,
                             'examID' => $examination->examID,
@@ -1262,7 +1262,7 @@ class ManageExaminationController extends Controller
                 // Get participating subclasses and mainclasses for this exam
                 $participatingSubclassIDs = [];
                 $participatingMainclassIDs = [];
-                
+
                 if ($request->exam_category === 'school_exams' || $request->exam_category === 'test') {
                     // School Exams/Test: Get all subclasses except excluded classes
                     $query = Subclass::whereHas('class', function($q) use ($schoolID, $exceptClassIds) {
@@ -1296,7 +1296,7 @@ class ManageExaminationController extends Controller
                                 'approval_order' => $approvalOrder,
                                 'status' => 'pending',
                             ]);
-                            
+
                             // Create class_teacher_approvals for each participating subclass
                             if (!empty($participatingSubclassIDs)) {
                                 foreach ($participatingSubclassIDs as $subclassID) {
@@ -1309,7 +1309,7 @@ class ManageExaminationController extends Controller
                                     ]);
                                 }
                             }
-                            
+
                         } elseif ($roleId === 'coordinator_role' || $roleId === 'coordinator') {
                             // Create ResultApproval with special_role_type
                             $resultApproval = ResultApproval::create([
@@ -1319,7 +1319,7 @@ class ManageExaminationController extends Controller
                                 'approval_order' => $approvalOrder,
                                 'status' => 'pending',
                             ]);
-                            
+
                             // Create coordinator_approvals for each participating mainclass
                             if (!empty($participatingMainclassIDs)) {
                                 foreach ($participatingMainclassIDs as $mainclassID) {
@@ -1332,7 +1332,7 @@ class ManageExaminationController extends Controller
                                     ]);
                                 }
                             }
-                            
+
                         } else {
                             // Regular role - store normally
                             ResultApproval::create([
@@ -1343,7 +1343,7 @@ class ManageExaminationController extends Controller
                                 'status' => 'pending',
                             ]);
                         }
-                        
+
                         $approvalOrder++;
                     }
                 }
@@ -1351,7 +1351,7 @@ class ManageExaminationController extends Controller
                 // Send SMS notifications to teachers with the first approval role
                 if (!empty($approvalRoleIds[0])) {
                     $firstRoleId = $approvalRoleIds[0];
-                    
+
                     if ($firstRoleId === 'class_teacher_role' || $firstRoleId === 'class_teacher') {
                         // Send SMS to all class teachers of participating subclasses
                         $classTeachers = DB::table('subclasses')
@@ -1362,7 +1362,7 @@ class ManageExaminationController extends Controller
                             ->select('teachers.id', 'teachers.phone_number', 'teachers.first_name', 'teachers.last_name')
                             ->distinct()
                             ->get();
-                        
+
                         $smsService = new SmsService();
                         foreach ($classTeachers as $teacher) {
                             $message = "Habari {$teacher->first_name}, umeteuliwa kuapprove matokeo ya mtihani: {$examination->exam_name} kama Class Teacher. Tafadhali fanya approval wakwanza ili wengine waweze kuendelea.";
@@ -1382,7 +1382,7 @@ class ManageExaminationController extends Controller
                             ->select('teachers.id', 'teachers.phone_number', 'teachers.first_name', 'teachers.last_name')
                             ->distinct()
                             ->get();
-                        
+
                         $smsService = new SmsService();
                         foreach ($coordinators as $teacher) {
                             $message = "Habari {$teacher->first_name}, umeteuliwa kuapprove matokeo ya mtihani: {$examination->exam_name} kama Coordinator. Tafadhali fanya approval wakwanza ili wengine waweze kuendelea.";
@@ -1418,10 +1418,10 @@ class ManageExaminationController extends Controller
             // Create exam attendance if enabled
             if ($request->has('enable_exam_attendance') && $request->enable_exam_attendance == '1' && !$isWeeklyOrMonthlyTest) {
                 $examAttendanceRecords = [];
-                
+
                 // Get all students participating in this exam (same logic as results)
                 $participatingStudents = [];
-                
+
                 if ($request->exam_category === 'school_exams' || $request->exam_category === 'test') {
                     // School Exams: All students in the school, except excluded classes
                     $query = Student::with('subclass.class')
@@ -1439,7 +1439,7 @@ class ManageExaminationController extends Controller
                 } elseif ($request->exam_category === 'special_exams') {
                     // Special Exams: Only students from included classes
                     $includeClassIds = $request->include_class_ids ?? [];
-                    
+
                     if (!empty($includeClassIds)) {
                         // Get all subclasses for the included classes
                         $subclassIds = Subclass::whereIn('classID', $includeClassIds)
@@ -1454,7 +1454,7 @@ class ManageExaminationController extends Controller
                         }
                     }
                 }
-                
+
                 // Create exam attendance records for all participating students and their subjects
                 foreach ($participatingStudents as $student) {
                     // Skip if student doesn't have a subclass
@@ -1481,7 +1481,7 @@ class ManageExaminationController extends Controller
                         if (! $classSubject->subject) {
                             continue;
                         }
-                        
+
                         // Check if subject is optional and if student has elected it
                         // If subject is Required or null, assign normally (as usual)
                         if ($classSubject->student_status === 'Optional') {
@@ -1489,14 +1489,14 @@ class ManageExaminationController extends Controller
                             $hasElected = SubjectElector::where('studentID', $student->studentID)
                                 ->where('classSubjectID', $classSubject->class_subjectID)
                                 ->exists();
-                            
+
                             // Skip if student hasn't elected this optional subject
                             if (!$hasElected) {
                                 continue;
                             }
                         }
                         // If subject is Required or null, continue normally and assign to exam attendance
-                        
+
                         $examAttendanceRecords[] = [
                             'examID' => $examination->examID,
                             'studentID' => $student->studentID,
@@ -1507,7 +1507,7 @@ class ManageExaminationController extends Controller
                         ];
                     }
                 }
-                
+
                 // Bulk insert exam attendance records
                 if (!empty($examAttendanceRecords)) {
                     DB::table('exam_attendance')->insert($examAttendanceRecords);
@@ -1689,7 +1689,7 @@ class ManageExaminationController extends Controller
     {
         // Allow Admin, and Teachers with examination permissions (including read_only)
         $userType = Session::get('user_type');
-        
+
         if ($userType === 'Admin') {
             // Admin has access
         } elseif ($userType === 'Teacher') {
@@ -1699,7 +1699,7 @@ class ManageExaminationController extends Controller
                         $this->hasPermission('examination_update') ||
                         $this->hasPermission('examination_delete') ||
                         $this->hasPermission('view_exam_details'); // Legacy support
-            
+
             if (! $canAccess) {
                 return response()->json([
                     'error' => 'You do not have permission to view examinations.',
@@ -2147,14 +2147,14 @@ class ManageExaminationController extends Controller
                                 $hasElected = SubjectElector::where('studentID', $student->studentID)
                                     ->where('classSubjectID', $classSubject->class_subjectID)
                                     ->exists();
-                                
+
                                 // Skip if student hasn't elected this optional subject
                                 if (!$hasElected) {
                                     continue;
                                 }
                             }
                             // If subject is Required or null, continue normally and assign to results
-                            
+
                             $key = $student->studentID.'-'.$classSubject->class_subjectID;
                             $desiredKeys[$key] = true;
                             if (! isset($existingKeys[$key])) {
@@ -2399,7 +2399,7 @@ class ManageExaminationController extends Controller
                             $hasElected = SubjectElector::where('studentID', $student->studentID)
                                 ->where('classSubjectID', $classSubject->class_subjectID)
                                 ->exists();
-                            
+
                             // Skip if student hasn't elected this optional subject
                             if (!$hasElected) {
                                 continue;
@@ -2542,19 +2542,19 @@ class ManageExaminationController extends Controller
             DB::beginTransaction();
 
             // Delete in correct order to handle dependencies
-            
+
             // 1. Delete student exam halls (depends on exam_halls)
             DB::table('student_exam_halls')->where('examID', $examID)->delete();
-            
+
             // 2. Delete exam hall supervisors (depends on exam_halls)
             DB::table('exam_hall_supervisors')->where('examID', $examID)->delete();
-            
+
             // 3. Delete exam halls
             DB::table('exam_halls')->where('examID', $examID)->delete();
-            
+
             // 4. Delete exam attendance
             DB::table('exam_attendance')->where('examID', $examID)->delete();
-            
+
             // 5. Delete exam papers (and their files)
             $examPapers = DB::table('exam_papers')->where('examID', $examID)->get();
             foreach ($examPapers as $examPaper) {
@@ -2563,33 +2563,33 @@ class ManageExaminationController extends Controller
                 }
             }
             DB::table('exam_papers')->where('examID', $examID)->delete();
-            
+
             // 6. Delete result approvals and related data
             // First get result approval IDs
             $resultApprovalIDs = DB::table('result_approvals')->where('examID', $examID)->pluck('result_approvalID')->toArray();
-            
+
             // Delete related coordinator approvals
             if (!empty($resultApprovalIDs)) {
                 DB::table('coordinator_approvals')->whereIn('result_approvalID', $resultApprovalIDs)->delete();
             }
-            
+
             // Delete related class teacher approvals
             if (!empty($resultApprovalIDs)) {
                 DB::table('class_teacher_approvals')->whereIn('result_approvalID', $resultApprovalIDs)->delete();
             }
-            
+
             // Delete result approvals
             DB::table('result_approvals')->where('examID', $examID)->delete();
-            
+
             // 7. Delete exam supervise teacher
             DB::table('exam_supervise_teacher')->where('examID', $examID)->delete();
-            
+
             // 8. Delete exam timetables (class-specific)
             DB::table('exam_timetables')->where('examID', $examID)->delete();
-            
+
             // 9. Delete exam timetable (school-wide)
             DB::table('exam_timetable')->where('examID', $examID)->delete();
-            
+
             // 10. Delete all results for this exam
             Result::where('examID', $examID)->delete();
 
@@ -2614,7 +2614,7 @@ class ManageExaminationController extends Controller
     public function approveExam(Request $request, $examID)
     {
         $approvalStatus = $request->input('approval_status');
-        
+
         // Check permission - Update action: examination_update (approve/reject updates exam status)
         if (! $this->hasPermission('examination_update')) {
             return response()->json([
@@ -2683,7 +2683,7 @@ class ManageExaminationController extends Controller
                     $creatorID = $exam->created_by;
                     $examName = $exam->exam_name;
                     $creatorName = null;
-                    
+
                     // Get creator details if exists
                     if ($creatorID) {
                         try {
@@ -2691,7 +2691,7 @@ class ManageExaminationController extends Controller
                             if ($creator) {
                                 $creatorName = ($creator->first_name ?? '') . ' ' . ($creator->last_name ?? '');
                                 $creatorName = trim($creatorName);
-                                
+
                                 // Store notification message in session for creator
                                 // This will be shown when creator logs in next time
                                 $notificationKey = "exam_rejected_{$examID}_" . time();
@@ -2702,18 +2702,18 @@ class ManageExaminationController extends Controller
                                     'exam_name' => $examName,
                                     'created_at' => now()->toDateTimeString()
                                 ]);
-                                
+
                                 // Send SMS to creator
                                 if ($creator->phone_number) {
                                     try {
                                         $smsService = new SmsService();
                                         $school = \App\Models\School::find($schoolID);
                                         $schoolName = $school ? $school->school_name : 'ShuleXpert';
-                                        
+
                                         $smsMessage = "{$schoolName}. Mwalimu {$creatorName}, mtihani wako '{$examName}' umekataliwa na kufutwa. Sababu: {$rejectionReason}. Asante";
-                                        
+
                                         $smsResult = $smsService->sendSms($creator->phone_number, $smsMessage);
-                                        
+
                                         if (!$smsResult['success']) {
                                             Log::warning("Failed to send SMS to creator {$creatorID}: " . ($smsResult['message'] ?? 'Unknown error'));
                                         }
@@ -2728,25 +2728,25 @@ class ManageExaminationController extends Controller
                             Log::error('Error getting creator info: '.$e->getMessage());
                         }
                     }
-                    
+
                     // Delete the examination
                     $exam->delete();
-                    
+
                     DB::commit();
-                    
+
                     $successMessage = "Examination '{$examName}' has been rejected and deleted.";
                     if ($creatorID && $creatorName) {
                         $successMessage .= " {$creatorName} (the creator) will be notified when they log in.";
                     } elseif ($creatorID) {
                         $successMessage .= " The creator will be notified when they log in.";
                     }
-                    
+
                     return response()->json([
                         'success' => $successMessage,
                         'deleted' => true,
                         'creator_notified' => $creatorID ? true : false,
                     ], 200);
-                    
+
                 } catch (\Exception $e) {
                     DB::rollBack();
                     return response()->json([
@@ -2783,7 +2783,7 @@ class ManageExaminationController extends Controller
             // Check permission - allow read_only, create, update, delete permissions for viewing
             $userType = Session::get('user_type');
             $canView = false;
-            
+
             if ($userType === 'Admin') {
                 $canView = true;
             } else {
@@ -2794,7 +2794,7 @@ class ManageExaminationController extends Controller
                           $this->hasPermission('examination_delete') ||
                           $this->hasPermission('view_exam_details'); // Legacy support
             }
-            
+
             if (! $canView) {
                 return response()->json([
                     'error' => 'You do not have permission to view examination details.',
@@ -2929,7 +2929,7 @@ class ManageExaminationController extends Controller
             $today = now()->startOfDay();
             $examEndDate = \Carbon\Carbon::parse($exam->end_date)->startOfDay();
             $examHasEnded = $examEndDate < $today;
-            
+
             // Get attendance statistics if exam has ended
             $attendanceStats = null;
             if ($examHasEnded) {
@@ -2939,7 +2939,7 @@ class ManageExaminationController extends Controller
                     ->select(DB::raw('COUNT(DISTINCT studentID) as count'))
                     ->first()
                     ->count ?? 0;
-                
+
                 // Get unique students who were present (attended at least one subject)
                 // A student is considered "Present" if they have at least one "Present" status record
                 $presentStudentIDs = DB::table('exam_attendance')
@@ -2948,18 +2948,18 @@ class ManageExaminationController extends Controller
                     ->distinct()
                     ->pluck('studentID')
                     ->toArray();
-                
+
                 $presentStudents = count($presentStudentIDs);
-                
+
                 // Get students who were absent (didn't attend any subject)
                 // A student is "Absent" if they don't have any "Present" status record
                 $absentStudents = $expectedStudents - $presentStudents;
-                
+
                 // Get attendance by subclass
                 $attendanceBySubclass = [];
                 foreach ($examDetails as $classItem) {
                     $subclassID = $classItem['subclassID'];
-                    
+
                     // Get unique students in this subclass who should take the exam
                     $subclassExpected = DB::table('exam_attendance')
                         ->join('students', 'exam_attendance.studentID', '=', 'students.studentID')
@@ -2968,7 +2968,7 @@ class ManageExaminationController extends Controller
                         ->select(DB::raw('COUNT(DISTINCT exam_attendance.studentID) as count'))
                         ->first()
                         ->count ?? 0;
-                    
+
                     // Get unique students in this subclass who were present (attended at least one subject)
                     $subclassPresentStudentIDs = DB::table('exam_attendance')
                         ->join('students', 'exam_attendance.studentID', '=', 'students.studentID')
@@ -2978,12 +2978,12 @@ class ManageExaminationController extends Controller
                         ->distinct()
                         ->pluck('exam_attendance.studentID')
                         ->toArray();
-                    
+
                     $subclassPresent = count($subclassPresentStudentIDs);
-                    
+
                     // Get absent students in this subclass (didn't attend any subject)
                     $subclassAbsent = $subclassExpected - $subclassPresent;
-                    
+
                     $attendanceBySubclass[] = [
                         'subclassID' => $subclassID,
                         'subclass_name' => $classItem['subclass_name'],
@@ -2993,7 +2993,7 @@ class ManageExaminationController extends Controller
                         'absent' => $subclassAbsent,
                     ];
                 }
-                
+
                 $attendanceStats = [
                     'expected' => $expectedStudents,
                     'present' => $presentStudents,
@@ -3134,11 +3134,11 @@ class ManageExaminationController extends Controller
 
             // For external shifting, also get ALL students from specific classes (Form Four, Form Two, Standard 7)
             $allStudentsToProcess = collect($studentsWithResults);
-            
+
             if ($shiftingStatus === 'external') {
                 // Get all active students from Form Four, Form Two, and Standard 7 classes
                 $classesToProcess = [];
-                
+
                 if ($schoolType === 'Secondary') {
                     // Get Form Four and Form Two classes by class name (not ID, since multiple schools use the system)
                     $formFourClasses = DB::table('classes')
@@ -3150,7 +3150,7 @@ class ManageExaminationController extends Controller
                         })
                         ->pluck('classID')
                         ->toArray();
-                    
+
                     $formTwoClasses = DB::table('classes')
                         ->where('schoolID', $schoolID)
                         ->where(function($query) {
@@ -3160,7 +3160,7 @@ class ManageExaminationController extends Controller
                         })
                         ->pluck('classID')
                         ->toArray();
-                    
+
                     $classesToProcess = array_merge($formFourClasses, $formTwoClasses);
                 } else {
                     // Primary: Get Standard 7 classes
@@ -3173,10 +3173,10 @@ class ManageExaminationController extends Controller
                         })
                         ->pluck('classID')
                         ->toArray();
-                    
+
                     $classesToProcess = $standard7Classes;
                 }
-                
+
                 if (!empty($classesToProcess)) {
                     // Get all students from these classes
                     $allStudentsFromSpecialClasses = DB::table('students')
@@ -3186,7 +3186,7 @@ class ManageExaminationController extends Controller
                         ->whereIn('subclasses.classID', $classesToProcess)
                         ->pluck('students.studentID')
                         ->toArray();
-                    
+
                     // Merge with students who have results
                     $allStudentsToProcess = collect(array_unique(array_merge($studentsWithResults, $allStudentsFromSpecialClasses)));
                 }
@@ -3230,7 +3230,7 @@ class ManageExaminationController extends Controller
                 // Check if student should be graduated (Form Four or Standard Seven) - ALL students, not just those with results
                 if ($shiftingStatus === 'external') {
                     $shouldGraduate = false;
-                    
+
                     if ($schoolType === 'Secondary' && (preg_match('/form_?4|form_four/i', $normalizedClassName))) {
                         $shouldGraduate = true;
                     } elseif ($schoolType === 'Primary' && (preg_match('/standard_?7|standard_seven/i', $normalizedClassName))) {
@@ -3250,7 +3250,7 @@ class ManageExaminationController extends Controller
                         $this->sendStudentShiftSMS($student, $currentSubclass, null, 'graduated', $school);
                         continue;
                     }
-                    
+
                     // For Form Two with external shifting: ALL students move to Form Three (even without results)
                     if ($schoolType === 'Secondary' && preg_match('/form_?2|form_two/i', $normalizedClassName)) {
                         // Get next class (Form Three)
@@ -3620,7 +3620,7 @@ class ManageExaminationController extends Controller
                 }
             }
             // If no grade requirements (NULL), can place anywhere but still check combie
-            
+
             // Check combie match - if student has combie, must match subclass combie
             if ($currentCombieID && $subclass->combieID) {
                 if ($currentCombieID != $subclass->combieID) {
@@ -3876,7 +3876,7 @@ class ManageExaminationController extends Controller
                     $averageMarks = $studentResult['average_marks'] ?? 0;
                     $position = $studentResult['position'] ?? 'N/A';
                     $totalStudents = $studentResult['total_students'] ?? 'N/A';
-                    
+
                     // Format grade/division based on school type
                     $gradeOrDivision = '';
                     if ($schoolType === 'Secondary') {
@@ -4398,9 +4398,9 @@ class ManageExaminationController extends Controller
         // 2. Existing paper was rejected
         // 3. Existing paper is a placeholder (waiting for content)
         // 4. We are explicitly targeting the existing paper via placeholder_id
-        $canSubmit = !$existingPaper || 
-                     $existingPaper->status === 'rejected' || 
-                     $isPlaceholder || 
+        $canSubmit = !$existingPaper ||
+                     $existingPaper->status === 'rejected' ||
+                     $isPlaceholder ||
                      ($targetPlaceholderID && $existingPaper->exam_paperID == $targetPlaceholderID);
 
         if (!$canSubmit) {
@@ -4445,7 +4445,7 @@ class ManageExaminationController extends Controller
                 $examPaper = ExamPaper::where('exam_paperID', $request->placeholder_id)
                     ->where('teacherID', $teacherID)
                     ->first();
-                
+
                 if (!$examPaper) {
                     DB::rollBack();
                     return response()->json(['error' => 'Pending slot not found.'], 404);
@@ -4463,7 +4463,7 @@ class ManageExaminationController extends Controller
             $examPaper->upload_type = 'upload';
             $examPaper->test_week = $request->test_week;
             $examPaper->test_date = $request->test_date;
-            
+
             // Handle paper approval chain initialization
             if ($examination->no_approval_required) {
                 $examPaper->status = 'approved';
@@ -4471,7 +4471,7 @@ class ManageExaminationController extends Controller
             } elseif ($examination->use_paper_approval) {
                 $examPaper->status = 'pending';
                 $examPaper->current_approval_order = 1;
-                
+
                 // Get first role in the chain
                 $firstChainRole = DB::table('paper_approval_chains')
                     ->where('examID', $examination->examID)
@@ -4530,7 +4530,7 @@ class ManageExaminationController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                    
+
                     // Notify Admin
                     $this->notifyAdminApprover($examPaper);
                 }
@@ -4608,8 +4608,9 @@ class ManageExaminationController extends Controller
 
                 $query = DB::table('class_subjects')
                     ->where('schoolID', Session::get('schoolID'))
+                    ->where('teacherID', $teacherID)
                     ->where('status', 'Active');
-                
+
                 if ($examination->exam_category === 'school_exams') {
                     if (!empty($exceptClassIds)) {
                         $query->whereNotIn('classID', $exceptClassIds);
@@ -4634,8 +4635,9 @@ class ManageExaminationController extends Controller
                     // Create or update paper for this subject
                     // Only update if it's a placeholder or rejected or doesn't exist
                     $targetPaper = ExamPaper::where('examID', $examination->examID)
-                        ->where('class_subjectID', $subID);
-                    
+                        ->where('class_subjectID', $subID)
+                        ->where('teacherID', $teacherID);
+
                     if ($request->test_week) {
                         $targetPaper->where('test_week', $request->test_week);
                     } else {
@@ -4653,7 +4655,7 @@ class ManageExaminationController extends Controller
                         $subPaper->test_week = $request->test_week;
                         $subPaper->test_date = $request->test_date;
                         $subPaper->file_path = $examPaper->file_path;
-                        
+
                         // Respect approval chain settings
                         if ($examination->use_paper_approval) {
                             $subPaper->status = 'pending';
@@ -4662,14 +4664,14 @@ class ManageExaminationController extends Controller
                             $subPaper->status = 'wait_approval';
                             $subPaper->current_approval_order = 0;
                         }
-                        
+
                         $subPaper->save();
 
                         // Create initial log entry for other subjects if approval chain is enabled
                         if ($examination->use_paper_approval && isset($firstChainRole) && $firstChainRole) {
                             // First, clear any existing logs for this paper to avoid duplicates if re-uploading
                             DB::table('paper_approval_logs')->where('exam_paperID', $subPaper->exam_paperID)->delete();
-                            
+
                             DB::table('paper_approval_logs')->insert([
                                 'exam_paperID' => $subPaper->exam_paperID,
                                 'role_id' => $firstChainRole->role_id,
@@ -4731,11 +4733,11 @@ class ManageExaminationController extends Controller
                     $subclassName = $classSubject->subclass->subclass_name ?? '';
                     $classDisplay = trim($mainClass . ' ' . $subclassName);
                     $examName = $examination->exam_name ?? 'Mtihani';
-                    
+
                     // Check if it's a weekly/monthly test and format message accordingly
                     $isWeeklyTest = stripos($examName, 'weekly') !== false;
                     $isMonthlyTest = stripos($examName, 'monthly') !== false;
-                    
+
                     if (($isWeeklyTest || $isMonthlyTest) && $examPaper->test_week_range) {
                         $weekInfo = $examPaper->test_week . ' (' . $examPaper->test_week_range . ')';
                         $smsMessage = "New exam paper uploaded: {$examName}, {$weekInfo}, Teacher: {$teacherName}, Subject: {$subjectName}, Class: {$classDisplay}. Login to approve.";
@@ -4804,10 +4806,10 @@ class ManageExaminationController extends Controller
 
         // Get examination details
         $examination = Examination::find($examID);
-        
+
         // Check if any papers already have week data - if so, it's definitely a periodic test
         $hasWeekData = ExamPaper::where('examID', $examID)->whereNotNull('test_week')->exists();
-        
+
         $isWeeklyTest = $examination && (stripos($examination->exam_name, 'weekly') !== false || ($examination->exam_type ?? $examination->test_type) === 'weekly_test') || ($hasWeekData && stripos($examination->exam_name, 'monthly') === false);
         $isMonthlyTest = $examination && (stripos($examination->exam_name, 'monthly') !== false || ($examination->exam_type ?? $examination->test_type) === 'monthly_test') || ($hasWeekData && stripos($examination->exam_name, 'weekly') === false && stripos($examination->exam_name, 'monthly') !== false);
 
@@ -4867,26 +4869,26 @@ class ManageExaminationController extends Controller
                 ->where('status', 'pending')
                 ->orderBy('approval_order', 'asc')
                 ->first();
-            
+
             $chainData = [];
             $allLogs = DB::table('paper_approval_logs')
                 ->where('exam_paperID', $paper->exam_paperID)
                 ->orderBy('approval_order', 'asc')
                 ->get();
-            
+
             $totalSteps = DB::table('paper_approval_chains')->where('examID', $paper->examID)->count() + 1; // Chain + Admin
             $maxApprovedOrder = DB::table('paper_approval_logs')
                 ->where('exam_paperID', $paper->exam_paperID)
                 ->where('status', 'approved')
                 ->max('approval_order') ?? 0;
-            
+
             // If it's fully approved, set approved steps to total
             if ($paper->status === 'approved') {
                 $approvedSteps = $totalSteps;
             } else {
                 $approvedSteps = $maxApprovedOrder;
             }
-            
+
             $currentStepName = 'Complete';
             if ($pendingLog) {
                 if ($pendingLog->role_id) {
@@ -4955,20 +4957,20 @@ class ManageExaminationController extends Controller
                     } elseif ($step->special_role_type) {
                         $roleName = ucfirst(str_replace('_', ' ', $step->special_role_type));
                     }
-                    
+
                     $stepLog = $allLogs->where('approval_order', $step->approval_order)->first();
-                    
+
                     $fullSteps[] = [
                         'name' => $roleName,
                         'status' => $stepLog ? $stepLog->status : 'waiting',
                         'order' => $step->approval_order
                     ];
                 }
-                
+
                 // Add Admin step
                 $adminOrder = ($chainDefinition->max('approval_order') ?? 0) + 1;
                 $adminLog = $allLogs->where('approval_order', $adminOrder)->first();
-                
+
                 $fullSteps[] = [
                     'name' => 'Mkuu Approval',
                     'status' => $adminLog ? $adminLog->status : ($paper->status === 'approved' ? 'approved' : 'waiting'),
@@ -4978,7 +4980,7 @@ class ManageExaminationController extends Controller
 
             $paperArr = $paper->toArray();
             $paperArr['pending_log_id'] = $pendingLog ? $pendingLog->paper_approval_logID : null;
-            
+
             // Handle no_approval_required display
             if ($paper->examination && $paper->examination->no_approval_required) {
                 $paperArr['chain_progress'] = "Direct";
@@ -4998,7 +5000,7 @@ class ManageExaminationController extends Controller
                     }
                 }
             }
-            
+
             $paperArr['current_approver_role'] = $currentStepName;
             $paperArr['can_approve'] = $canUserApprove;
             $paperArr['can_view_content'] = $canViewContent;
@@ -5034,7 +5036,7 @@ class ManageExaminationController extends Controller
                             $start = \Carbon\Carbon::createFromFormat('d M Y', $dates[0] . ' ' . $year)->startOfDay();
                             $end = \Carbon\Carbon::createFromFormat('d M Y', $dates[1] . ' ' . $year)->endOfDay();
                             $today = now();
-                            
+
                             $isCurrent = $today->betweenIncluded($start, $end);
                         }
                     } catch (\Exception $e) {
@@ -5049,7 +5051,7 @@ class ManageExaminationController extends Controller
                 })
                 ->values()
                 ->toArray();
-                
+
             // Final fallback: if we have week data but no ranges, still try to return weeks
             if (empty($availableWeeks) && $hasWeekData) {
                  $availableWeeks = ExamPaper::where('examID', $examID)
@@ -5079,7 +5081,7 @@ class ManageExaminationController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
         $teacherID = Session::get('teacherID');
-        
+
         // Filters from request
         $examID = $request->input('examID');
         $classID = $request->input('classID');
@@ -5094,7 +5096,7 @@ class ManageExaminationController extends Controller
         }
         $yearFilter = $request->input('year', date('Y'));
         $termFilter = $request->input('term');
-        
+
         // Fetch filter options for the UI
         $availableYears = Examination::where('schoolID', $schoolID)->distinct()->pluck('year')->sortDesc()->toArray();
         if (empty($availableYears)) $availableYears = [date('Y')];
@@ -5129,7 +5131,7 @@ class ManageExaminationController extends Controller
         }
 
         $filter_classes = ClassModel::where('schoolID', $schoolID)->orderBy('class_name', 'asc')->get();
-        
+
         // Filter subclasses based on selected classID
         $subclassesQuery = Subclass::whereHas('class', function($q) use ($schoolID) {
             $q->where('schoolID', $schoolID);
@@ -5199,7 +5201,7 @@ class ManageExaminationController extends Controller
         } elseif ($userType === 'Teacher') {
             // Get teacher's regular roles
             $roleIds = DB::table('role_user')->where('teacher_id', $teacherID)->pluck('role_id')->toArray();
-            
+
             // Get teacher's special roles (classes/subclasses)
             $classTeacherSubclassIds = Subclass::where('teacherID', $teacherID)->pluck('subclassID')->toArray();
             $coordinatorClassIds = ClassModel::where('teacherID', $teacherID)->pluck('classID')->toArray();
@@ -5209,13 +5211,13 @@ class ManageExaminationController extends Controller
                 if ($log->role_id) {
                     return in_array($log->role_id, $roleIds);
                 }
-                
+
                 if ($log->special_role_type === 'class_teacher') {
                     return in_array($log->examPaper->classSubject->subclassID ?? 0, $classTeacherSubclassIds);
                 } elseif ($log->special_role_type === 'coordinator') {
                     return in_array($log->examPaper->classSubject->classID ?? 0, $coordinatorClassIds);
                 }
-                
+
                 return false;
             });
         } elseif ($userType === 'Staff') {
@@ -5229,15 +5231,15 @@ class ManageExaminationController extends Controller
         }
 
         return view('Admin.exam_paper_approval', compact(
-            'pendingLogs', 
-            'filter_examinations', 
-            'filter_classes', 
-            'filter_subclasses', 
+            'pendingLogs',
+            'filter_examinations',
+            'filter_classes',
+            'filter_subclasses',
             'filter_subjects',
             'availableYears',
-            'examID', 
-            'classID', 
-            'subclassID', 
+            'examID',
+            'classID',
+            'subclassID',
             'subjectID',
             'yearFilter',
             'termFilter',
@@ -5257,7 +5259,7 @@ class ManageExaminationController extends Controller
             ->distinct()
             ->pluck('test_week')
             ->toArray();
-        
+
         $exam = DB::table('examinations')->where('examID', $examID)->where('schoolID', $schoolID)->first();
         if ($exam && in_array(strtolower(trim($exam->exam_name)), ['weekly test', 'monthly test'])) {
             $current_week = "Week " . date('W');
@@ -5283,10 +5285,10 @@ class ManageExaminationController extends Controller
 
         try {
             $examPaper = ExamPaper::with([
-                'teacher', 
-                'classSubject.subject', 
-                'classSubject.class', 
-                'classSubject.subclass', 
+                'teacher',
+                'classSubject.subject',
+                'classSubject.class',
+                'classSubject.subclass',
                 'examination',
                 'questions' => function($q) { $q->orderBy('question_number'); }
             ])->whereHas('examination', function($q) use ($schoolID) {
@@ -5321,19 +5323,19 @@ class ManageExaminationController extends Controller
     public function viewApprovalChain(Request $request, $examID)
     {
         $paper_id = $request->paper_id;
-        
+
         $chain = PaperApprovalChain::with('role')
             ->where('examID', $examID)
             ->orderBy('approval_order')
             ->get();
-            
+
         $logs = PaperApprovalLog::with('approver')
             ->where('exam_paperID', $paper_id)
             ->orderBy('created_at', 'desc')
             ->get();
-            
+
         $paper = ExamPaper::with('examination')->find($paper_id);
-        
+
         // Handle no_approval_required case
         if ($paper && $paper->examination && $paper->examination->no_approval_required) {
             return response()->json([
@@ -5361,11 +5363,11 @@ class ManageExaminationController extends Controller
         // Convert to array or collection to allow appending
         $chainData = $chain->toArray();
         foreach($chainData as &$c) {
-            $c['role_name'] = $c['special_role_type'] ? 
-                ucwords(str_replace('_', ' ', $c['special_role_type'])) : 
+            $c['role_name'] = $c['special_role_type'] ?
+                ucwords(str_replace('_', ' ', $c['special_role_type'])) :
                 ($c['role']['role_name'] ?? 'Approver');
         }
-        
+
         // Check if there's an admin_final log or if we're moving towards it
         $adminLog = $logs->where('special_role_type', 'admin')->first();
         if ($adminLog) {
@@ -5384,7 +5386,7 @@ class ManageExaminationController extends Controller
                 'role_id' => null
             ];
         }
-        
+
         return response()->json([
             'chain' => $chainData,
             'logs' => $logs,
@@ -5415,7 +5417,7 @@ class ManageExaminationController extends Controller
             $staffID = Session::get('staffID');
             $adminID = Session::get('adminID') ?? Session::get('userID');
             $schoolID = Session::get('schoolID');
-            
+
             $approverID = $teacherID ?? $staffID ?? $adminID;
 
             // Verify if the user can approve this specific log entry
@@ -5478,7 +5480,7 @@ class ManageExaminationController extends Controller
                     $examPaper->status = 'pending'; // Still pending next person
                     $examPaper->rejection_reason = null; // Clear rejection reason as it's moving forward
                     $message = 'Exam paper approved and moved to the next stage.';
-                    
+
                     // Notify next approvers
                     $this->notifyNextApprovers($examPaper, $nextChainRole);
                 } else {
@@ -5512,7 +5514,7 @@ class ManageExaminationController extends Controller
                         $examPaper->status = 'pending';
                         $examPaper->rejection_reason = null; // Clear rejection reason
                         $message = 'Exam paper approved and moved to Admin for final review.';
-                        
+
                         // Notify Admin
                         $this->notifyAdminApprover($examPaper);
                     }
@@ -5532,19 +5534,19 @@ class ManageExaminationController extends Controller
                         ->where('approval_order', $log->approval_order - 1)
                         ->orderBy('paper_approval_logID', 'desc')
                         ->first();
-                    
+
                     if ($previousLog) {
                         // Mark previous as pending again so they can fix/re-approve
                         $previousLog->update([
                             'status' => 'pending',
                             'updated_at' => now()
                         ]);
-                        
+
                         $examPaper->current_approval_order = $previousLog->approval_order;
                         $examPaper->status = 'pending';
                         $examPaper->rejection_reason = $request->rejection_reason;
                         $message = 'Exam paper rejected and automatically returned to the previous approver in the chain.';
-                        
+
                         // Notify previous approver
                         $this->notifyPreviousApprovers($examPaper, $previousLog, $request->rejection_reason);
                     } else {
@@ -5590,9 +5592,9 @@ class ManageExaminationController extends Controller
         $examName = $examPaper->examination->exam_name ?? 'Exam';
         $school = \App\Models\School::find(Session::get('schoolID'));
         $schoolName = $school ? $school->school_name : 'ShuleXpert';
-        
+
         $message = "{$schoolName}. Karatasi ya mtihani ya {$subjectName} ({$examName}) imewasilishwa kwako kwa hatua inayofuata ya ukaguzi. Tafadhali pitia ShuleXpert.";
-        
+
         $smsService = new SmsService();
         foreach ($phones as $phone) {
             if ($phone) $smsService->sendSms($phone, $message);
@@ -5606,9 +5608,9 @@ class ManageExaminationController extends Controller
         $examName = $examPaper->examination->exam_name ?? 'Exam';
         $school = \App\Models\School::find(Session::get('schoolID'));
         $schoolName = $school ? $school->school_name : 'ShuleXpert';
-        
+
         $message = "{$schoolName}. Karatasi ya mtihani ya {$subjectName} ({$examName}) imekataliwa na hatua ya mbele yako na kurudishwa kwako. Sababu: {$reason}. Tafadhali kagua tena.";
-        
+
         $smsService = new SmsService();
         foreach ($phones as $phone) {
             if ($phone) $smsService->sendSms($phone, $message);
@@ -5620,12 +5622,12 @@ class ManageExaminationController extends Controller
         $school = \App\Models\School::find(Session::get('schoolID'));
         $schoolPhone = $school ? $school->phone : null;
         $schoolName = $school ? $school->school_name : 'ShuleXpert';
-        
+
         if ($schoolPhone) {
             $subjectName = $examPaper->classSubject->subject->subject_name ?? 'Subject';
             $examName = $examPaper->examination->exam_name ?? 'Exam';
             $message = "{$schoolName}. Admnin, hatua za awali za ukaguzi wa karatasi ya mtihani ya {$subjectName} ({$examName}) zimekamilika. Inasubiri idhini yako ya mwisho.";
-            
+
             $smsService = new SmsService();
             $smsService->sendSms($schoolPhone, $message);
         }
@@ -5635,7 +5637,7 @@ class ManageExaminationController extends Controller
     {
         $phones = [];
         $schoolID = Session::get('schoolID');
-        
+
         if ($chainRole->role_id) {
             $phones = DB::table('role_user')
                 ->join('teachers', 'role_user.teacher_id', '=', 'teachers.id')
@@ -5657,7 +5659,7 @@ class ManageExaminationController extends Controller
                 if ($teacher) $phones[] = $teacher->phone_number;
             }
         }
-        
+
         return array_unique(array_filter($phones));
     }
 
@@ -5727,7 +5729,7 @@ class ManageExaminationController extends Controller
             }
 
             DB::beginTransaction();
-            
+
             $examination = $examPaper->examination;
             $wasRejected = ($examPaper->status === 'rejected');
 
@@ -5782,7 +5784,7 @@ class ManageExaminationController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                    
+
                     // Notify Admin
                     $this->notifyAdminApprover($examPaper);
                 }
@@ -6050,7 +6052,7 @@ class ManageExaminationController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-                    
+
                     // Notify Admin
                     $this->notifyAdminApprover($examPaper);
                 }
@@ -6156,12 +6158,12 @@ class ManageExaminationController extends Controller
             $note->time_label = $created->isToday() ? $created->diffForHumans() : $created->format('d M Y');
             $note->teacher_name = trim(($note->first_name ?? '') . ' ' . ($note->last_name ?? ''));
             $note->class_display = trim(($note->class_name ?? '') . ' ' . ($note->subclass_name ?? ''));
-            
+
             $gender = strtolower($note->gender ?? '');
             $note->photo_url = !empty($note->image ?? null)
                 ? asset('userImages/'.$note->image)
                 : ($gender === 'female' ? asset('images/female.png') : asset('images/male.png'));
-            
+
             return $note;
         });
 
@@ -6245,10 +6247,10 @@ class ManageExaminationController extends Controller
                         ->where('examID', $paper->examID)
                         ->where('approval_order', $paper->current_approval_order)
                         ->first();
-                    
+
                     if ($chainStep) {
-                        $currentStep = $chainStep->special_role_type ? 
-                            ucwords(str_replace('_', ' ', $chainStep->special_role_type)) : 
+                        $currentStep = $chainStep->special_role_type ?
+                            ucwords(str_replace('_', ' ', $chainStep->special_role_type)) :
                             ($chainStep->role->name ?? 'Unknown Role');
                     } else {
                         // Check if it's currently at the Admin step
@@ -6299,11 +6301,11 @@ class ManageExaminationController extends Controller
                             if (!empty($roleIds)) {
                                 $q->whereIn('role_id', $roleIds);
                             }
-                            
+
                             // Check special roles (class teacher / coordinator)
                             $subclassIds = Subclass::where('teacherID', $teacherID)->pluck('subclassID')->toArray();
                             $classIds = ClassModel::where('teacherID', $teacherID)->pluck('classID')->toArray();
-                            
+
                             $q->orWhere(function($sq) use ($subclassIds) {
                                 $sq->where('special_role_type', 'class_teacher')
                                    ->whereExists(function($ssq) use ($subclassIds) {
@@ -6322,7 +6324,7 @@ class ManageExaminationController extends Controller
                                    });
                             });
                         })->exists();
-                    
+
                     if ($isApprover) {
                         $canAccess = true;
                     }
@@ -6335,7 +6337,7 @@ class ManageExaminationController extends Controller
                     $professionId = DB::table('other_staff')->where('id', Session::get('staffID'))->value('profession_id');
                     // We need to map profession/staff to roles if roles are used in the chain
                     // For now, check if they have a role that matches any log role_id
-                    // (Assuming role_user might also contain staff if they share roles, 
+                    // (Assuming role_user might also contain staff if they share roles,
                     // or roles are profession-based. Adjusting for profession-based roles if needed)
                     // But usually roles in chain are roles from the roles table.
                 }
@@ -6470,17 +6472,17 @@ class ManageExaminationController extends Controller
                 $smsService = new SmsService();
                 $school = \App\Models\School::find($schoolID);
                 $schoolName = $school ? $school->school_name : 'ShuleXpert';
-                
+
                 // Get participating class IDs based on exam category
                 $participatingClassIds = [];
-                
+
                 if ($exam->exam_category === 'school_exams' || $exam->exam_category === 'test') {
                     // For school_exams and test: all classes except excluded ones
                     $allClasses = ClassModel::where('schoolID', $schoolID)
                         ->where('status', 'Active')
                         ->pluck('classID')
                         ->toArray();
-                    
+
                     $exceptClassIds = $exam->except_class_ids ?? [];
                     if (!empty($exceptClassIds) && is_array($exceptClassIds)) {
                         $participatingClassIds = array_diff($allClasses, $exceptClassIds);
@@ -6495,14 +6497,14 @@ class ManageExaminationController extends Controller
                         ->distinct()
                         ->pluck('subclassID')
                         ->toArray();
-                    
+
                     if (!empty($participatingSubclassIds)) {
                         $participatingClassIds = Subclass::whereIn('subclassID', $participatingSubclassIds)
                             ->distinct()
                             ->pluck('classID')
                             ->toArray();
                     }
-                    
+
                     // If no results yet, try exam_timetables
                     if (empty($participatingClassIds)) {
                         $participatingSubclassIds = DB::table('exam_timetables')
@@ -6510,7 +6512,7 @@ class ManageExaminationController extends Controller
                             ->distinct()
                             ->pluck('subclassID')
                             ->toArray();
-                        
+
                         if (!empty($participatingSubclassIds)) {
                             $participatingClassIds = Subclass::whereIn('subclassID', $participatingSubclassIds)
                                 ->distinct()
@@ -6519,10 +6521,10 @@ class ManageExaminationController extends Controller
                         }
                     }
                 }
-                
+
                 // Get all teachers teaching subjects in participating classes
                 $teachers = collect();
-                
+
                 if (!empty($participatingClassIds)) {
                     // Get teachers via class subjects
                     $teachers = Teacher::where('schoolID', $schoolID)
@@ -6537,7 +6539,7 @@ class ManageExaminationController extends Controller
                         ->distinct()
                         ->get();
                 }
-                
+
                 // If no teachers found via class subjects, get all active teachers in the school
                 if ($teachers->isEmpty()) {
                     $teachers = Teacher::where('schoolID', $schoolID)
@@ -6545,22 +6547,22 @@ class ManageExaminationController extends Controller
                         ->where('phone_number', '!=', '')
                         ->get();
                 }
-                
+
                 $smsSentCount = 0;
                 $examName = $exam->exam_name;
-                
+
                 foreach ($teachers as $teacher) {
                     try {
                         $teacherName = trim(($teacher->first_name ?? '') . ' ' . ($teacher->last_name ?? ''));
-                        
+
                         if ($enterResult) {
                             $message = "{$schoolName}. Habari {$teacherName}, mtihani '{$examName}' umeruhusiwa kujaza matokeo. Tafadhali jaza matokeo kwa wanafunzi wako. Asante";
                         } else {
                             $message = "{$schoolName}. Habari {$teacherName}, kujaza matokeo kwa mtihani '{$examName}' kumekatizwa. Tafadhali usijaze matokeo mpaka kuruhusiwa tena. Asante";
                         }
-                        
+
                         $smsResult = $smsService->sendSms($teacher->phone_number, $message);
-                        
+
                         if ($smsResult['success']) {
                             $smsSentCount++;
                         } else {
@@ -6570,27 +6572,27 @@ class ManageExaminationController extends Controller
                         Log::error("Error sending SMS to teacher {$teacher->id}: " . $smsException->getMessage());
                     }
                 }
-                
-                $successMessage = $enterResult 
+
+                $successMessage = $enterResult
                     ? 'Teachers can now enter results for this examination.'
                     : 'Result entry has been disabled for this examination.';
-                
+
                 if ($smsSentCount > 0) {
                     $successMessage .= " SMS zimetumwa kwa walimu {$smsSentCount}.";
                 }
-                
+
                 return response()->json([
                     'success' => $successMessage,
                     'exam' => $exam,
                     'sms_sent_count' => $smsSentCount,
                 ], 200);
-                
+
             } catch (\Exception $smsError) {
                 // Log SMS error but don't fail the request
                 Log::error('Error sending SMS to teachers for enter_result toggle: ' . $smsError->getMessage());
-                
+
                 return response()->json([
-                    'success' => $enterResult 
+                    'success' => $enterResult
                         ? 'Teachers can now enter results for this examination. (Note: SMS notification failed)'
                         : 'Result entry has been disabled for this examination. (Note: SMS notification failed)',
                     'exam' => $exam,
@@ -6660,12 +6662,12 @@ class ManageExaminationController extends Controller
                     if (! $allApproved) {
                         // Find the first pending approval
                         $firstPendingApproval = $resultApprovals->firstWhere('status', 'pending');
-                        
+
                         if ($firstPendingApproval) {
                             // Get role name
                             $role = Role::find($firstPendingApproval->role_id);
                             $roleName = $role ? ($role->name ?? $role->role_name ?? 'Unknown Role') : 'Unknown Role';
-                            
+
                             return response()->json([
                                 'error' => "Can't publish result. Wait approval of {$roleName}.",
                                 'pending_approval' => [
@@ -6680,7 +6682,7 @@ class ManageExaminationController extends Controller
                             if ($rejectedApproval) {
                                 $role = Role::find($rejectedApproval->role_id);
                                 $roleName = $role ? ($role->name ?? $role->role_name ?? 'Unknown Role') : 'Unknown Role';
-                                
+
                                 return response()->json([
                                     'error' => "Can't publish result. Approval was rejected by {$roleName}.",
                                 ], 422);
@@ -6705,10 +6707,10 @@ class ManageExaminationController extends Controller
                 }
             }
 
-            $successMessage = $publishResult 
+            $successMessage = $publishResult
                 ? 'Results have been published and are now visible to all.'
                 : 'Results have been unpublished.';
-            
+
             if ($publishResult && $smsSentCount > 0) {
                 $successMessage .= ' SMS zimetumwa kwa wazazi ' . $smsSentCount . ' wanaofunzi.';
             }
@@ -6770,7 +6772,7 @@ class ManageExaminationController extends Controller
             ]);
 
             return response()->json([
-                'success' => $uploadPaper 
+                'success' => $uploadPaper
                     ? 'Teachers can now upload exam papers for this examination.'
                     : 'Exam paper upload has been disabled for this examination.',
                 'exam' => $exam,
@@ -6870,7 +6872,7 @@ class ManageExaminationController extends Controller
             // Bulk update check
             if ($request->has('attendance') && is_array($request->attendance)) {
                 $subjectID = $request->input('subjectID');
-                
+
                 foreach ($request->attendance as $att) {
                     if (isset($att['studentID']) && isset($att['status'])) {
                         DB::table('exam_attendance')
@@ -7006,13 +7008,13 @@ class ManageExaminationController extends Controller
                 // Check if student has old_subclassID (was shifted)
                 if ($student->old_subclassID) {
                     $oldSubclass = Subclass::find($student->old_subclassID);
-                    
+
                     if ($oldSubclass && $oldSubclass->class && $oldSubclass->class->schoolID == $schoolID) {
                         // Revert student to previous class
                         $currentSubclassID = $student->subclassID;
                         $student->subclassID = $student->old_subclassID;
                         $student->old_subclassID = null;
-                        
+
                         // If student was graduated, change back to Active
                         if ($student->status === 'Graduated') {
                             $student->status = 'Active';
@@ -7020,7 +7022,7 @@ class ManageExaminationController extends Controller
                         } else {
                             $unshiftedCount++;
                         }
-                        
+
                         $student->save();
                     }
                 }
@@ -7453,54 +7455,54 @@ class ManageExaminationController extends Controller
 
             $examStartDate = \Carbon\Carbon::parse($test->examination->start_date);
             $examEndDate = \Carbon\Carbon::parse($test->examination->end_date);
-            
+
             // Align with calendar weeks (Monday start)
             $anchorDate = $examStartDate->copy()->startOfWeek();
-            
+
             // Determine cycle rotation
             $key = $test->examID . '_' . $test->test_type . '_' . $test->scope . '_' . $test->scope_id;
             $cycleLength = isset($cycleLengths[$key]) ? $cycleLengths[$key]->max_week : 1;
-            
+
             $daysSinceAnchor = $anchorDate->diffInDays($today, false);
             $currentAbsWeek = $daysSinceAnchor < 0 ? 1 : (int)floor($daysSinceAnchor / 7) + 1;
-            
+
             // Current week index in the cycle (1 to cycleLength)
             $currentCycleWeek = (($currentAbsWeek - 1) % $cycleLength) + 1;
-            
+
             // We want to show the occurrence for this test's week number in the CURRENT cycle
             // AND potentially the occurrence in the NEXT cycle.
-            
+
             $cyclesToShow = [0, 1]; // Current cycle (0) and Next cycle (1)
-            
+
             foreach ($cyclesToShow as $cycleOffset) {
                 $absWeekOfOccurrence = (int)($currentAbsWeek - ($currentCycleWeek - 1)) + ($test->week_number - 1) + ($cycleOffset * $cycleLength);
-                
+
                 // If this absolute week is far in the past (before the first week of exam), skip
                 if ($absWeekOfOccurrence < 1 && $cycleOffset == 0) continue;
 
                 // Calculate specific date
                 $weekStart = $anchorDate->copy()->addWeeks($absWeekOfOccurrence - 1)->startOfWeek();
                 $testDate = $weekStart->copy()->modify($test->day);
-                
+
                 // --- VISIBILITY LOGIC ---
                 // 1. If test date is today or future -> SHOW
                 // 2. If test date is past BUT within the CURRENT calendar week -> SHOW (per user request)
                 // 3. Otherwise -> HIDE
-                
+
                 $currentCalendarWeekStart = $today->copy()->startOfWeek();
                 $currentCalendarWeekEnd = $today->copy()->endOfWeek();
-                
+
                 $isInCurrentWeek = $testDate->between($currentCalendarWeekStart, $currentCalendarWeekEnd);
-                
+
                 if (!$testDate->isToday() && $testDate->lt($today) && !$isInCurrentWeek) {
                     continue;
                 }
-                
+
                 // Exclude if it's beyond the examination end date
                 if ($testDate->gt($examEndDate)) {
                     continue;
                 }
-                
+
                 // Exclude if it's before the examination start date (unless it's in the same week and we want to be lenient)
                 if ($testDate->lt($examStartDate) && !$testDate->isSameDay($examStartDate)) {
                     // If it's in the first week but before the official start day, we usually hide it
@@ -7519,7 +7521,7 @@ class ManageExaminationController extends Controller
                 $assignment->gender_allowed = 'both';
                 $assignment->capacity = 0;
                 $assignment->classID = $test->scope_id;
-                
+
                 if ($test->scope === 'class') {
                     $assignment->class_name = \App\Models\ClassModel::find($test->scope_id)->class_name ?? 'Class';
                 } elseif ($test->scope === 'subclass') {
@@ -7530,12 +7532,12 @@ class ManageExaminationController extends Controller
                 }
 
                 $assignment->exam_name = $test->examination->exam_name . " (Week {$test->week_number})";
-                
+
                 // Show the specific date range for THIS occurrence
                 $weekStartOccurrence = $testDate->copy()->startOfWeek();
                 $weekEndOccurrence = $testDate->copy()->endOfWeek();
                 $assignment->week_range = $weekStartOccurrence->format('d/m/Y') . ' - ' . $weekEndOccurrence->format('d/m/Y');
-                
+
                 $assignment->start_date = $test->examination->start_date;
                 $assignment->end_date = $test->examination->end_date;
                 $assignment->term = $test->examination->term;
@@ -7545,7 +7547,7 @@ class ManageExaminationController extends Controller
                 $assignment->exam_date = $testDate->format('Y-m-d');
                 $assignment->start_time = $test->start_time;
                 $assignment->end_time = $test->end_time;
-                
+
                 // Set is_active based on today
                 $assignment->is_active = $testDate->isSameDay($today) ? 1 : 0;
                 $assignment->is_past = $testDate->lt($today) && !$testDate->isToday() ? 1 : 0;
@@ -7561,7 +7563,7 @@ class ManageExaminationController extends Controller
                 } else {
                     $studentCount = \App\Models\Student::where('schoolID', $schoolID)->where('status', 'Active')->count();
                 }
-                
+
                 $assignment->students_count = $studentCount;
                 $assignment->capacity = $studentCount;
 
@@ -7911,17 +7913,17 @@ class ManageExaminationController extends Controller
 
         $examID = $assignment->examID;
         $assignedSubjectID = $assignment->subjectID;
-        
+
         // Get attendance data (new format with status)
         $attendanceData = $request->input('attendance_data', []);
-        
+
         // Fallback to old format for backward compatibility
         if (empty($attendanceData)) {
             $presentIds = $request->input('present_student_ids', []);
             $hallStudents = DB::table('student_exam_halls')
                 ->where('exam_hallID', $examHallID)
                 ->pluck('studentID');
-            
+
             foreach ($hallStudents as $sid) {
                 $attendanceData[] = [
                     'studentID' => $sid,
@@ -7940,12 +7942,12 @@ class ManageExaminationController extends Controller
         foreach ($attendanceData as $data) {
             $studentID = $data['studentID'] ?? $data['student_id'] ?? null;
             $status = $data['status'] ?? 'Absent';
-            
+
             // Validate status
             if (!in_array($status, ['Present', 'Absent', 'Excused'])) {
                 $status = 'Absent';
             }
-            
+
             if ($studentID) {
                 $rows[] = [
                     'examID' => $examID,
@@ -8108,7 +8110,7 @@ class ManageExaminationController extends Controller
             $examinations = $examinationsQuery->orderBy('year', 'desc')
                 ->orderBy('start_date', 'desc')
                 ->get();
-            
+
             // Debug: Log query results if needed
             if (config('app.debug')) {
                 \Log::info('Printing Unit Filter Results', [
@@ -8150,11 +8152,11 @@ class ManageExaminationController extends Controller
                     $query->where('schoolID', $schoolID);
                 })
                 ->where('status', 'Active');
-            
+
             if ($classID) {
                 $subclassesQuery->where('classID', $classID);
             }
-            
+
             $subclasses = $subclassesQuery
                 ->orderBy('classID')
                 ->orderBy('subclass_name')
@@ -8170,25 +8172,25 @@ class ManageExaminationController extends Controller
 
             // Group examinations by class/subclass instead of by examination
             $groupedByClass = [];
-            
+
             foreach ($examinations as $exam) {
                 foreach ($exam->examPapers as $paper) {
                     $classSubject = $paper->classSubject ?? null;
                     if (!$classSubject) continue;
-                    
+
                     $class = $classSubject->class ?? null;
                     $subclass = $classSubject->subclass ?? null;
-                    
+
                     if (!$class || !$subclass) continue;
-                    
+
                     $classIDKey = $class->classID ?? 'no_class';
                     $subclassIDKey = $subclass->subclassID ?? 'no_subclass';
                     $key = $classIDKey . '_' . $subclassIDKey;
-                    
+
                     // Apply class/subclass filters
                     if ($classID && $class->classID != $classID) continue;
                     if ($subclassID && $subclass->subclassID != $subclassID) continue;
-                    
+
                     if (!isset($groupedByClass[$key])) {
                         $groupedByClass[$key] = [
                             'classID' => $class->classID,
@@ -8198,7 +8200,7 @@ class ManageExaminationController extends Controller
                             'papers' => []
                         ];
                     }
-                    
+
                     // Add paper with exam info
                     $groupedByClass[$key]['papers'][] = [
                         'paper' => $paper,
@@ -8247,7 +8249,7 @@ class ManageExaminationController extends Controller
                         $query->where('schoolID', $schoolID);
                     })
                     ->where('status', 'Active');
-                
+
                 $subclasses = $subclassesQuery
                     ->orderBy('classID')
                     ->orderBy('subclass_name')
@@ -8260,7 +8262,7 @@ class ManageExaminationController extends Controller
                             'class_name' => $subclass->class ? $subclass->class->class_name : 'N/A'
                         ];
                     });
-                
+
                 return response()->json([
                     'success' => true,
                     'subclasses' => $subclasses
@@ -8332,11 +8334,11 @@ class ManageExaminationController extends Controller
                     $query->where('schoolID', $schoolID);
                 })
                 ->where('status', 'Active');
-            
+
             if ($classID) {
                 $subclassesQuery->where('classID', $classID);
             }
-            
+
             $subclasses = $subclassesQuery
                 ->orderBy('classID')
                 ->orderBy('subclass_name')
@@ -8352,25 +8354,25 @@ class ManageExaminationController extends Controller
 
             // Group examinations by class/subclass
             $groupedByClass = [];
-            
+
             foreach ($examinations as $exam) {
                 foreach ($exam->examPapers as $paper) {
                     $classSubject = $paper->classSubject ?? null;
                     if (!$classSubject) continue;
-                    
+
                     $class = $classSubject->class ?? null;
                     $subclass = $classSubject->subclass ?? null;
-                    
+
                     if (!$class || !$subclass) continue;
-                    
+
                     $classIDKey = $class->classID ?? 'no_class';
                     $subclassIDKey = $subclass->subclassID ?? 'no_subclass';
                     $key = $classIDKey . '_' . $subclassIDKey;
-                    
+
                     // Apply class/subclass filters (use strict comparison with type casting)
                     if ($classID && (int)$class->classID !== (int)$classID) continue;
                     if ($subclassID && (int)$subclass->subclassID !== (int)$subclassID) continue;
-                    
+
                     if (!isset($groupedByClass[$key])) {
                         $groupedByClass[$key] = [
                             'classID' => $class->classID,
@@ -8383,7 +8385,7 @@ class ManageExaminationController extends Controller
                             'papers' => []
                         ];
                     }
-                    
+
                     // Add paper with exam info (convert to array for JSON)
                     $groupedByClass[$key]['papers'][] = [
                         'paper' => [
@@ -8485,7 +8487,7 @@ class ManageExaminationController extends Controller
             $startDate = \Carbon\Carbon::parse($exam->start_date);
             $endDate = \Carbon\Carbon::parse($exam->end_date);
             $today = \Carbon\Carbon::now();
-            
+
             // Align with calendar weeks (Monday start)
             $anchorDate = $startDate->copy()->startOfWeek();
 
@@ -8495,13 +8497,13 @@ class ManageExaminationController extends Controller
                 ->max('week_number') ?: 1;
 
             $periods = [];
-            
+
             // Loop through all weeks in the exam range
             $current = $anchorDate->copy();
             while ($current <= $endDate) {
                 $weekStart = $current->copy()->startOfWeek();
                 $weekEnd = $current->copy()->endOfWeek();
-                
+
                 // Only show future or current weeks
                 if ($weekEnd->lt($today->copy()->startOfDay())) {
                     $current->addWeek();
@@ -8510,7 +8512,7 @@ class ManageExaminationController extends Controller
 
                 $daysSinceAnchor = $anchorDate->diffInDays($weekStart, false);
                 $absWeek = (int)floor($daysSinceAnchor / 7) + 1;
-                
+
                 // Week index in the cycle (1 to cycleLength)
                 $cycleWeek = (($absWeek - 1) % $cycleLength) + 1;
 
@@ -8527,7 +8529,7 @@ class ManageExaminationController extends Controller
                         'text' => $periodText
                     ];
                 }
-                
+
                 $current->addWeek();
                 if ($current->year > $startDate->year + 2) break; // Hard safety
             }
@@ -8558,7 +8560,7 @@ class ManageExaminationController extends Controller
 
             $startDate = \Carbon\Carbon::parse($exam->start_date);
             $anchorDate = $startDate->copy()->startOfWeek();
-            
+
             // Calculate cycle week from absolute week
             $isWeekly = (strpos(strtolower($exam->exam_name), 'weekly') !== false);
             $testType = $isWeekly ? 'weekly' : 'monthly';
@@ -8566,7 +8568,7 @@ class ManageExaminationController extends Controller
             $cycleLength = WeeklyTestSchedule::where('examID', $examID)
                 ->where('test_type', $testType)
                 ->max('week_number') ?: 1;
-                
+
             $cycleWeek = (($testWeekAbs - 1) % $cycleLength) + 1;
 
             // Find all schedules for this cycle week
@@ -8574,7 +8576,7 @@ class ManageExaminationController extends Controller
                 ->where('week_number', $cycleWeek)
                 ->where('test_type', $testType)
                 ->get();
-            
+
             $subjects = [];
             foreach ($schedules as $schedule) {
                 // Find teacher's ClassSubject entries that match this schedule
@@ -8607,7 +8609,7 @@ class ManageExaminationController extends Controller
             }
 
             return response()->json([
-                'success' => true, 
+                'success' => true,
                 'subjects' => collect($subjects)->unique('class_subjectID')->values()
             ]);
         } catch (\Exception $e) {
@@ -8624,20 +8626,20 @@ class ManageExaminationController extends Controller
         $query = DB::table('class_subjects')
             ->where('schoolID', $schoolID)
             ->where('status', 'Active');
-        
+
         if (!empty($exceptClassIds)) {
             $query->whereNotIn('classID', $exceptClassIds);
         }
 
         $allSubjects = $query->get();
-        
+
         foreach ($allSubjects as $sub) {
             // Check if paper already exists
             $exists = DB::table('exam_papers')
                 ->where('examID', $examination->examID)
                 ->where('class_subjectID', $sub->class_subjectID)
                 ->exists();
-            
+
             if ($exists) continue;
 
             // Create paper

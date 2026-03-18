@@ -1694,6 +1694,7 @@ setTimeout(function() {
     const IDLE_MS = 60 * 1000;
     const WARN_SECONDS = 30;
     const LOGOUT_URL = '{{ route('logout') }}';
+    const CSRF_TOKEN = '{{ csrf_token() }}';
 
     let idleTimer = null;
     let warnTimer = null;
@@ -1746,7 +1747,19 @@ setTimeout(function() {
 
     function logoutNow() {
         hideWarning();
-        window.location.href = LOGOUT_URL;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = LOGOUT_URL;
+        form.style.display = 'none';
+
+        const token = document.createElement('input');
+        token.type = 'hidden';
+        token.name = '_token';
+        token.value = CSRF_TOKEN;
+        form.appendChild(token);
+
+        document.body.appendChild(form);
+        form.submit();
     }
 
     function scheduleIdle() {
