@@ -78,6 +78,7 @@
                         <span class="text-muted small">ShuleXpert</span>
                     </div>
                     <div class="card-body">
+                        <div id="loginAlert"></div>
               @if (session('success'))
     <div class="alert alert-success alert-dismissible fade show" role="alert">
         {{ session('success') }}
@@ -379,6 +380,19 @@
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
 
+                const loginAlert = document.getElementById('loginAlert');
+                const showLoginError = (message) => {
+                    if (!loginAlert) return;
+                    loginAlert.innerHTML = `
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            ${String(message || 'Incorrect username or password!')}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    `;
+                };
+
+                if (loginAlert) loginAlert.innerHTML = '';
+
                 const fd = new FormData(form);
                 const btn = form.querySelector('button[type="submit"]');
                 if (btn) {
@@ -407,10 +421,10 @@
                         return;
                     }
 
-                    const msg = (data && (data.message || (data.errors ? 'Validation failed' : null))) || 'Login failed';
-                    window.location.reload();
+                    const msg = (data && (data.message || (data.errors ? 'Validation failed' : null))) || 'Incorrect username or password!';
+                    showLoginError(msg);
                 } catch (err) {
-                    window.location.reload();
+                    showLoginError('Network error. Please try again.');
                 } finally {
                     if (btn) {
                         btn.disabled = false;
