@@ -4606,14 +4606,23 @@ class ManageExaminationController extends Controller
                 $exceptClassIds = is_string($examination->except_class_ids) ? json_decode($examination->except_class_ids, true) : $examination->except_class_ids;
                 if (!is_array($exceptClassIds)) $exceptClassIds = [];
 
-                $query = DB::table('class_subjects')
-                    ->where('schoolID', Session::get('schoolID'))
-                    ->where('teacherID', $teacherID)
-                    ->where('status', 'Active');
+                Log::info('Exam paper apply_to_all_subjects started', [
+                    'examID' => $examination->examID,
+                    'teacherID' => $teacherID,
+                    'class_subjectID' => $request->class_subjectID,
+                    'test_week' => $request->test_week,
+                    'is_secondary_school' => $requiresQuestionFormat,
+                ]);
+
+                $query = DB::table('class_subjects as cs')
+                    ->join('classes as c', 'cs.classID', '=', 'c.classID')
+                    ->where('c.schoolID', Session::get('schoolID'))
+                    ->where('cs.teacherID', $teacherID)
+                    ->where('cs.status', 'Active');
 
                 if ($examination->exam_category === 'school_exams') {
                     if (!empty($exceptClassIds)) {
-                        $query->whereNotIn('classID', $exceptClassIds);
+                        $query->whereNotIn('cs.classID', $exceptClassIds);
                     }
                 } elseif ($examination->exam_category === 'special_exams') {
                     // For special exams, we look at the classes included in halls
@@ -4623,14 +4632,26 @@ class ManageExaminationController extends Controller
                         ->unique()
                         ->toArray();
                     if (!empty($includedClassIds)) {
-                        $query->whereIn('classID', $includedClassIds);
+                        $query->whereIn('cs.classID', $includedClassIds);
                     }
                 }
 
-                $allSubjects = $query->pluck('class_subjectID');
+                $allSubjects = $query->pluck('cs.class_subjectID');
+
+                Log::info('Exam paper apply_to_all_subjects targets resolved', [
+                    'examID' => $examination->examID,
+                    'teacherID' => $teacherID,
+                    'targets_count' => is_countable($allSubjects) ? count($allSubjects) : null,
+                ]);
 
                 foreach ($allSubjects as $subID) {
                     if ($subID == $request->class_subjectID) continue;
+
+                    Log::info('Exam paper apply_to_all_subjects processing subject', [
+                        'examID' => $examination->examID,
+                        'teacherID' => $teacherID,
+                        'target_class_subjectID' => $subID,
+                    ]);
 
                     // Create or update paper for this subject
                     // Only update if it's a placeholder or rejected or doesn't exist
@@ -4666,6 +4687,13 @@ class ManageExaminationController extends Controller
                         }
 
                         $subPaper->save();
+
+                        Log::info('Exam paper apply_to_all_subjects saved paper', [
+                            'examID' => $examination->examID,
+                            'teacherID' => $teacherID,
+                            'target_class_subjectID' => $subID,
+                            'exam_paperID' => $subPaper->exam_paperID,
+                        ]);
 
                         // Create initial log entry for other subjects if approval chain is enabled
                         if ($examination->use_paper_approval && isset($firstChainRole) && $firstChainRole) {
@@ -4783,9 +4811,24 @@ class ManageExaminationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Error storing exam paper: '.$e->getMessage());
 
-            return response()->json(['error' => 'Failed to submit exam paper. Please try again.'], 500);
+            Log::error('Error storing exam paper: '.$e->getMessage(), [
+                'exception' => $e,
+                'examID' => $request->examID,
+                'teacherID' => $teacherID,
+                'class_subjectID' => $request->class_subjectID,
+                'apply_to_all_subjects' => $request->input('apply_to_all_subjects'),
+                'test_week' => $request->test_week,
+                'placeholder_id' => $request->placeholder_id,
+                'existing_exam_paper_id' => $request->existing_exam_paper_id,
+            ]);
+
+            $message = 'Failed to submit exam paper. Please try again.';
+            if (config('app.debug')) {
+                $message = 'Failed to submit exam paper: '.$e->getMessage();
+            }
+
+            return response()->json(['error' => $message], 500);
         }
     }
 
