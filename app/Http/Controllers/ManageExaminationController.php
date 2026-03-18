@@ -6373,16 +6373,27 @@ class ManageExaminationController extends Controller
                     }
                 }
             } elseif ($userType === 'Staff') {
-                if ($this->hasPermission('view_exam_papers')) {
+                // Staff permissions are sometimes granted by permission_category (as used in staff_nav.blade.php)
+                // rather than by the exact permission name.
+                $staffID = Session::get('staffID');
+                $professionId = $staffID
+                    ? DB::table('other_staff')->where('id', $staffID)->value('profession_id')
+                    : null;
+
+                $hasPrintingUnitAccess = false;
+                if ($professionId) {
+                    $hasPrintingUnitAccess = DB::table('staff_permissions')
+                        ->where('profession_id', $professionId)
+                        ->where(function ($q) {
+                            $q->where('permission_category', 'printing_unit')
+                                ->orWhere('name', 'printing_unit')
+                                ->orWhere('name', 'view_exam_papers');
+                        })
+                        ->exists();
+                }
+
+                if ($hasPrintingUnitAccess) {
                     $canAccess = true;
-                } else {
-                    // Check if they are an approver in the chain via their role
-                    $professionId = DB::table('other_staff')->where('id', Session::get('staffID'))->value('profession_id');
-                    // We need to map profession/staff to roles if roles are used in the chain
-                    // For now, check if they have a role that matches any log role_id
-                    // (Assuming role_user might also contain staff if they share roles,
-                    // or roles are profession-based. Adjusting for profession-based roles if needed)
-                    // But usually roles in chain are roles from the roles table.
                 }
             }
 
@@ -6411,6 +6422,9 @@ class ManageExaminationController extends Controller
                 // Force download for other file types
                 return Storage::disk('public')->download($examPaper->file_path);
             }
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            // Preserve proper HTTP status codes from abort(403/404/...)
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Error downloading exam paper: '.$e->getMessage());
             abort(404, 'File not found');
