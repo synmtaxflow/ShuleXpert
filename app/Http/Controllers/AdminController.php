@@ -25,10 +25,71 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Hash;
+use App\Models\User;
 use Carbon\Carbon;
 
 class AdminController extends Controller
 {
+    public function changePasswordForm()
+    {
+        $userType = Session::get('user_type');
+        if ($userType !== 'Admin') {
+            return redirect()->route('login')->with('error', 'Unauthorized access');
+        }
+
+        return view('Admin.change_password');
+    }
+
+    public function changePassword(Request $request)
+    {
+        $userType = Session::get('user_type');
+        if ($userType !== 'Admin') {
+            return redirect()->route('login')->with('error', 'Unauthorized access');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^a-zA-Z0-9]/',
+            ],
+        ], [
+            'new_password.regex' => 'Password must include uppercase, lowercase, number, and special character.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $user = User::find(Session::get('userID'));
+        if (!$user || $user->user_type !== 'Admin') {
+            Session::flush();
+            return redirect()->route('login')->with('error', 'Session expired. Please login again.');
+        }
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return redirect()->back()->with('error', 'Current password is incorrect.');
+        }
+
+        if (Hash::check($request->new_password, $user->password)) {
+            return redirect()->back()->with('error', 'New password must be different from the current password.');
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        Session::forget('force_password_change');
+
+        return redirect()->route('AdminDashboard')->with('success', 'Password updated successfully.');
+    }
+
     public function AdminDashboard()
     {
          $user = Session::get('user_type');
@@ -38,7 +99,7 @@ class AdminController extends Controller
         }
 
         $schoolID = Session::get('schoolID');
-        
+
         // Dashboard Statistics
         $dashboardStats = [];
         if ($schoolID) {
@@ -47,14 +108,14 @@ class AdminController extends Controller
                 ->where('schoolID', $schoolID)
                 ->where('status', 'Active')
                 ->count();
-            
+
             // Count all active classes (subclasses) in school
             $classesCount = DB::table('subclasses')
                 ->join('classes', 'subclasses.classID', '=', 'classes.classID')
                 ->where('classes.schoolID', $schoolID)
                 ->where('subclasses.status', 'Active')
                 ->count();
-            
+
             // Count all active students in school
             $studentsCount = DB::table('students')
                 ->join('subclasses', 'students.subclassID', '=', 'subclasses.subclassID')
@@ -62,33 +123,33 @@ class AdminController extends Controller
                 ->where('classes.schoolID', $schoolID)
                 ->where('students.status', 'Active')
                 ->count();
-            
+
             // Count all parents in school
             $parentsCount = DB::table('parents')
                 ->where('schoolID', $schoolID)
                 ->count();
-            
+
             // Count all teachers in school
             $teachersCount = DB::table('teachers')
                 ->where('schoolID', $schoolID)
                 ->where('status', 'Active')
                 ->count();
-            
+
             // Count all examinations in school
             $examinationsCount = DB::table('examinations')
                 ->where('schoolID', $schoolID)
                 ->count();
-            
+
             // Count all fees records
             $feesCount = DB::table('fees')
                 ->where('schoolID', $schoolID)
                 ->count();
-            
+
             // Get active session timetable definition
             $definition = DB::table('session_timetable_definitions')
                 ->where('schoolID', $schoolID)
                 ->first();
-            
+
             // Count sessions per week (Monday-Friday) - all sessions in school
             $sessionsPerWeek = 0;
             if ($definition) {
@@ -97,14 +158,14 @@ class AdminController extends Controller
                     ->whereIn('day', ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'])
                     ->count();
             }
-            
+
             // Count sessions per year (excluding holidays and events)
             $sessionsPerYear = 0;
             if ($definition) {
                 $currentYear = Carbon::now()->year;
                 $yearStart = Carbon::create($currentYear, 1, 1);
                 $yearEnd = Carbon::create($currentYear, 12, 31);
-                
+
                 // Get all holidays for the year
                 $yearHolidays = DB::table('holidays')
                     ->where('schoolID', $schoolID)
@@ -117,14 +178,14 @@ class AdminController extends Controller
                             });
                     })
                     ->get();
-                
+
                 // Get non-working events
                 $yearEvents = DB::table('events')
                     ->where('schoolID', $schoolID)
                     ->whereYear('event_date', $currentYear)
                     ->where('is_non_working_day', true)
                     ->get();
-                
+
                 // Calculate total working days in year
                 $totalWorkingDays = 0;
                 $current = $yearStart->copy();
@@ -133,7 +194,7 @@ class AdminController extends Controller
                     if (in_array($current->dayOfWeek, [Carbon::MONDAY, Carbon::TUESDAY, Carbon::WEDNESDAY, Carbon::THURSDAY, Carbon::FRIDAY])) {
                         $dateStr = $current->format('Y-m-d');
                         $isHoliday = false;
-                        
+
                         // Check holidays
                         foreach ($yearHolidays as $holiday) {
                             $holidayStart = Carbon::parse($holiday->start_date);
@@ -143,7 +204,7 @@ class AdminController extends Controller
                                 break;
                             }
                         }
-                        
+
                         // Check events
                         if (!$isHoliday) {
                             foreach ($yearEvents as $event) {
@@ -153,20 +214,20 @@ class AdminController extends Controller
                                 }
                             }
                         }
-                        
+
                         if (!$isHoliday) {
                             $totalWorkingDays++;
                         }
                     }
                     $current->addDay();
                 }
-                
+
                 // Sessions per year = sessions per week * (total working days / 5)
                 if ($sessionsPerWeek > 0) {
                     $sessionsPerYear = (int)($sessionsPerWeek * ($totalWorkingDays / 5));
                 }
             }
-            
+
             // Count approved sessions (sessions with approved tasks) - all teachers
             $approvedSessionsCount = 0;
             if ($definition) {
@@ -177,7 +238,7 @@ class AdminController extends Controller
                     ->distinct('session_tasks.session_timetableID')
                     ->count('session_tasks.session_timetableID');
             }
-            
+
             $dashboardStats = [
                 'subjects_count' => $subjectsCount,
                 'classes_count' => $classesCount,
@@ -244,7 +305,7 @@ class AdminController extends Controller
             $status = $request->input('status');
 
             $query = SessionTask::with([
-                'teacher', 
+                'teacher',
                 'sessionTimetable.subject',
                 'sessionTimetable.classSubject.subject',
                 'sessionTimetable.subclass.class'
@@ -270,31 +331,31 @@ class AdminController extends Controller
                     $startTime = $task->sessionTimetable->start_time ?? null;
                     $endTime = $task->sessionTimetable->end_time ?? null;
                     $day = $task->sessionTimetable->day ?? 'N/A';
-                    
+
                     // Get subject name - try from subject relationship first, then from classSubject
                     $subjectName = 'N/A';
                     if ($task->sessionTimetable) {
                         if ($task->sessionTimetable->subject && $task->sessionTimetable->subject->subject_name) {
                             $subjectName = $task->sessionTimetable->subject->subject_name;
-                        } elseif ($task->sessionTimetable->classSubject && 
-                                  $task->sessionTimetable->classSubject->subject && 
+                        } elseif ($task->sessionTimetable->classSubject &&
+                                  $task->sessionTimetable->classSubject->subject &&
                                   $task->sessionTimetable->classSubject->subject->subject_name) {
                             $subjectName = $task->sessionTimetable->classSubject->subject->subject_name;
                         }
                     }
-                    
+
                     return [
                         'session_taskID' => $task->session_taskID,
                         'teacher_name' => $task->teacher ? ($task->teacher->first_name . ' ' . $task->teacher->last_name) : 'N/A',
                         'subject_name' => $subjectName,
-                        'class_name' => $task->sessionTimetable->subclass ? 
+                        'class_name' => $task->sessionTimetable->subclass ?
                             ($task->sessionTimetable->subclass->class->class_name ?? '') . ' - ' . ($task->sessionTimetable->subclass->subclass_name ?? '') : 'N/A',
                         'task_date' => $task->task_date->format('Y-m-d'),
                         'task_date_display' => $task->task_date->format('F d, Y'),
                         'day' => $day,
                         'start_time' => $startTime ? \Carbon\Carbon::parse($startTime)->format('h:i A') : 'N/A',
                         'end_time' => $endTime ? \Carbon\Carbon::parse($endTime)->format('h:i A') : 'N/A',
-                        'time_display' => ($startTime && $endTime) ? 
+                        'time_display' => ($startTime && $endTime) ?
                             \Carbon\Carbon::parse($startTime)->format('h:i A') . ' - ' . \Carbon\Carbon::parse($endTime)->format('h:i A') : 'N/A',
                         'topic' => ($task->topic && trim($task->topic)) ? $task->topic : 'N/A',
                         'subtopic' => ($task->subtopic && trim($task->subtopic)) ? $task->subtopic : 'N/A',
@@ -339,7 +400,7 @@ class AdminController extends Controller
                 'sessionTimetable.classSubject.subject',
                 'sessionTimetable.subclass.class'
             ])->findOrFail($taskID);
-            
+
             // Verify task belongs to admin's school
             $schoolID = Session::get('schoolID');
             if ($task->schoolID != $schoolID) {
@@ -357,8 +418,8 @@ class AdminController extends Controller
             try {
                 $teacher = $task->teacher;
                 $school = \App\Models\School::find($schoolID);
-                $schoolName = $school ? $school->school_name : 'ShuleLink';
-                
+                $schoolName = $school ? $school->school_name : 'ShuleXpert';
+
                 // Get subject and class info
                 $subjectName = 'N/A';
                 $className = 'N/A';
@@ -368,7 +429,7 @@ class AdminController extends Controller
                     } elseif ($task->sessionTimetable->classSubject && $task->sessionTimetable->classSubject->subject) {
                         $subjectName = $task->sessionTimetable->classSubject->subject->subject_name;
                     }
-                    
+
                     if ($task->sessionTimetable->subclass) {
                         $class = $task->sessionTimetable->subclass->class;
                         $subclassName = trim($task->sessionTimetable->subclass->subclass_name);
@@ -378,12 +439,12 @@ class AdminController extends Controller
                         }
                     }
                 }
-                
+
                 $taskDate = $task->task_date->format('d/m/Y');
                 $comment = request()->input('admin_comment');
                 $topic = $task->topic ?? '';
                 $subtopic = $task->subtopic ?? '';
-                
+
                 // Build SMS message
                 $message = "{$schoolName}. Task yako imeidhinishwa. Somo: {$subjectName}, Darasa: {$className}, Tarehe: {$taskDate}";
                 if ($topic) {
@@ -396,11 +457,11 @@ class AdminController extends Controller
                     $message .= ". Maoni: " . trim($comment);
                 }
                 $message .= ". Asante";
-                
+
                 if ($teacher && $teacher->phone_number) {
                     $smsService = new \App\Services\SmsService();
                     $smsResult = $smsService->sendSms($teacher->phone_number, $message);
-                    
+
                     if (!$smsResult['success']) {
                         \Illuminate\Support\Facades\Log::warning("Failed to send approval SMS to teacher {$teacher->id}: " . ($smsResult['message'] ?? 'Unknown error'));
                     }
@@ -443,7 +504,7 @@ class AdminController extends Controller
                 'sessionTimetable.classSubject.subject',
                 'sessionTimetable.subclass.class'
             ])->findOrFail($taskID);
-            
+
             // Verify task belongs to admin's school
             $schoolID = Session::get('schoolID');
             if ($task->schoolID != $schoolID) {
@@ -461,8 +522,8 @@ class AdminController extends Controller
             try {
                 $teacher = $task->teacher;
                 $school = \App\Models\School::find($schoolID);
-                $schoolName = $school ? $school->school_name : 'ShuleLink';
-                
+                $schoolName = $school ? $school->school_name : 'ShuleXpert';
+
                 // Get subject and class info
                 $subjectName = 'N/A';
                 $className = 'N/A';
@@ -472,7 +533,7 @@ class AdminController extends Controller
                     } elseif ($task->sessionTimetable->classSubject && $task->sessionTimetable->classSubject->subject) {
                         $subjectName = $task->sessionTimetable->classSubject->subject->subject_name;
                     }
-                    
+
                     if ($task->sessionTimetable->subclass) {
                         $class = $task->sessionTimetable->subclass->class;
                         $subclassName = trim($task->sessionTimetable->subclass->subclass_name);
@@ -482,12 +543,12 @@ class AdminController extends Controller
                         }
                     }
                 }
-                
+
                 $taskDate = $task->task_date->format('d/m/Y');
                 $reason = request()->input('admin_comment'); // This is the rejection reason
                 $topic = $task->topic ?? '';
                 $subtopic = $task->subtopic ?? '';
-                
+
                 // Build SMS message
                 $message = "{$schoolName}. Task yako imekataliwa. Somo: {$subjectName}, Darasa: {$className}, Tarehe: {$taskDate}";
                 if ($topic) {
@@ -500,11 +561,11 @@ class AdminController extends Controller
                     $message .= ". Sababu: " . trim($reason);
                 }
                 $message .= ". Asante";
-                
+
                 if ($teacher && $teacher->phone_number) {
                     $smsService = new \App\Services\SmsService();
                     $smsResult = $smsService->sendSms($teacher->phone_number, $message);
-                    
+
                     if (!$smsResult['success']) {
                         \Illuminate\Support\Facades\Log::warning("Failed to send rejection SMS to teacher {$teacher->id}: " . ($smsResult['message'] ?? 'Unknown error'));
                     }
@@ -537,7 +598,7 @@ class AdminController extends Controller
 
         // Get all class subjects with scheme of work for this school
         $currentYear = date('Y');
-        
+
         $classSubjectsWithSchemes = ClassSubject::with([
                 'subject',
                 'class',
@@ -557,12 +618,12 @@ class AdminController extends Controller
             ->map(function($classSubject) use ($currentYear) {
                 // Get current year scheme
                 $currentScheme = $classSubject->schemeOfWork->where('year', $currentYear)->first();
-                
+
                 // Calculate progress (percentage of items marked as done)
                 $progress = 0;
                 $totalItems = 0;
                 $doneItems = 0;
-                
+
                 if ($currentScheme) {
                     $totalItems = $currentScheme->items->count();
                     $doneItems = $currentScheme->items->where('remarks', 'done')->count();
@@ -570,14 +631,14 @@ class AdminController extends Controller
                         $progress = round(($doneItems / $totalItems) * 100, 2);
                     }
                 }
-                
+
                 return [
                     'class_subjectID' => $classSubject->class_subjectID,
                     'subject_name' => $classSubject->subject->subject_name ?? 'N/A',
-                    'class_name' => $classSubject->subclass && $classSubject->subclass->class 
+                    'class_name' => $classSubject->subclass && $classSubject->subclass->class
                         ? $classSubject->subclass->class->class_name . ' ' . $classSubject->subclass->subclass_name
                         : ($classSubject->class ? $classSubject->class->class_name : 'N/A'),
-                    'teacher_name' => $classSubject->teacher 
+                    'teacher_name' => $classSubject->teacher
                         ? $classSubject->teacher->first_name . ' ' . $classSubject->teacher->last_name
                         : 'Not Assigned',
                     'teacherID' => $classSubject->teacherID,
@@ -599,7 +660,7 @@ class AdminController extends Controller
         $user = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (!$user || $user !== 'Admin') {
+        if (!$user || !in_array($user, ['Admin', 'Staff', 'Teacher'])) {
             return redirect()->route('login')->with('error', 'Unauthorized access');
         }
 
@@ -608,10 +669,10 @@ class AdminController extends Controller
         }
 
         // Get scheme of work with relationships
-        $scheme = SchemeOfWork::with(['classSubject.subject', 'classSubject.class', 'classSubject.subclass.class', 
+        $scheme = SchemeOfWork::with(['classSubject.subject', 'classSubject.class', 'classSubject.subclass.class',
                                       'items' => function($query) {
                                           $query->orderBy('month')->orderBy('row_order');
-                                      }, 
+                                      },
                                       'learningObjectives' => function($query) {
                                           $query->orderBy('order');
                                       },
@@ -626,7 +687,7 @@ class AdminController extends Controller
         // Verify scheme belongs to admin's school
         $classSubject = $scheme->classSubject;
         $schemeSchoolID = null;
-        
+
         if ($classSubject->subclass && $classSubject->subclass->class) {
             $schemeSchoolID = $classSubject->subclass->class->schoolID;
         } elseif ($classSubject->class) {
@@ -651,7 +712,7 @@ class AdminController extends Controller
         $user = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (!$user || $user !== 'Admin') {
+        if (!$user || !in_array($user, ['Admin', 'Staff', 'Teacher'])) {
             return redirect()->route('login')->with('error', 'Unauthorized access');
         }
 
@@ -2764,7 +2825,7 @@ class AdminController extends Controller
     public function manageSchoolVisitors()
     {
         $user = Session::get('user_type');
-        if (!$user || $user !== 'Admin') {
+        if (!$user || !in_array($user, ['Admin', 'Staff', 'Teacher'])) {
             return redirect()->route('login')->with('error', 'Unauthorized access');
         }
 
@@ -2993,6 +3054,8 @@ class AdminController extends Controller
         $smsService = new SmsService();
         $sent = 0;
         $skipped = 0;
+        $failed = 0;
+        $firstError = null;
 
         foreach ($visitors as $visitor) {
             $phone = $visitor->contact;
@@ -3004,7 +3067,10 @@ class AdminController extends Controller
             if ($result['success']) {
                 $sent++;
             } else {
-                $skipped++;
+                $failed++;
+                if ($firstError === null) {
+                    $firstError = $result['message'] ?? 'Failed to send SMS';
+                }
             }
         }
 
@@ -3015,9 +3081,23 @@ class AdminController extends Controller
             'recipient_ids' => $visitors->pluck('visitorID')->values()->all(),
         ]);
 
+        if ($sent === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => $firstError ? "SMS failed. {$firstError}" : 'SMS failed.',
+                'sent' => $sent,
+                'failed' => $failed,
+                'skipped' => $skipped,
+                'used' => $usedCount,
+            ], 422);
+        }
+
         return response()->json([
             'success' => true,
-            'message' => "SMS sent: {$sent}. Skipped: {$skipped}.",
+            'message' => "SMS sent: {$sent}. Failed: {$failed}. Skipped: {$skipped}.",
+            'sent' => $sent,
+            'failed' => $failed,
+            'skipped' => $skipped,
             'used' => $usedCount + $sent,
         ]);
     }
@@ -3258,7 +3338,7 @@ class AdminController extends Controller
                 if ($plan->teacher) {
                     $teacherName = trim(($plan->teacher->first_name ?? '') . ' ' . ($plan->teacher->last_name ?? ''));
                 }
-                
+
                 return [
                     'lesson_planID' => $plan->lesson_planID,
                     'lesson_date' => $plan->lesson_date,
@@ -3446,7 +3526,7 @@ class AdminController extends Controller
         }
 
         $lastSeenAt = Session::get('visitors_last_seen');
-        
+
         $visitors = DB::table('school_visitors')
             ->where('schoolID', $schoolID)
             ->orderBy('created_at', 'desc')
@@ -3454,8 +3534,8 @@ class AdminController extends Controller
             ->get()
             ->map(function($visitor) use ($lastSeenAt) {
                 $created = Carbon::parse($visitor->created_at);
-                $visitor->time_label = $created->isToday() 
-                    ? $created->diffForHumans() 
+                $visitor->time_label = $created->isToday()
+                    ? $created->diffForHumans()
                     : $created->format('d M Y');
                 $visitor->is_new = $lastSeenAt ? $created->gt(Carbon::parse($lastSeenAt)) : true;
                 return $visitor;

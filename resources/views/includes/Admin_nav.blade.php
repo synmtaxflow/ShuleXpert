@@ -29,7 +29,7 @@
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,800' rel='stylesheet' type='text/css'>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    
+
     <!-- jQuery (Must be loaded before other scripts that depend on it) -->
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
@@ -124,6 +124,40 @@
     color: rgba(148, 0, 0, 0.7) !important;
     font-size: 1.1rem;
 }
+
+        .admin-sidebar-title {
+            padding: 12px 14px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .admin-brand-logo {
+            width: 38px;
+            height: 38px;
+            object-fit: contain;
+            border-radius: 6px;
+            border: 1px solid rgba(148, 0, 0, 0.15);
+            background: #fff;
+        }
+
+        .admin-brand-block {
+            display: flex;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .admin-brand-text {
+            color: #940000 !important;
+            font-weight: 800;
+        }
+
+        .admin-brand-subtitle {
+            font-size: 0.85rem;
+            color: #6c757d;
+            margin-top: 2px;
+        }
 .notification-count {
     position: absolute;
     top: -6px;
@@ -168,6 +202,16 @@
 #left-panel * {
     color: #2f2f2f !important;
     font-family: 'Century Gothic', CenturyGothic, AppleGothic, sans-serif !important;
+}
+
+/* Ensure brand header keeps intended colors (override global sidebar rule) */
+#left-panel .admin-brand-text {
+    color: #940000 !important;
+    font-weight: 800 !important;
+}
+
+#left-panel .admin-brand-subtitle {
+    color: #6c757d !important;
 }
 
 /* Exception for icons - keep FontAwesome font-family and #940000 color */
@@ -495,9 +539,12 @@
     <nav class="navbar navbar-expand-sm navbar-default">
 
         <div class="navbar-header">
-            <a class="mobile-brand" href="{{ route('AdminDashboard') }}">
-                <i class="fa fa-graduation-cap"></i>
-                ShuleXpert
+            <a href="{{ route('AdminDashboard') }}" class="admin-sidebar-title" style="text-decoration:none;">
+                <img src="{{ asset('images/shuleXpert.jpg') }}" alt="ShuleXpert" class="admin-brand-logo" onerror="this.onerror=null; this.src='{{ asset('images/logo.png') }}';">
+                <span class="admin-brand-block">
+                    <span class="admin-brand-text">User Type</span>
+                    <span class="admin-brand-subtitle">Administrator</span>
+                </span>
             </a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#main-menu" aria-controls="main-menu" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="nav-dot"></span>
@@ -509,7 +556,7 @@
         <div id="main-menu" class="main-menu collapse navbar-collapse">
             <ul class="nav navbar-nav">
                 <!-- Profile -->
-                <li class="text-center mt-3 mb-2">
+                <li class="text-center mt-3 mb-2" style="display:none;">
                     <div class="sidebar-profile">
                         <img src="{{ asset('images/shuleXpert.jpg') }}" alt="Admin" class="profile-image">
                         <div class="profile-meta text-left">
@@ -552,6 +599,8 @@
                                 <li><a href="{{ route('manageResults') }}" class="nav-link"><i class="fa fa-trophy"></i> Results</a></li>
                                 <li><a href="{{ route('admin.subject_analysis') }}" class="nav-link"><i class="fa fa-line-chart"></i> Subject Analysis</a></li>
                                 <li><a href="{{ route('manageExamination') }}" class="nav-link"><i class="fa fa-pencil-square-o"></i> Examinations</a></li>
+
+
                                 <li><a href="{{ route('manageAttendance') }}" class="nav-link"><i class="fa fa-check-square-o"></i> Attendance</a></li>
                             </ul>
                         </li>
@@ -600,6 +649,7 @@
                                 <li><a href="{{ route('fingerprint_device_settings') }}" class="nav-link"><i class="fa fa-id-card"></i> Fingerprint</a></li>
                                 <li><a href="{{ route('manage_accomodation') }}" class="nav-link"><i class="fa fa-bed"></i> Hostel</a></li>
                                 <li><a href="{{ route('sms_notification') }}" class="nav-link"><i class="fa fa-bell"></i> SMS Information</a></li>
+                                <li><a href="{{ route('admin.printing_unit') }}" class="nav-link"><i class="fa fa-print"></i> Printing Unit</a></li>
                             </ul>
                         </li>
 
@@ -635,7 +685,7 @@
                         @endphp
                         <li class="dropdown-nav-item">
                             <a href="#" class="nav-link dropdown-toggle" data-toggle="collapse" data-target="#dutiesBook" aria-expanded="false">
-                                <i class="fa fa-book"></i> Duties Book 
+                                <i class="fa fa-book"></i> Duties Book
                                 @if($pendingDutyReports > 0)
                                     <span class="badge badge-danger ml-1" style="font-size: 10px; border-radius: 50%;">{{ $pendingDutyReports }}</span>
                                 @endif
@@ -872,7 +922,7 @@
                                 if ($isAdmin && $schoolID) {
                                     $teacherHasImage = \Illuminate\Support\Facades\Schema::hasColumn('teachers', 'image');
                                     $teacherHasGender = \Illuminate\Support\Facades\Schema::hasColumn('teachers', 'gender');
-                                    
+
                                     // Count only notifications for papers that HAVE content
                                     $examPaperNotificationCount = \Illuminate\Support\Facades\DB::table('exam_paper_notifications')
                                         ->join('exam_papers', 'exam_paper_notifications.exam_paperID', '=', 'exam_papers.exam_paperID')
@@ -971,11 +1021,24 @@
                 <div class="col-sm-5">
                     <div class="user-area dropdown float-right">
                         <a href="#" class="dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <img class="user-avatar rounded-circle" src="{{ asset('images/admin.jpg') }}" alt="User Avatar">
+                            @php
+                                $navSchoolID = Session::get('schoolID');
+                                $navSchool = $navSchoolID ? \App\Models\School::where('schoolID', $navSchoolID)->first() : null;
+                                $navLogo = $navSchool && $navSchool->school_logo ? asset($navSchool->school_logo) : null;
+                                $navSchoolName = $navSchool ? $navSchool->school_name : 'School';
+                            @endphp
+
+                            @if($navLogo)
+                                <img class="user-avatar rounded-circle" src="{{ $navLogo }}" alt="{{ $navSchoolName }}" style="width: 40px; height: 40px; object-fit: contain; background: #fff;">
+                            @else
+                                <span class="user-avatar rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px; background: #ffffff; border: 2px solid #e0e0e0;">
+                                    <i class="fa fa-graduation-cap" aria-hidden="true" style="color: #940000;"></i>
+                                </span>
+                            @endif
                         </a>
 
                         <div class="user-menu dropdown-menu">
-                            <a class="nav-link" href="#"><i class="fa fa-lock"></i></i>Change Password</a>
+                            <a class="nav-link" href="{{ route('admin.change_password') }}"><i class="fa fa-lock"></i></i>Change Password</a>
 
                             <!-- <a class="nav-link" href="#"><i class="fa fa-user"></i> Notifications <span class="count">13</span></a>
 
@@ -1010,6 +1073,58 @@
 
         </header><!-- /header -->
         <!-- Header-->
+
+        @php
+            $systemAlerts = collect();
+            try {
+                $navSchoolID = \Illuminate\Support\Facades\Session::get('schoolID');
+                if ($navSchoolID) {
+                    $systemAlerts = \App\Models\SystemAlert::where('schoolID', $navSchoolID)
+                        ->where('target_user_type', 'Admin')
+                        ->where('is_active', 1)
+                        ->orderBy('id', 'desc')
+                        ->get();
+                }
+            } catch (\Throwable $e) {
+                $systemAlerts = collect();
+            }
+
+            $alertIcons = [
+                'info' => 'fa-info-circle',
+                'warning' => 'fa-exclamation-triangle',
+                'success' => 'fa-check-circle',
+                'danger' => 'fa-times-circle',
+            ];
+        @endphp
+
+        @if($systemAlerts->count() > 0)
+            <div class="px-3 pt-2">
+                @foreach($systemAlerts as $a)
+                    @php
+                        $type = $a->alert_type ?: 'info';
+                        $icon = $alertIcons[$type] ?? 'fa-info-circle';
+                        $bg = $a->bg_color;
+                        $tc = $a->text_color;
+                        $w = $a->width;
+                        $style = '';
+                        if ($bg) $style .= 'background-color:' . $bg . ' !important;';
+                        if ($tc) $style .= 'color:' . $tc . ' !important;';
+                        if (!$bg && !$tc && in_array($type, ['danger', 'success', 'info'], true)) $style .= 'color:#ffffff !important;';
+                        if ($a->is_bold) $style .= 'font-weight:700;';
+                        if ($a->font_size) $style .= 'font-size:' . $a->font_size . ';';
+                        if ($w) $style .= 'width:' . $w . ';';
+                    @endphp
+                    <div class="alert alert-{{ $type }}" role="alert" style="margin-bottom: 8px; {!! $style !!}">
+                        @if($a->is_marquee)
+                            <marquee behavior="scroll" direction="left" scrollamount="6" style="white-space:nowrap; width:100%;">{{ $a->message }}</marquee>
+                        @else
+                            <i class="fa {{ $icon }}" style="margin-right: 8px;"></i>
+                            {{ $a->message }}
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
 
 <script>
 // Ensure $ inside this block refers to jQuery (pass window.jQuery into IIFE)
@@ -1381,7 +1496,7 @@ function updateVisitorNotificationCount() {
                 $button.append(`<span class="count bg-danger notification-count" id="visitorNotificationCount">${count}</span>`);
             }
             $('#visitorNotificationHeader').text('New Visitors: ' + count);
-            
+
             // Also refresh the visitor list if there are new ones
             fetchRecentVisitors();
         } else {
@@ -1395,7 +1510,7 @@ function fetchRecentVisitors() {
     var $ = window.jQuery;
     $.get('{{ route("admin.get_recent_visitors") }}', function(response) {
         if (!response || response.success !== true) return;
-        
+
         const $list = $('#visitorNotificationList');
         if (response.visitors.length === 0) {
             $list.html('<span class="dropdown-item text-muted">No new visitor notifications.</span>');
@@ -1458,7 +1573,7 @@ function updateExamPaperNotificationCount() {
             } else {
                 $button.append(`<span class="count bg-primary" id="examPaperNotificationCount">${count}</span>`);
             }
-            
+
             // Also refresh the exam paper list if there are new ones
             fetchRecentExamPaperNotifications();
         } else {
@@ -1471,7 +1586,7 @@ function fetchRecentExamPaperNotifications() {
     var $ = window.jQuery;
     $.get('{{ route("admin.get_recent_exam_paper_notifications") }}', function(response) {
         if (!response || response.success !== true) return;
-        
+
         const $list = $('#examPaperNotificationList');
         if (response.notifications.length === 0) {
             $list.html('<span class="dropdown-item text-muted">No new exam paper notifications.</span>');
@@ -1540,7 +1655,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeExamPaperNotifications();
         updateVisitorNotificationCount();
         updateExamPaperNotificationCount();
-        
+
         // Setup intervals for polling (every 30 seconds)
         setInterval(updateVisitorNotificationCount, 30000);
         setInterval(updateExamPaperNotificationCount, 30000);
@@ -1572,5 +1687,94 @@ setTimeout(function() {
 }, 500);
 
 })(window.jQuery);
+</script>
+
+<script>
+(function() {
+    const IDLE_MS = 60 * 1000;
+    const WARN_SECONDS = 30;
+    const LOGOUT_URL = '{{ route('logout') }}';
+
+    let idleTimer = null;
+    let warnTimer = null;
+    let countdownTimer = null;
+    let remaining = WARN_SECONDS;
+    let overlay = null;
+    let lastActiveAt = Date.now();
+
+    function ensureOverlay() {
+        if (overlay) return overlay;
+        overlay = document.createElement('div');
+        overlay.id = 'idle-logout-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:99999;';
+        overlay.innerHTML =
+            '<div style="width:min(520px,92vw);background:#fff;border-radius:12px;padding:18px 18px 14px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:inherit;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+            + '<div style="font-weight:800;color:#940000;">Security Warning</div>'
+            + '<button type="button" id="idleStayBtn" style="border:1px solid rgba(148,0,0,.3);background:#fff;color:#940000;border-radius:8px;padding:6px 10px;cursor:pointer;">Stay Logged In</button>'
+            + '</div>'
+            + '<div style="margin-top:10px;color:#333;line-height:1.4;">System is idle. You will be logged out after <b id="idleCountdown">30</b> seconds.</div>'
+            + '<div style="margin-top:10px;color:#666;font-size:.9rem;">Move the mouse, type, or click to continue.</div>'
+            + '</div>';
+        document.body.appendChild(overlay);
+        const stayBtn = overlay.querySelector('#idleStayBtn');
+        if (stayBtn) stayBtn.addEventListener('click', resetAll);
+        return overlay;
+    }
+
+    function showWarning() {
+        ensureOverlay();
+        remaining = WARN_SECONDS;
+        overlay.style.display = 'flex';
+        const c = overlay.querySelector('#idleCountdown');
+        if (c) c.textContent = String(remaining);
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            remaining -= 1;
+            if (c) c.textContent = String(Math.max(0, remaining));
+            if (remaining <= 0) {
+                logoutNow();
+            }
+        }, 1000);
+    }
+
+    function hideWarning() {
+        if (overlay) overlay.style.display = 'none';
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+
+    function logoutNow() {
+        hideWarning();
+        window.location.href = LOGOUT_URL;
+    }
+
+    function scheduleIdle() {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(() => {
+            showWarning();
+        }, IDLE_MS);
+    }
+
+    function resetAll() {
+        lastActiveAt = Date.now();
+        hideWarning();
+        if (warnTimer) clearTimeout(warnTimer);
+        warnTimer = null;
+        scheduleIdle();
+    }
+
+    function onActivity() {
+        // Only reset if user actually interacted after warning shown or idle countdown running
+        resetAll();
+    }
+
+    ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(evt => {
+        window.addEventListener(evt, onActivity, { passive: true });
+    });
+
+    // Start
+    scheduleIdle();
+})();
 </script>
 @endif

@@ -323,7 +323,7 @@ class SgpmTaskController extends Controller
             $profile = $user->teacher ?? $user->staff;
             if ($profile && $profile->phone_number) {
                 try {
-                    $smsMsg = "ShuleLink SGPM: Sub-task yako '{$subtask->title}' imekubaliwa. Alama: {$subtask->achieved_score}/{$subtask->weight_percentage}%. Progress ya task yako: " . round(($task->progress / $task->weight) * 100) . "%.";
+                    $smsMsg = "ShuleXpert SGPM: Sub-task yako '{$subtask->title}' imekubaliwa. Alama: {$subtask->achieved_score}/{$subtask->weight_percentage}%. Progress ya task yako: " . round(($task->progress / $task->weight) * 100) . "%.";
                     $this->smsService->sendSMS($profile->phone_number, $smsMsg);
                 } catch (\Exception $e) {
                     \Log::error("Failed to send SMS for subtask approval: " . $e->getMessage());

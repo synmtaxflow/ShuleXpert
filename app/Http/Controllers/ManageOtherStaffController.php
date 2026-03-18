@@ -19,14 +19,60 @@ use Illuminate\Support\Facades\Hash;
 class ManageOtherStaffController extends Controller
 {
     /**
+     * Check if current user has permission (handles both Admin and Teacher/Staff)
+     */
+    private function checkPermission($permissionName)
+    {
+        // Admins have all permissions
+        $userType = Session::get('user_type');
+        if ($userType === 'Admin') {
+            return true;
+        }
+
+        // For Teacher/Staff, check their roles/permissions
+        if ($userType === 'Teacher') {
+            $teacherID = Session::get('teacherID');
+            if (!$teacherID) return false;
+
+            $roleIds = DB::table('role_user')
+                ->where('teacher_id', $teacherID)
+                ->pluck('role_id');
+
+            if ($roleIds->isEmpty()) return false;
+
+            return DB::table('role_permission')
+                ->whereIn('role_id', $roleIds)
+                ->where('permission_name', $permissionName)
+                ->exists();
+        }
+
+        if ($userType === 'Staff') {
+            $staffID = Session::get('staffID');
+            if (!$staffID) return false;
+
+            $staff = OtherStaff::find($staffID);
+            if (!$staff || !$staff->profession_id) return false;
+
+            return StaffPermission::where('profession_id', $staff->profession_id)
+                ->where('name', $permissionName)
+                ->exists();
+        }
+
+        return false;
+    }
+    /**
      * Manage Other Staff - Main View
      */
     public function manageOtherStaff()
     {
         $user = Session::get('user_type');
 
-        if (!$user || $user !== 'Admin') {
+        if (!$user) {
             return redirect()->route('login')->with('error', 'Unauthorized access');
+        }
+
+        if (!$this->checkPermission('staff_read_only')) {
+            return redirect()->route('dashboard')->with('error', 'You do not have permission to access Staff Management.');
         }
 
         $schoolID = Session::get('schoolID');
@@ -42,6 +88,9 @@ class ManageOtherStaffController extends Controller
      */
     public function save_staff_profession(Request $request)
     {
+        if (!$this->checkPermission('staff_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to manage staff professions.'], 403);
+        }
         DB::beginTransaction();
         try {
             Log::info('save_staff_profession called', [
@@ -142,6 +191,9 @@ class ManageOtherStaffController extends Controller
      */
     public function update_staff_profession(Request $request)
     {
+        if (!$this->checkPermission('staff_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to update staff professions.'], 403);
+        }
         try {
             $schoolID = Session::get('schoolID');
             if (!$schoolID) {
@@ -200,6 +252,9 @@ class ManageOtherStaffController extends Controller
      */
     public function delete_staff_profession($id)
     {
+        if (!$this->checkPermission('staff_delete')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to delete staff professions.'], 403);
+        }
         try {
             $schoolID = Session::get('schoolID');
             $profession = StaffProfession::where('id', $id)
@@ -235,6 +290,9 @@ class ManageOtherStaffController extends Controller
      */
     public function save_staff_permissions(Request $request)
     {
+        if (!$this->checkPermission('staff_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to manage staff permissions.'], 403);
+        }
         try {
             $schoolID = Session::get('schoolID');
             if (!$schoolID) {
@@ -330,10 +388,26 @@ class ManageOtherStaffController extends Controller
         $permissionName = strtolower($permissionName);
         
         if (strpos($permissionName, '_') !== false) {
-            $parts = explode('_', $permissionName);
-            $category = $parts[0];
+            $category = '';
+            if (strpos($permissionName, '_read_only') !== false) {
+                $category = str_replace('_read_only', '', $permissionName);
+            } else {
+                $parts = explode('_', $permissionName);
+                if (count($parts) > 1) {
+                    array_pop($parts); // Remove the last part (create, update, or delete)
+                    $category = implode('_', $parts);
+                }
+            }
             
-            $validCategories = ['examination', 'classes', 'subject', 'result', 'attendance', 'student', 'parent', 'timetable', 'teacher', 'fees', 'accommodation', 'library', 'calendar', 'fingerprint', 'task', 'sms', 'revenue', 'expenses', 'resources'];
+            $validCategories = [
+                'examination', 'classes', 'subject', 'result', 'attendance', 'student', 
+                'parent', 'timetable', 'teacher', 'fees', 'accommodation', 'library', 
+                'calendar', 'fingerprint', 'task', 'sms', 'revenue', 'expenses', 
+                'resources', 'staff', 'school', 'sponsor', 'student_id_card', 'hr', 
+                'teacher_duty', 'feedback', 'staff_feedback', 'performance', 
+                'accountant', 'goal', 'department', 'subject_analysis', 'printing_unit',
+                'watchman', 'school_visitors', 'scheme_of_work', 'lesson_plans', 'academic_years'
+            ];
             if (in_array($category, $validCategories)) {
                 return $category;
             }
@@ -359,6 +433,22 @@ class ManageOtherStaffController extends Controller
         if (strpos($permissionName, 'fingerprint') !== false) return 'fingerprint';
         if (strpos($permissionName, 'task') !== false) return 'task';
         if (strpos($permissionName, 'sms') !== false || strpos($permissionName, 'notification') !== false) return 'sms';
+        if (strpos($permissionName, 'accountant') !== false || strpos($permissionName, 'finance') !== false) return 'accountant';
+        if (strpos($permissionName, 'goal') !== false) return 'goal';
+        if (strpos($permissionName, 'hr') !== false) return 'hr';
+        if (strpos($permissionName, 'department') !== false) return 'department';
+        if (strpos($permissionName, 'school') !== false) return 'school';
+        if (strpos($permissionName, 'sponsor') !== false) return 'sponsor';
+        if (strpos($permissionName, 'feedback') !== false) return 'feedback';
+        if (strpos($permissionName, 'performance') !== false) return 'performance';
+        if (strpos($permissionName, 'printing') !== false) return 'printing_unit';
+        if (strpos($permissionName, 'watchman') !== false) return 'watchman';
+        if (strpos($permissionName, 'visitor') !== false) return 'school_visitors';
+        if (strpos($permissionName, 'scheme') !== false) return 'scheme_of_work';
+        if (strpos($permissionName, 'lesson') !== false) return 'lesson_plans';
+        if (strpos($permissionName, 'id_card') !== false) return 'student_id_card';
+        if (strpos($permissionName, 'duty') !== false) return 'teacher_duty';
+        if (strpos($permissionName, 'academic') !== false) return 'academic_years';
 
         return null;
     }
@@ -368,6 +458,9 @@ class ManageOtherStaffController extends Controller
      */
     public function save_other_staff(Request $request)
     {
+        if (!$this->checkPermission('staff_create')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to register new staff.'], 403);
+        }
         DB::beginTransaction();
         try {
             $validator = Validator::make($request->all(), [
@@ -544,6 +637,9 @@ class ManageOtherStaffController extends Controller
      */
     public function update_other_staff(Request $request)
     {
+        if (!$this->checkPermission('staff_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to update staff profiles.'], 403);
+        }
         try {
             $staffId = $request->input('staff_id');
             $staff = OtherStaff::find($staffId);
@@ -652,6 +748,9 @@ class ManageOtherStaffController extends Controller
      */
     public function delete_other_staff($id)
     {
+        if (!$this->checkPermission('staff_delete')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to delete staff profiles.'], 403);
+        }
         try {
             $schoolID = Session::get('schoolID');
             $staff = OtherStaff::where('id', $id)
@@ -693,6 +792,9 @@ class ManageOtherStaffController extends Controller
      */
     public function send_staff_to_fingerprint(Request $request)
     {
+        if (!$this->checkPermission('staff_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to manage staff fingerprints.'], 403);
+        }
         try {
             $request->validate([
                 'staff_id' => 'required|exists:other_staff,id'

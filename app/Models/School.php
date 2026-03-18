@@ -27,6 +27,8 @@ class School extends Model
         'established_year',
         'school_logo',
         'status',
+        'environment',
+        'two_factor_enabled',
     ];
 
     public function teachers()

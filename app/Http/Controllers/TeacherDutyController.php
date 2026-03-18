@@ -353,7 +353,7 @@ class TeacherDutyController extends Controller
                     $teacher = \App\Models\Teacher::find($teacherID);
                     if ($school && $school->phone) {
                         $teacherName = $teacher ? $teacher->first_name . ' ' . $teacher->last_name : 'Mwalimu';
-                        $smsMsg = "Habari Admin, " . $teacherName . " ametuma ripoti ya duty book ya tarehe " . date('d/m/Y', strtotime($date)) . ". Tafadhali ipitie ShuleLink.";
+                        $smsMsg = "Habari Admin, " . $teacherName . " ametuma ripoti ya duty book ya tarehe " . date('d/m/Y', strtotime($date)) . ". Tafadhali ipitie ShuleXpert.";
                         $this->smsService->sendSms($school->phone, $smsMsg);
                     }
                 } catch (\Exception $smsEx) {
@@ -440,7 +440,7 @@ class TeacherDutyController extends Controller
                     try {
                         $teacher = Teacher::find($teacherID);
                         if ($teacher && $teacher->phone_number) {
-                            $schoolName = $school ? $school->school_name : 'ShuleLink';
+                            $schoolName = $school ? $school->school_name : 'ShuleXpert';
                             $msg = "Habari {$teacher->first_name}, umechaguliwa kuwa mwalimu wa zamu kuanzia " . 
                                    $currentStartDate->format('d/m/Y') . " hadi " . $weekEndDate->format('d/m/Y') . ". {$schoolName}";
                             

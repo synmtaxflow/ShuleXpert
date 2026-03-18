@@ -1396,7 +1396,22 @@ $(function() {
                                 // Link to the correct examination automatically
                                 for (const w in response.schedules) {
                                     if (response.schedules[w].length > 0) {
-                                        $('#test_exam_id').val(response.schedules[w][0].examID);
+                                        const examID = response.schedules[w][0].examID;
+                                        $('#test_exam_id').val(examID);
+                                        
+                                        // Fetch exam details to pre-fill start date if possible
+                                        $.get('/get_exam_details_timetable', { examID: examID }, function(exRes) {
+                                            if (exRes.success && exRes.examination) {
+                                                const rawDate = exRes.examination.start_date;
+                                                if (rawDate) {
+                                                    const dateObj = new Date(rawDate);
+                                                    const year = dateObj.getFullYear();
+                                                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                                                    const day = String(dateObj.getDate()).padStart(2, '0');
+                                                    $('#test_start_date').val(`${year}-${month}-${day}`);
+                                                }
+                                            }
+                                        });
                                         break;
                                     }
                                 }

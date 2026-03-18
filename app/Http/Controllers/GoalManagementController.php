@@ -702,12 +702,12 @@ class GoalManagementController extends Controller
 
         // SMS to Performer
         if ($memberPhone) {
-            $this->smsService->sendSms($memberPhone, "ShuleLink: Dear {$memberName}, your subtask \"{$subtaskName}\" has been submitted for review. - ShuleLink");
+            $this->smsService->sendSms($memberPhone, "ShuleXpert: Dear {$memberName}, your subtask \"{$subtaskName}\" has been submitted for review. - ShuleXpert");
         }
 
         // SMS to Reviewer (if HOD)
         if ($reviewerPhone) {
-            $this->smsService->sendSms($reviewerPhone, "ShuleLink: {$memberName} ametuma subtask \"{$subtaskName}\" kwa ajili ya ukaguzi. - ShuleLink");
+            $this->smsService->sendSms($reviewerPhone, "ShuleXpert: {$memberName} ametuma subtask \"{$subtaskName}\" kwa ajili ya ukaguzi. - ShuleXpert");
         }
 
         return response()->json(['success' => true, 'message' => 'Subtask imetumwa kwa ajili ya ukaguzi.']);
@@ -786,7 +786,7 @@ class GoalManagementController extends Controller
 
         // ---- SMS to Member ----
         if ($memberPhone) {
-            $this->smsService->sendSms($memberPhone, "ShuleLink: Dear {$memberName}, your subtask \"{$sub->subtask_name}\" has been {$smsStatus} - ShuleLink");
+            $this->smsService->sendSms($memberPhone, "ShuleXpert: Dear {$memberName}, your subtask \"{$sub->subtask_name}\" has been {$smsStatus} - ShuleXpert");
         }
 
         return response()->json(['success' => true, 'message' => 'Subtask ' . $msg]);

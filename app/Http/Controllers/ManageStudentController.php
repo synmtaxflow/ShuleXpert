@@ -1148,7 +1148,7 @@ class ManageStudentController extends Controller
             $curl = curl_init();
 
             // Build API URL
-            $apiUrl = 'https://messaging-service.co.tz/link/sms/v1/text/single?username=emcatechn&password=Emca@%2312&from=ShuleLink&to=' . $phoneNumber . '&text=' . $text;
+            $apiUrl = 'https://messaging-service.co.tz/link/sms/v1/text/single?username=emcatechn&password=Emca@%2312&from=ShuleXpert&to=' . $phoneNumber . '&text=' . $text;
 
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $apiUrl,
@@ -4146,5 +4146,285 @@ class ManageStudentController extends Controller
             ->setPaper([0, 0, 242.65, 153.07], 'landscape');
 
         return $pdf->download($filename);
+    }
+
+    public function downloadTemplate()
+    {
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        $columns = [
+            // Parent Info
+            'Parent First Name', 'Parent Middle Name', 'Parent Last Name', 'Parent Phone (e.g. 255712345678)', 'Parent Gender (Male/Female)', 'Parent Occupation', 'Parent Email', 'Parent Address',
+            
+            // Student Info
+            'Student First Name*', 'Student Middle Name', 'Student Last Name*', 'Student Gender (Male/Female)*',
+            'Student DOB (YYYY-MM-DD)', 'Admission Number', 'Admission Date (YYYY-MM-DD)', 
+            'Class Subclass ID*', 'Religion', 'Nationality', 'Birth Certificate No', 'Student Address',
+            
+            // Sponsorship
+            'Payment Type (Own/Sponsor)', 'Sponsor ID', 'Sponsorship Percentage',
+            
+            // Health Info
+            'General Health Condition', 'Is Disabled (Yes/No)', 'Disability Details', 'Has Chronic Illness (Yes/No)', 'Chronic Illness Details', 'Has Epilepsy (Yes/No)', 'Has Allergies (Yes/No)', 'Allergies Details', 'Immunization Details',
+            
+            // Emergency Contact
+            'Emergency Name', 'Emergency Relationship', 'Emergency Phone',
+            
+            // Registration Details
+            'Declaration Date (YYYY-MM-DD)', 'Registering Officer Name', 'Registering Officer Title'
+        ];
+        
+        $colIndexNum = 1;
+        foreach ($columns as $column) {
+            $colString = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndexNum);
+            $sheet->setCellValue($colString . '1', $column);
+            $sheet->getStyle($colString . '1')->getFont()->setBold(true);
+            $sheet->getColumnDimension($colString)->setAutoSize(true);
+            $colIndexNum++;
+        }
+
+        $schoolID = Session::get('schoolID');
+        $subclasses = Subclass::with('class')->whereHas('class', function($q) use ($schoolID) {
+            $q->where('schoolID', $schoolID);
+        })->get();
+
+        $sheet2 = $spreadsheet->createSheet();
+        $sheet2->setTitle('Valid Subclasses');
+        $sheet2->setCellValue('A1', 'Subclass ID');
+        $sheet2->setCellValue('B1', 'Class Name');
+        $sheet2->setCellValue('C1', 'Subclass Name');
+        $sheet2->getStyle('A1:C1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($subclasses as $subclass) {
+            $sheet2->setCellValue('A' . $row, $subclass->subclassID);
+            $sheet2->setCellValue('B' . $row, $subclass->class->class_name ?? '');
+            $sheet2->setCellValue('C' . $row, $subclass->subclass_name ?? '');
+            $row++;
+        }
+        $sheet2->getColumnDimension('A')->setAutoSize(true);
+        $sheet2->getColumnDimension('B')->setAutoSize(true);
+        $sheet2->getColumnDimension('C')->setAutoSize(true);
+
+        $spreadsheet->setActiveSheetIndex(0);
+
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $fileName = 'Student_Upload_Template.xlsx';
+        $tempPath = storage_path('app/public/' . $fileName);
+        $writer->save($tempPath);
+        
+        return response()->download($tempPath)->deleteFileAfterSend(true);
+    }
+
+    public function uploadStudents(Request $request)
+    {
+        if (!$this->hasPermission('student_create')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $schoolID = Session::get('schoolID');
+        $file = $request->file('excel_file');
+        
+        if (!$file) {
+            return response()->json(['success' => false, 'message' => 'Please upload an excel file']);
+        }
+
+        try {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
+            $worksheet = $spreadsheet->getActiveSheet();
+            $rows = $worksheet->toArray();
+            
+            array_shift($rows); // Remove header
+
+            DB::beginTransaction();
+            $successCount = 0;
+            $errors = [];
+
+            foreach ($rows as $index => $row) {
+                // Ensue array has enough elements based on new column count (approx 36 columns)
+                $row = array_pad($row, 36, null);
+                
+                // Parent Info (Col 0-7)
+                $pFirstName = trim($row[0] ?? '');
+                $pMiddleName = trim($row[1] ?? '');
+                $pLastName = trim($row[2] ?? '');
+                $pPhone = trim($row[3] ?? '');
+                // Basic normalization for phone
+                if (strpos($pPhone, '0') === 0) {
+                    $pPhone = '255' . substr($pPhone, 1);
+                }
+                $pGender = trim($row[4] ?? '');
+                $pOccupation = trim($row[5] ?? '');
+                $pEmail = trim($row[6] ?? '');
+                $pAddress = trim($row[7] ?? '');
+                
+                // Student Info (Col 8-19)
+                $sFirstName = trim($row[8] ?? '');
+                $sMiddleName = trim($row[9] ?? '');
+                $sLastName = trim($row[10] ?? '');
+                $sGender = trim($row[11] ?? '');
+                $sDob = trim($row[12] ?? '');
+                $admissionNum = trim($row[13] ?? '');
+                $admissionDate = trim($row[14] ?? '');
+                $subclassId = trim($row[15] ?? '');
+                $sReligion = trim($row[16] ?? '');
+                $sNationality = trim($row[17] ?? '');
+                $sBirthCert = trim($row[18] ?? '');
+                $sAddress = trim($row[19] ?? '');
+
+                // Sponsorship (Col 20-22)
+                $paymentType = strtolower(trim($row[20] ?? '')) == 'sponsor' ? 'sponsor' : 'own';
+                $sponsorID = trim($row[21] ?? null);
+                $sponsorPercentage = trim($row[22] ?? 0);
+
+                // Health Info (Col 23-31)
+                $generalHealth = trim($row[23] ?? '');
+                $isDisabled = strtolower(trim($row[24] ?? '')) == 'yes' ? 1 : 0;
+                $disabilityDetails = trim($row[25] ?? '');
+                $hasChronic = strtolower(trim($row[26] ?? '')) == 'yes' ? 1 : 0;
+                $chronicDetails = trim($row[27] ?? '');
+                $hasEpilepsy = strtolower(trim($row[28] ?? '')) == 'yes' ? 1 : 0;
+                $hasAllergies = strtolower(trim($row[29] ?? '')) == 'yes' ? 1 : 0;
+                $allergiesDetails = trim($row[30] ?? '');
+                $immunizationDetails = trim($row[31] ?? '');
+
+                // Emergency Contact (Col 32-34)
+                $emergencyName = trim($row[32] ?? '');
+                $emergencyRel = trim($row[33] ?? '');
+                $emergencyPhone = trim($row[34] ?? '');
+
+                // Registration Details (Col 35-37)
+                $declarationDate = trim($row[35] ?? '');
+                $officerName = trim($row[36] ?? '');
+                $officerTitle = trim($row[37] ?? '');
+
+                if (empty($sFirstName) && empty($sLastName)) {
+                    continue; // skip completely empty rows
+                }
+
+                if (empty($sFirstName) || empty($sLastName) || empty($sGender) || empty($subclassId)) {
+                    $errors[] = "Row " . ($index + 2) . ": Missing required student fields (First Name, Last Name, Gender, Subclass ID).";
+                    continue;
+                }
+
+                $parentID = null;
+                if (!empty($pFirstName) && !empty($pPhone)) {
+                    $parent = ParentModel::where('phone', $pPhone)->where('schoolID', $schoolID)->first();
+                    if (!$parent) {
+                        $parent = ParentModel::create([
+                            'schoolID' => $schoolID,
+                            'first_name' => $pFirstName,
+                            'middle_name' => $pMiddleName,
+                            'last_name' => $pLastName,
+                            'phone' => $pPhone,
+                            'gender' => $pGender ?: 'Male',
+                            'occupation' => $pOccupation ?: 'N/A',
+                            'email' => $pEmail,
+                            'address' => $pAddress
+                        ]);
+                    }
+                    $parentID = $parent->parentID;
+                }
+                
+                if (empty($admissionNum)) {
+                     do {
+                        $admissionNum = $this->generateAdmissionNumber($schoolID);
+                     } while (
+                        Student::where('admission_number', $admissionNum)->exists() ||
+                        User::where('name', $admissionNum)->exists()
+                     );
+                } else {
+                     if (Student::where('admission_number', $admissionNum)->exists()) {
+                         $errors[] = "Row " . ($index + 2) . ": Admission number {$admissionNum} already exists.";
+                         continue;
+                     }
+                }
+
+                $subclass = Subclass::with('class')->find($subclassId);
+                if (!$subclass || $subclass->class->schoolID != $schoolID) {
+                    $errors[] = "Row " . ($index + 2) . ": Invalid Subclass ID.";
+                    continue;
+                }
+                
+                $maxFingerprintID = DB::table('students')->max('fingerprint_id') ?: 0;
+                $fingerprintID = $maxFingerprintID + 1;
+
+                // Validate Date before parsing
+                $parsedDob = null;
+                if (!empty($sDob)) {
+                    $parsedDob = date('Y-m-d', strtotime(str_replace('/', '-', $sDob)));
+                }
+
+                Student::create([
+                    'studentID' => $fingerprintID,
+                    'fingerprint_id' => $fingerprintID,
+                    'schoolID' => $schoolID,
+                    'subclassID' => $subclassId,
+                    'parentID' => $parentID,
+                    'first_name' => $sFirstName,
+                    'middle_name' => $sMiddleName,
+                    'last_name' => $sLastName,
+                    'gender' => $sGender,
+                    'date_of_birth' => $parsedDob,
+                    'admission_number' => $admissionNum,
+                    'admission_date' => $admissionDate ? date('Y-m-d', strtotime(str_replace('/', '-', $admissionDate))) : date('Y-m-d'),
+                    'address' => $sAddress,
+                    'religion' => $sReligion,
+                    'nationality' => $sNationality,
+                    'birth_certificate_number' => $sBirthCert,
+                    'sponsor_id' => $paymentType == 'sponsor' ? $sponsorID : null,
+                    'sponsorship_percentage' => $paymentType == 'sponsor' ? $sponsorPercentage : 0,
+                    'general_health_condition' => $generalHealth,
+                    'is_disabled' => $isDisabled,
+                    'has_disability' => $isDisabled, // Mapping both for compatibility
+                    'disability_details' => $disabilityDetails,
+                    'has_chronic_illness' => $hasChronic,
+                    'chronic_illness_details' => $chronicDetails,
+                    'has_epilepsy' => $hasEpilepsy,
+                    'has_allergies' => $hasAllergies,
+                    'allergies_details' => $allergiesDetails,
+                    'immunization_details' => $immunizationDetails,
+                    'emergency_contact_name' => $emergencyName,
+                    'emergency_contact_relationship' => $emergencyRel,
+                    'emergency_contact_phone' => $emergencyPhone,
+                    'declaration_date' => $declarationDate ? date('Y-m-d', strtotime(str_replace('/', '-', $declarationDate))) : null,
+                    'registering_officer_name' => $officerName,
+                    'registering_officer_title' => $officerTitle,
+                    'status' => 'Active',
+                    'sent_to_device' => false
+                ]);
+                
+                $defaultPassword = '123';
+                User::create([
+                        'name' => $admissionNum,
+                        'email' => strtolower(preg_replace('/[^a-z0-9]/i', '', $sFirstName) . '.' . preg_replace('/[^a-z0-9]/i', '', $sLastName) . '.' . $fingerprintID . '@student.ShuleXpert'),
+                        'password' => Hash::make($defaultPassword),
+                        'user_type' => 'Student',
+                        'studentID' => $fingerprintID,
+                        'schoolID' => $schoolID,
+                ]);
+
+                $successCount++;
+            }
+
+            DB::commit();
+            
+            $msg = "Successfully imported $successCount students.";
+            if (count($errors) > 0) {
+               $msg .= " However, some rows failed: " . implode(" | ", array_slice($errors, 0, 5)) . (count($errors) > 5 ? "..." : "");
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'errors' => $errors
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Import error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json(['success' => false, 'message' => 'Error importing file at row ' . ($index + 2) . ': ' . $e->getMessage()]);
+        }
     }
 }

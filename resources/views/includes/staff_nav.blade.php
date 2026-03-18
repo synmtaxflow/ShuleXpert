@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Staff</title>
-    <meta name="description" content="ShuleLink Staff Portal">
+    <meta name="description" content="ShuleXpert Staff Portal">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link rel="apple-touch-icon" href="apple-icon.png">
@@ -18,6 +18,10 @@
     <link rel="stylesheet" href="{{ asset('vendors/selectFX/css/cs-skin-elastic.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
     <link href="https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,800" rel="stylesheet" type="text/css">
+
+    <!-- jQuery and Bootstrap JS (Must be loaded before other scripts) -->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 
     <style>
         #left-panel,
@@ -413,6 +417,23 @@
                         </li>
 
                         @php
+                            // Fallback to fetch permissions if not passed from controller
+                            if (!isset($staffPermissionsByCategory) || $staffPermissionsByCategory->isEmpty()) {
+                                $navStaffID = \Illuminate\Support\Facades\Session::get('staffID');
+                                if ($navStaffID) {
+                                    $navStaff = \App\Models\OtherStaff::find($navStaffID);
+                                    if ($navStaff && $navStaff->profession_id) {
+                                        $staffPermissionsByCategory = \App\Models\StaffPermission::where('profession_id', $navStaff->profession_id)
+                                            ->get()
+                                            ->groupBy('permission_category');
+                                    }
+                                }
+                            }
+
+                            if (!isset($staffPermissionsByCategory)) {
+                                $staffPermissionsByCategory = collect();
+                            }
+
                             $hasExaminationPermission = false;
                             $hasSubjectPermission = false;
                             $hasClassesPermission = false;
@@ -432,6 +453,25 @@
                             $hasRevenuePermission = false;
                             $hasExpensesPermission = false;
                             $hasResourcesPermission = false;
+                            $hasSubjectAnalysisPermission = false;
+                            $hasPrintingUnitPermission = false;
+                            $hasWatchmanPermission = false;
+                            $hasSchoolVisitorsPermission = false;
+                            $hasSchemeOfWorkPermission = false;
+                            $hasLessonPlansPermission = false;
+                            $hasAcademicYearsPermission = false;
+                             $hasStaffPermission = false;
+                             $hasAccountantPermission = false;
+                             $hasGoalPermission = false;
+                             $hasHRPermission = false;
+                             $hasSchoolPermission = false;
+                             $hasSponsorPermission = false;
+                             $hasDepartmentPermission = false;
+                             $hasStudentIDCardPermission = false;
+                             $hasTeacherDutyPermission = false;
+                             $hasFeedbackPermission = false;
+                             $hasStaffFeedbackPermission = false;
+                             $hasPerformancePermission = false;
 
                             if (isset($staffPermissionsByCategory) && $staffPermissionsByCategory->count() > 0) {
                                 $hasExaminationPermission = $staffPermissionsByCategory->has('examination');
@@ -453,10 +493,29 @@
                                 $hasRevenuePermission = $staffPermissionsByCategory->has('revenue');
                                 $hasExpensesPermission = $staffPermissionsByCategory->has('expenses');
                                 $hasResourcesPermission = $staffPermissionsByCategory->has('resources');
+                                $hasSubjectAnalysisPermission = $staffPermissionsByCategory->has('subject_analysis');
+                                $hasPrintingUnitPermission = $staffPermissionsByCategory->has('printing_unit');
+                                $hasWatchmanPermission = $staffPermissionsByCategory->has('watchman');
+                                $hasSchoolVisitorsPermission = $staffPermissionsByCategory->has('school_visitors');
+                                $hasSchemeOfWorkPermission = $staffPermissionsByCategory->has('scheme_of_work');
+                                $hasLessonPlansPermission = $staffPermissionsByCategory->has('lesson_plans');
+                                $hasAcademicYearsPermission = $staffPermissionsByCategory->has('academic_years');
+                                 $hasStaffPermission = $staffPermissionsByCategory->has('staff');
+                                 $hasAccountantPermission = $staffPermissionsByCategory->has('accountant');
+                                 $hasGoalPermission = $staffPermissionsByCategory->has('goal');
+                                 $hasHRPermission = $staffPermissionsByCategory->has('hr');
+                                 $hasSchoolPermission = $staffPermissionsByCategory->has('school');
+                                 $hasSponsorPermission = $staffPermissionsByCategory->has('sponsor');
+                                 $hasDepartmentPermission = $staffPermissionsByCategory->has('department');
+                                 $hasStudentIDCardPermission = $staffPermissionsByCategory->has('student_id_card');
+                                 $hasTeacherDutyPermission = $staffPermissionsByCategory->has('teacher_duty');
+                                 $hasFeedbackPermission = $staffPermissionsByCategory->has('feedback');
+                                 $hasStaffFeedbackPermission = $staffPermissionsByCategory->has('staff_feedback');
+                                 $hasPerformancePermission = $staffPermissionsByCategory->has('performance');
                             }
                         @endphp
 
-                        @if($hasExaminationPermission || $hasSubjectPermission || $hasClassesPermission || $hasResultPermission || $hasAttendancePermission || $hasStudentPermission || $hasParentPermission || $hasTimetablePermission || $hasFeesPermission || $hasAccommodationPermission || $hasLibraryPermission || $hasCalendarPermission || $hasFingerprintPermission || $hasTaskPermission || $hasSmsPermission || $hasTeacherPermission || $hasRevenuePermission || $hasExpensesPermission || $hasResourcesPermission)
+                        @if($hasExaminationPermission || $hasSubjectPermission || $hasClassesPermission || $hasResultPermission || $hasAttendancePermission || $hasStudentPermission || $hasParentPermission || $hasTimetablePermission || $hasFeesPermission || $hasAccommodationPermission || $hasLibraryPermission || $hasCalendarPermission || $hasFingerprintPermission || $hasTaskPermission || $hasSmsPermission || $hasTeacherPermission || $hasRevenuePermission || $hasExpensesPermission || $hasResourcesPermission || $hasSubjectAnalysisPermission || $hasPrintingUnitPermission || $hasWatchmanPermission || $hasSchoolVisitorsPermission || $hasSchemeOfWorkPermission || $hasLessonPlansPermission || $hasAcademicYearsPermission || $hasStaffPermission || $hasAccountantPermission || $hasGoalPermission || $hasHRPermission || $hasSchoolPermission || $hasSponsorPermission || $hasDepartmentPermission || $hasStudentIDCardPermission || $hasTeacherDutyPermission || $hasFeedbackPermission || $hasStaffFeedbackPermission || $hasPerformancePermission)
                             <li class="dropdown-nav-item">
                                 <a href="#" class="nav-link dropdown-toggle" data-toggle="collapse" data-target="#management" aria-expanded="false">
                                     <i class="fa fa-cogs"></i> Management <i class="fa fa-chevron-down float-right"></i>
@@ -464,6 +523,21 @@
                                 <ul id="management" class="collapse submenu" style="list-style: none; padding-left: 20px; margin: 0;">
                                     @if($hasExaminationPermission)
                                         <li><a href="{{ route('manageExamination') }}" class="nav-link"><i class="fa fa-pencil-square-o"></i> Examinations</a></li>
+                                        @php
+                                            $staffID = Session::get('staffID');
+                                            $staffRoleIds = DB::table('role_user')->where('staff_id', $staffID)->pluck('role_id')->toArray();
+                                            $pendingPaperApprovals = \App\Models\PaperApprovalLog::whereIn('role_id', $staffRoleIds)
+                                                ->where('status', 'pending')
+                                                ->count();
+                                        @endphp
+                                        <li>
+                                            <a href="{{ route('admin.exam_paper_approval') }}" class="nav-link">
+                                                <i class="fa fa-check-circle"></i> Exam Paper Approval
+                                                @if($pendingPaperApprovals > 0)
+                                                    <span class="badge badge-danger ml-1" style="font-size: 10px; border-radius: 50%;">{{ $pendingPaperApprovals }}</span>
+                                                @endif
+                                            </a>
+                                        </li>
                                     @endif
                                     @if($hasSubjectPermission)
                                         <li><a href="{{ route('manageSubjects') }}" class="nav-link"><i class="fa fa-bookmark"></i> Subjects</a></li>
@@ -508,7 +582,14 @@
                                         <li><a href="{{ route('sms_notification') }}" class="nav-link"><i class="fa fa-envelope"></i> SMS Information</a></li>
                                     @endif
                                     @if($hasTeacherPermission)
-                                        <li><a href="{{ route('manageTeachers') }}" class="nav-link"><i class="fa fa-user-secret"></i> Teachers</a></li>
+                                        <li><a href="{{ route('manageTeachers') }}" class="nav-link"><i class="fa fa-user-secret"></i> Teachers Management</a></li>
+                                    @endif
+                                    @if($hasStaffPermission)
+                                        <li><a href="{{ route('manageTeachers') }}#section-staff" class="nav-link"><i class="fa fa-users"></i> Staff List</a></li>
+                                        <li><a href="{{ route('manageTeachers') }}#section-add-staff" class="nav-link"><i class="fa fa-user-plus"></i> Add New Staff</a></li>
+                                        <li><a href="{{ route('manageTeachers') }}#section-assign-position" class="nav-link"><i class="fa fa-id-badge"></i> Assign Position to Staff</a></li>
+                                        <li><a href="{{ route('manageTeachers') }}#section-view-positions" class="nav-link"><i class="fa fa-eye"></i> View Staff Positions</a></li>
+                                        <li><a href="{{ route('manageTeachers') }}#section-manage-positions" class="nav-link"><i class="fa fa-shield"></i> Manage Positions and Permission</a></li>
                                     @endif
                                     @if($hasRevenuePermission)
                                         <li><a href="{{ route('manage_revenue') }}" class="nav-link"><i class="fa fa-line-chart"></i> Revenue</a></li>
@@ -516,8 +597,62 @@
                                     @if($hasExpensesPermission)
                                         <li><a href="{{ route('manage_expenses') }}" class="nav-link"><i class="fa fa-credit-card"></i> Expenses</a></li>
                                     @endif
-                                    @if($hasResourcesPermission)
-                                        <li><a href="{{ route('manage_incoming_resources') }}" class="nav-link"><i class="fa fa-cubes"></i> Resources</a></li>
+                                     @if($hasResourcesPermission)
+                                         <li><a href="{{ route('manage_incoming_resources') }}" class="nav-link"><i class="fa fa-cubes"></i> Resources</a></li>
+                                     @endif
+                                     @if($hasAccountantPermission)
+                                         <li><a href="{{ route('accountant.expenses.index') }}" class="nav-link"><i class="fa fa-calculator"></i> Accountant Module</a></li>
+                                     @endif
+                                     @if($hasGoalPermission)
+                                         <li><a href="{{ route('admin.goals.index') }}" class="nav-link"><i class="fa fa-bullseye"></i> Goal Management</a></li>
+                                     @endif
+                                     @if($hasHRPermission)
+                                         <li><a href="{{ route('admin.hr.permission') }}" class="nav-link"><i class="fa fa-briefcase"></i> HR Operations</a></li>
+                                     @endif
+                                     @if($hasSchoolPermission)
+                                         <li><a href="{{ route('school') }}" class="nav-link"><i class="fa fa-building"></i> School Management</a></li>
+                                     @endif
+                                     @if($hasSponsorPermission)
+                                         <li><a href="{{ route('manage_sponsors') }}" class="nav-link"><i class="fa fa-handshake-o"></i> Sponsors Management</a></li>
+                                     @endif
+                                     @if($hasDepartmentPermission)
+                                         <li><a href="{{ route('sgpm.departments.index') }}" class="nav-link"><i class="fa fa-sitemap"></i> Departments Management</a></li>
+                                     @endif
+                                     @if($hasStudentIDCardPermission)
+                                         <li><a href="{{ route('manage_student') }}" class="nav-link"><i class="fa fa-id-card"></i> Student ID Card</a></li>
+                                     @endif
+                                     @if($hasTeacherDutyPermission)
+                                         <li><a href="{{ route('admin.teacher_duties') }}" class="nav-link"><i class="fa fa-book"></i> Teacher Duty</a></li>
+                                     @endif
+                                     @if($hasFeedbackPermission)
+                                         <li><a href="{{ route('admin.suggestions') }}" class="nav-link"><i class="fa fa-comments"></i> Feedback Management</a></li>
+                                     @endif
+                                     @if($hasStaffFeedbackPermission)
+                                         <li><a href="{{ route('admin.staff.suggestions') }}" class="nav-link"><i class="fa fa-comments-o"></i> Staff Feedback</a></li>
+                                     @endif
+                                     @if($hasPerformancePermission)
+                                         <li><a href="{{ route('admin.performance') }}" class="nav-link"><i class="fa fa-line-chart"></i> Performance Management</a></li>
+                                     @endif
+                                     @if($hasSubjectAnalysisPermission)
+                                        <li><a href="{{ route('admin.subject_analysis') }}" class="nav-link"><i class="fa fa-line-chart"></i> Subject Analysis</a></li>
+                                    @endif
+                                    @if($hasPrintingUnitPermission)
+                                        <li><a href="{{ route('admin.printing_unit') }}" class="nav-link"><i class="fa fa-print"></i> Printing Unit</a></li>
+                                    @endif
+                                    @if($hasWatchmanPermission)
+                                        <li><a href="{{ route('manage_watchman') }}" class="nav-link"><i class="fa fa-shield"></i> Watchman</a></li>
+                                    @endif
+                                    @if($hasSchoolVisitorsPermission)
+                                        <li><a href="{{ route('admin.school_visitors') }}" class="nav-link"><i class="fa fa-id-badge"></i> School Visitors</a></li>
+                                    @endif
+                                    @if($hasSchemeOfWorkPermission)
+                                        <li><a href="{{ route('admin.schemeOfWork') }}" class="nav-link"><i class="fa fa-book"></i> Scheme of Work</a></li>
+                                    @endif
+                                    @if($hasLessonPlansPermission)
+                                        <li><a href="{{ route('admin.lessonPlans') }}" class="nav-link"><i class="fa fa-file-text"></i> Lesson Plans</a></li>
+                                    @endif
+                                    @if($hasAcademicYearsPermission)
+                                        <li><a href="{{ route('admin.academicYears') }}" class="nav-link"><i class="fa fa-calendar-check-o"></i> Academic Years</a></li>
                                     @endif
                                 </ul>
                             </li>
@@ -593,6 +728,74 @@
             </div>
         </div>
     </header>
+
+    @php
+        $systemAlerts = collect();
+        try {
+            $navSchoolID = \Illuminate\Support\Facades\Session::get('schoolID');
+            $navStaffID = \Illuminate\Support\Facades\Session::get('staffID');
+            $navProfessionId = null;
+
+            if ($navStaffID) {
+                $navStaff = \App\Models\OtherStaff::find($navStaffID);
+                if ($navStaff && $navStaff->profession_id) {
+                    $navProfessionId = (int) $navStaff->profession_id;
+                }
+            }
+
+            if ($navSchoolID) {
+                $baseAlerts = \App\Models\SystemAlert::where('schoolID', $navSchoolID)
+                    ->where('target_user_type', 'Staff')
+                    ->where('is_active', 1)
+                    ->orderBy('id', 'desc')
+                    ->get();
+
+                $systemAlerts = $baseAlerts->filter(function ($a) use ($navProfessionId) {
+                    if ($a->applies_to_all) return true;
+                    if (!$navProfessionId) return false;
+                    return (int) $a->target_profession_id === (int) $navProfessionId;
+                })->values();
+            }
+        } catch (\Throwable $e) {
+            $systemAlerts = collect();
+        }
+
+        $alertIcons = [
+            'info' => 'fa-info-circle',
+            'warning' => 'fa-exclamation-triangle',
+            'success' => 'fa-check-circle',
+            'danger' => 'fa-times-circle',
+        ];
+    @endphp
+
+    @if($systemAlerts->count() > 0)
+        <div class="px-3 pt-2">
+            @foreach($systemAlerts as $a)
+                @php
+                    $type = $a->alert_type ?: 'info';
+                    $icon = $alertIcons[$type] ?? 'fa-info-circle';
+                    $bg = $a->bg_color;
+                    $tc = $a->text_color;
+                    $w = $a->width;
+                    $style = '';
+                    if ($bg) $style .= 'background-color:' . $bg . ' !important;';
+                    if ($tc) $style .= 'color:' . $tc . ' !important;';
+                    if (!$bg && !$tc && in_array($type, ['danger', 'success', 'info'], true)) $style .= 'color:#ffffff !important;';
+                    if ($a->is_bold) $style .= 'font-weight:700;';
+                    if ($a->font_size) $style .= 'font-size:' . $a->font_size . ';';
+                    if ($w) $style .= 'width:' . $w . ';';
+                @endphp
+                <div class="alert alert-{{ $type }}" role="alert" style="margin-bottom: 8px; {!! $style !!}">
+                    @if($a->is_marquee)
+                        <marquee behavior="scroll" direction="left" scrollamount="6" style="white-space:nowrap; width:100%;">{{ $a->message }}</marquee>
+                    @else
+                        <i class="fa {{ $icon }}" style="margin-right: 8px;"></i>
+                        {{ $a->message }}
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    @endif
 
 <script>
 function initializeMenuDropdowns() {
@@ -761,4 +964,80 @@ window.addEventListener('pageshow', function(event) {
     }
 });
 setTimeout(initializeMenuDropdowns, 500);
+</script>
+
+<script>
+(function() {
+    const IDLE_MS = 60 * 1000;
+    const WARN_SECONDS = 30;
+    const LOGOUT_URL = '{{ route('logout') }}';
+
+    let idleTimer = null;
+    let countdownTimer = null;
+    let remaining = WARN_SECONDS;
+    let overlay = null;
+
+    function ensureOverlay() {
+        if (overlay) return overlay;
+        overlay = document.createElement('div');
+        overlay.id = 'idle-logout-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:99999;';
+        overlay.innerHTML =
+            '<div style="width:min(520px,92vw);background:#fff;border-radius:12px;padding:18px 18px 14px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:inherit;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+            + '<div style="font-weight:800;color:#940000;">Security Warning</div>'
+            + '<button type="button" id="idleStayBtn" style="border:1px solid rgba(148,0,0,.3);background:#fff;color:#940000;border-radius:8px;padding:6px 10px;cursor:pointer;">Stay Logged In</button>'
+            + '</div>'
+            + '<div style="margin-top:10px;color:#333;line-height:1.4;">System is idle. You will be logged out after <b id="idleCountdown">30</b> seconds.</div>'
+            + '<div style="margin-top:10px;color:#666;font-size:.9rem;">Move the mouse, type, or click to continue.</div>'
+            + '</div>';
+        document.body.appendChild(overlay);
+        const stayBtn = overlay.querySelector('#idleStayBtn');
+        if (stayBtn) stayBtn.addEventListener('click', resetAll);
+        return overlay;
+    }
+
+    function showWarning() {
+        ensureOverlay();
+        remaining = WARN_SECONDS;
+        overlay.style.display = 'flex';
+        const c = overlay.querySelector('#idleCountdown');
+        if (c) c.textContent = String(remaining);
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            remaining -= 1;
+            if (c) c.textContent = String(Math.max(0, remaining));
+            if (remaining <= 0) {
+                logoutNow();
+            }
+        }, 1000);
+    }
+
+    function hideWarning() {
+        if (overlay) overlay.style.display = 'none';
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+
+    function logoutNow() {
+        hideWarning();
+        window.location.href = LOGOUT_URL;
+    }
+
+    function scheduleIdle() {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(showWarning, IDLE_MS);
+    }
+
+    function resetAll() {
+        hideWarning();
+        scheduleIdle();
+    }
+
+    ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(evt => {
+        window.addEventListener(evt, resetAll, { passive: true });
+    });
+
+    scheduleIdle();
+})();
 </script>

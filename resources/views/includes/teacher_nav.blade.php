@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="{{ asset('vendors/selectFX/css/cs-skin-elastic.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/style.css') }}">
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,600,700,800' rel='stylesheet' type='text/css'>
-    
+
     <script src="{{ asset('vendors/jquery/dist/jquery.min.js') }}"></script>
     <script src="{{ asset('vendors/popper.js/dist/umd/popper.min.js') }}"></script>
     <script src="{{ asset('vendors/bootstrap/dist/js/bootstrap.min.js') }}"></script>
@@ -488,7 +488,7 @@
                             $teacherID = Session::get('teacherID');
                             $schoolID = Session::get('schoolID');
                             $isOnDuty = false;
-                            
+
                             if ($teacherID && $schoolID) {
                                 $today = \Carbon\Carbon::today();
                                 $isOnDuty = \App\Models\TeacherDuty::where('schoolID', $schoolID)
@@ -509,7 +509,7 @@
 
                         <li><a href="{{ route('teachersDashboard') }}" class="nav-link"><i class="fa fa-building"></i> Dashboard</a></li>
                         <li><a href="{{ route('teacher.duty_book') }}" class="nav-link"><i class="fa fa-book"></i> Duty Book</a></li>
-                        
+
                         <!-- Teaching Activities -->
                         <li class="dropdown-nav-item">
                             <a href="#" class="nav-link dropdown-toggle" data-toggle="collapse" data-target="#teachingActivities" aria-expanded="false">
@@ -524,7 +524,7 @@
                                 <li><a href="{{ route('teacher.calendar') }}" class="nav-link"><i class="fa fa-calendar"></i> Calendar</a></li>
                             </ul>
                         </li>
-                        
+
                         <!-- Exams -->
                         <li class="dropdown-nav-item">
                             <a href="#" class="nav-link dropdown-toggle" data-toggle="collapse" data-target="#exams" aria-expanded="false">
@@ -533,9 +533,47 @@
                             <ul id="exams" class="collapse submenu" style="list-style: none; padding-left: 20px; margin: 0;">
                                 <li><a href="{{ route('supervise_exams') }}" class="nav-link"><i class="fa fa-graduation-cap"></i> My Supervise Exams</a></li>
                                 <li><a href="{{ route('exam_paper') }}" class="nav-link"><i class="fa fa-file-text"></i> My Exam Papers</a></li>
+                                @php
+                                    $teacherID = Session::get('teacherID');
+                                    $teacherRoleIds = isset($role) ? $role->pluck('id')->toArray() : [];
+
+                                    // Regular roles count
+                                    $roleCount = 0;
+                                    if (!empty($teacherRoleIds)) {
+                                        $roleCount = \App\Models\PaperApprovalLog::whereIn('role_id', $teacherRoleIds)
+                                            ->where('status', 'pending')
+                                            ->count();
+                                    }
+
+                                    // Special roles count
+                                    $classTeacherSubclassIds = \App\Models\Subclass::where('teacherID', $teacherID)->pluck('subclassID')->toArray();
+                                    $coordinatorClassIds = \App\Models\ClassModel::where('teacherID', $teacherID)->pluck('classID')->toArray();
+
+                                    $specialCount = \App\Models\PaperApprovalLog::where('status', 'pending')
+                                        ->whereNotNull('special_role_type')
+                                        ->get()
+                                        ->filter(function($log) use ($classTeacherSubclassIds, $coordinatorClassIds) {
+                                            if ($log->special_role_type === 'class_teacher') {
+                                                return $log->examPaper && in_array($log->examPaper->classSubject->subclassID ?? 0, $classTeacherSubclassIds);
+                                            } elseif ($log->special_role_type === 'coordinator') {
+                                                return $log->examPaper && in_array($log->examPaper->classSubject->classID ?? 0, $coordinatorClassIds);
+                                            }
+                                            return false;
+                                        })->count();
+
+                                    $pendingPaperApprovals = $roleCount + $specialCount;
+                                @endphp
+                                <li>
+                                    <a href="{{ route('admin.exam_paper_approval') }}" class="nav-link">
+                                        <i class="fa fa-check-circle"></i> Exam Paper Approval
+                                        @if($pendingPaperApprovals > 0)
+                                            <span class="badge badge-danger ml-1" style="font-size: 10px; border-radius: 50%;">{{ $pendingPaperApprovals }}</span>
+                                        @endif
+                                    </a>
+                                </li>
                             </ul>
                         </li>
-                        
+
                         <!-- My Class & Schedule -->
                         <li class="dropdown-nav-item">
                             <a href="#" class="nav-link dropdown-toggle" data-toggle="collapse" data-target="#classSchedule" aria-expanded="false">
@@ -548,7 +586,7 @@
                                 <li><a href="#" class="nav-link"><i class="fa fa-table"></i> My TimeTable</a></li>
                             </ul>
                         </li>
-                        
+
                         <!-- Personal -->
                         <!-- <li class="dropdown-nav-item">
                             <a href="#" class="nav-link dropdown-toggle" data-toggle="collapse" data-target="#personal" aria-expanded="false">
@@ -679,6 +717,24 @@
                             $hasFingerprintPermission = false;
                             $hasTaskPermission = false;
                             $hasSmsPermission = false;
+                            $hasSubjectAnalysisPermission = false;
+                            $hasPrintingUnitPermission = false;
+                            $hasWatchmanPermission = false;
+                            $hasSchoolVisitorsPermission = false;
+                            $hasSchemeOfWorkPermission = false;
+                            $hasLessonPlansPermission = false;
+                            $hasAcademicYearsPermission = false;
+                            $hasSchoolPermission = false;
+                            $hasSponsorPermission = false;
+                            $hasStudentIdCardPermission = false;
+                            $hasHrPermission = false;
+                            $hasTeacherDutyPermission = false;
+                            $hasFeedbackPermission = false;
+                            $hasStaffFeedbackPermission = false;
+                            $hasPerformancePermission = false;
+                            $hasAccountantPermission = false;
+                            $hasGoalPermission = false;
+                            $hasDepartmentPermission = false;
 
                             if (isset($teacherPermissionsByCategory) && $teacherPermissionsByCategory->count() > 0) {
                                 // Check examination category
@@ -760,11 +816,101 @@
                                 if ($teacherPermissionsByCategory->has('sms')) {
                                     $hasSmsPermission = $teacherPermissionsByCategory->get('sms')->count() > 0;
                                 }
+
+                                // Check subject analysis category
+                                if ($teacherPermissionsByCategory->has('subject_analysis')) {
+                                    $hasSubjectAnalysisPermission = $teacherPermissionsByCategory->get('subject_analysis')->count() > 0;
+                                }
+
+                                // Check printing unit category
+                                if ($teacherPermissionsByCategory->has('printing_unit')) {
+                                    $hasPrintingUnitPermission = $teacherPermissionsByCategory->get('printing_unit')->count() > 0;
+                                }
+
+                                // Check watchman category
+                                if ($teacherPermissionsByCategory->has('watchman')) {
+                                    $hasWatchmanPermission = $teacherPermissionsByCategory->get('watchman')->count() > 0;
+                                }
+
+                                // Check school visitors category
+                                if ($teacherPermissionsByCategory->has('school_visitors')) {
+                                    $hasSchoolVisitorsPermission = $teacherPermissionsByCategory->get('school_visitors')->count() > 0;
+                                }
+
+                                // Check scheme of work category
+                                if ($teacherPermissionsByCategory->has('scheme_of_work')) {
+                                    $hasSchemeOfWorkPermission = $teacherPermissionsByCategory->get('scheme_of_work')->count() > 0;
+                                }
+
+                                // Check lesson plans category
+                                if ($teacherPermissionsByCategory->has('lesson_plans')) {
+                                    $hasLessonPlansPermission = $teacherPermissionsByCategory->get('lesson_plans')->count() > 0;
+                                }
+
+                                // Check academic years category
+                                if ($teacherPermissionsByCategory->has('academic_years')) {
+                                    $hasAcademicYearsPermission = $teacherPermissionsByCategory->get('academic_years')->count() > 0;
+                                }
+
+                                // Check school category
+                                if ($teacherPermissionsByCategory->has('school')) {
+                                    $hasSchoolPermission = $teacherPermissionsByCategory->get('school')->count() > 0;
+                                }
+
+                                // Check sponsor category
+                                if ($teacherPermissionsByCategory->has('sponsor')) {
+                                    $hasSponsorPermission = $teacherPermissionsByCategory->get('sponsor')->count() > 0;
+                                }
+
+                                // Check student id card category
+                                if ($teacherPermissionsByCategory->has('student_id_card')) {
+                                    $hasStudentIdCardPermission = $teacherPermissionsByCategory->get('student_id_card')->count() > 0;
+                                }
+
+                                // Check hr category
+                                if ($teacherPermissionsByCategory->has('hr')) {
+                                    $hasHrPermission = $teacherPermissionsByCategory->get('hr')->count() > 0;
+                                }
+
+                                // Check teacher duty category
+                                if ($teacherPermissionsByCategory->has('teacher_duty')) {
+                                    $hasTeacherDutyPermission = $teacherPermissionsByCategory->get('teacher_duty')->count() > 0;
+                                }
+
+                                // Check feedback category
+                                if ($teacherPermissionsByCategory->has('feedback')) {
+                                    $hasFeedbackPermission = $teacherPermissionsByCategory->get('feedback')->count() > 0;
+                                }
+
+                                // Check staff feedback category
+                                if ($teacherPermissionsByCategory->has('staff_feedback')) {
+                                    $hasStaffFeedbackPermission = $teacherPermissionsByCategory->get('staff_feedback')->count() > 0;
+                                }
+
+                                // Check performance category
+                                if ($teacherPermissionsByCategory->has('performance')) {
+                                    $hasPerformancePermission = $teacherPermissionsByCategory->get('performance')->count() > 0;
+                                }
+
+                                // Check accountant category
+                                if ($teacherPermissionsByCategory->has('accountant')) {
+                                    $hasAccountantPermission = $teacherPermissionsByCategory->get('accountant')->count() > 0;
+                                }
+
+                                // Check goal category
+                                if ($teacherPermissionsByCategory->has('goal')) {
+                                    $hasGoalPermission = $teacherPermissionsByCategory->get('goal')->count() > 0;
+                                }
+
+                                // Check department category
+                                if ($teacherPermissionsByCategory->has('department')) {
+                                    $hasDepartmentPermission = $teacherPermissionsByCategory->get('department')->count() > 0;
+                                }
                             }
                         @endphp
 
                         <!-- Management (Permission-based) -->
-                        @if($hasExaminationPermission || $hasSubjectPermission || $hasClassesPermission || $hasResultPermission || $hasAttendancePermission || $hasStudentPermission || $hasTimetablePermission || $hasFeesPermission || $hasAccommodationPermission || $hasLibraryPermission || $hasCalendarPermission || $hasFingerprintPermission || $hasTaskPermission || $hasSmsPermission || $hasTeacherPermission)
+                        @if($hasExaminationPermission || $hasSubjectPermission || $hasClassesPermission || $hasResultPermission || $hasAttendancePermission || $hasStudentPermission || $hasTimetablePermission || $hasFeesPermission || $hasAccommodationPermission || $hasLibraryPermission || $hasCalendarPermission || $hasFingerprintPermission || $hasTaskPermission || $hasSmsPermission || $hasTeacherPermission || $hasSubjectAnalysisPermission || $hasPrintingUnitPermission || $hasWatchmanPermission || $hasSchoolVisitorsPermission || $hasSchemeOfWorkPermission || $hasLessonPlansPermission || $hasAcademicYearsPermission || $hasSchoolPermission || $hasSponsorPermission || $hasStudentIdCardPermission || $hasHrPermission || $hasTeacherDutyPermission || $hasFeedbackPermission || $hasStaffFeedbackPermission || $hasPerformancePermission || $hasAccountantPermission || $hasGoalPermission || $hasDepartmentPermission)
                         <li class="dropdown-nav-item">
                             <a href="#" class="nav-link dropdown-toggle" data-toggle="collapse" data-target="#management" aria-expanded="false">
                                 <i class="fa fa-cogs"></i> Management <i class="fa fa-chevron-down float-right"></i>
@@ -776,6 +922,10 @@
 
                                 @if($hasSubjectPermission)
                                     <li><a href="{{ route('manageSubjects') }}" class="nav-link"><i class="fa fa-bookmark"></i> Subjects</a></li>
+                                @endif
+
+                                @if($hasSubjectAnalysisPermission)
+                                    <li><a href="{{ route('admin.subject_analysis') }}" class="nav-link"><i class="fa fa-line-chart"></i> Subject Analysis</a></li>
                                 @endif
 
                                 @if($hasClassesPermission)
@@ -827,7 +977,82 @@
                                 @endif
 
                                 @if($hasTeacherPermission)
-                                    <li><a href="{{ route('manageTeachers') }}" class="nav-link"><i class="fa fa-user-secret"></i> Teachers</a></li>
+                                    <li><a href="{{ route('manageTeachers') }}" class="nav-link"><i class="fa fa-users"></i> Teachers And Staff</a></li>
+                                @endif
+
+                                @if($hasPrintingUnitPermission)
+                                    <li><a href="{{ route('admin.printing_unit') }}" class="nav-link"><i class="fa fa-print"></i> Printing Unit</a></li>
+                                @endif
+
+                                @if($hasWatchmanPermission)
+                                    <li><a href="{{ route('manage_watchman') }}" class="nav-link"><i class="fa fa-shield"></i> Watchman</a></li>
+                                @endif
+
+                                @if($hasSchoolVisitorsPermission)
+                                    <li><a href="{{ route('admin.school_visitors') }}" class="nav-link"><i class="fa fa-id-badge"></i> School Visitors</a></li>
+                                @endif
+
+                                @if($hasSchemeOfWorkPermission)
+                                    <li><a href="{{ route('admin.schemeOfWork') }}" class="nav-link"><i class="fa fa-book"></i> Scheme of Work</a></li>
+                                @endif
+
+                                @if($hasLessonPlansPermission)
+                                    <li><a href="{{ route('admin.lessonPlans') }}" class="nav-link"><i class="fa fa-file-text"></i> Lesson Plans</a></li>
+                                @endif
+
+                                @if($hasAcademicYearsPermission)
+                                    <li><a href="{{ route('admin.academicYears') }}" class="nav-link"><i class="fa fa-calendar-check-o"></i> Academic Years</a></li>
+                                @endif
+
+                                @if($hasSchoolPermission)
+                                    <li><a href="{{ route('school') }}" class="nav-link"><i class="fa fa-building"></i> School</a></li>
+                                @endif
+
+                                @if($hasSponsorPermission)
+                                    <li><a href="{{ route('manage_sponsors') }}" class="nav-link"><i class="fa fa-handshake-o"></i> Sponsors</a></li>
+                                @endif
+
+                                @if($hasStudentIdCardPermission)
+                                    <li><a href="{{ route('admin.student_id_cards') }}" class="nav-link"><i class="fa fa-id-card-o"></i> Student ID Cards</a></li>
+                                @endif
+
+                                @if($hasHrPermission)
+                                    <li><a href="{{ route('admin.hr.permission') }}" class="nav-link"><i class="fa fa-check-square-o"></i> HR Permissions</a></li>
+                                @endif
+
+                                @if($hasTeacherDutyPermission)
+                                    <li><a href="{{ route('admin.teacher_duties') }}" class="nav-link"><i class="fa fa-calendar-check-o"></i> Teacher Duties</a></li>
+                                    <li><a href="{{ route('admin.teacher_duties.report') }}" class="nav-link"><i class="fa fa-file-text-o"></i> Duty Reports</a></li>
+                                @endif
+
+                                @if($hasFeedbackPermission)
+                                    <li><a href="{{ route('admin.suggestions') }}" class="nav-link"><i class="fa fa-lightbulb-o"></i> Suggestions</a></li>
+                                    <li><a href="{{ route('admin.incidents') }}" class="nav-link"><i class="fa fa-exclamation-triangle"></i> Incidents</a></li>
+                                @endif
+
+                                @if($hasStaffFeedbackPermission)
+                                    <li><a href="{{ route('admin.staff.suggestions') }}" class="nav-link"><i class="fa fa-lightbulb-o"></i> Staff Suggestions</a></li>
+                                    <li><a href="{{ route('admin.staff.incidents') }}" class="nav-link"><i class="fa fa-exclamation-triangle"></i> Staff Incidents</a></li>
+                                @endif
+
+                                @if($hasPerformancePermission)
+                                    <li><a href="{{ route('admin.performance') }}" class="nav-link"><i class="fa fa-line-chart"></i> Performance</a></li>
+                                @endif
+
+                                @if($hasAccountantPermission)
+                                    <li><a href="{{ route('accountant.expenses.index') }}" class="nav-link"><i class="fa fa-money"></i> Expenses</a></li>
+                                    <li><a href="{{ route('accountant.income.index') }}" class="nav-link"><i class="fa fa-usd"></i> Income</a></li>
+                                    <li><a href="{{ route('accountant.budget.index') }}" class="nav-link"><i class="fa fa-pie-chart"></i> Budget</a></li>
+                                    <li><a href="{{ route('accountant.reports.index') }}" class="nav-link"><i class="fa fa-line-chart"></i> Financial Reports</a></li>
+                                @endif
+
+                                @if($hasGoalPermission)
+                                    <li><a href="{{ route('admin.goals.index') }}" class="nav-link"><i class="fa fa-bullseye"></i> Goal Management</a></li>
+                                    <li><a href="{{ route('admin.goals.reports') }}" class="nav-link"><i class="fa fa-bar-chart"></i> Goal Reports</a></li>
+                                @endif
+
+                                @if($hasDepartmentPermission)
+                                    <li><a href="{{ route('sgpm.departments.index') }}" class="nav-link"><i class="fa fa-sitemap"></i> Departments</a></li>
                                 @endif
                             </ul>
                         </li>
@@ -1010,22 +1235,98 @@
         </header><!-- /header -->
         <!-- Header-->
 
+        @php
+            $systemAlerts = collect();
+            try {
+                $navSchoolID = \Illuminate\Support\Facades\Session::get('schoolID');
+                $navTeacherID = \Illuminate\Support\Facades\Session::get('teacherID');
+                $navRoleId = null;
+
+                if (isset($role) && $role && $role->count() > 0) {
+                    $firstRole = $role->first();
+                    if ($firstRole && isset($firstRole->id)) {
+                        $navRoleId = $firstRole->id;
+                    }
+                }
+
+                if (!$navRoleId && $navTeacherID && $navSchoolID) {
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('role_user', 'teacher_id')) {
+                        $navRoleId = (int) \Illuminate\Support\Facades\DB::table('role_user')
+                            ->where('teacher_id', $navTeacherID)
+                            ->value('role_id');
+                    }
+                }
+
+                if ($navSchoolID) {
+                    $baseAlerts = \App\Models\SystemAlert::where('schoolID', $navSchoolID)
+                        ->where('target_user_type', 'Teacher')
+                        ->where('is_active', 1)
+                        ->orderBy('id', 'desc')
+                        ->get();
+
+                    $systemAlerts = $baseAlerts->filter(function ($a) use ($navRoleId) {
+                        if ($a->applies_to_all) return true;
+                        if (!$navRoleId) return false;
+                        return (int) $a->target_role_id === (int) $navRoleId;
+                    })->values();
+                }
+            } catch (\Throwable $e) {
+                $systemAlerts = collect();
+            }
+
+            $alertIcons = [
+                'info' => 'fa-info-circle',
+                'warning' => 'fa-exclamation-triangle',
+                'success' => 'fa-check-circle',
+                'danger' => 'fa-times-circle',
+            ];
+        @endphp
+
+        @if($systemAlerts->count() > 0)
+            <div class="px-3 pt-2">
+                @foreach($systemAlerts as $a)
+                    @php
+                        $type = $a->alert_type ?: 'info';
+                        $icon = $alertIcons[$type] ?? 'fa-info-circle';
+                        $bg = $a->bg_color;
+                        $tc = $a->text_color;
+                        $w = $a->width;
+                        $style = '';
+                        if ($bg) $style .= 'background-color:' . $bg . ' !important;';
+                        if ($tc) $style .= 'color:' . $tc . ' !important;';
+                        if (!$bg && !$tc && in_array($type, ['danger', 'success', 'info'], true)) $style .= 'color:#ffffff !important;';
+                        if ($a->is_bold) $style .= 'font-weight:700;';
+                        if ($a->font_size) $style .= 'font-size:' . $a->font_size . ';';
+                        if ($w) $style .= 'width:' . $w . ';';
+                    @endphp
+                    <div class="alert alert-{{ $type }}" role="alert" style="margin-bottom: 8px; {!! $style !!}">
+                        @if($a->is_marquee)
+                            <marquee behavior="scroll" direction="left" scrollamount="6" style="white-space:nowrap; width:100%;">{{ $a->message }}</marquee>
+                        @else
+                            <i class="fa {{ $icon }}" style="margin-right: 8px;"></i>
+                            {{ $a->message }}
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
 <script>
 // Function to initialize menu and dropdowns
 function initializeMenuDropdowns() {
     // Use jQuery explicitly to avoid conflicts
     const $ = jQuery;
-    
+
     // Get all sidebar menu links
     const menuLinks = document.querySelectorAll('#left-panel .nav-link');
-    
+
     // Remove active class from all links
     function removeActiveClass() {
         menuLinks.forEach(link => {
             link.classList.remove('menu-active');
         });
     }
-    
+
     // Reset all dropdowns to closed state first
     function resetAllDropdowns() {
         document.querySelectorAll('.dropdown-nav-item .collapse').forEach(collapse => {
@@ -1039,7 +1340,7 @@ function initializeMenuDropdowns() {
             }
         });
     }
-    
+
     // Initialize all collapse elements
     document.querySelectorAll('.dropdown-nav-item .collapse').forEach(collapse => {
         // Initialize collapse if not already initialized
@@ -1049,7 +1350,7 @@ function initializeMenuDropdowns() {
             });
         }
     });
-    
+
     // Add click event listener to each link
     menuLinks.forEach(link => {
         link.addEventListener('click', function(e) {
@@ -1057,15 +1358,15 @@ function initializeMenuDropdowns() {
             if (this.classList.contains('dropdown-toggle')) {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 const targetId = this.getAttribute('data-target');
                 const target = document.querySelector(targetId);
-                
+
                 if (!target) return;
-                
+
                 const $target = $(target);
                 const isExpanded = this.getAttribute('aria-expanded') === 'true';
-                
+
                 // Close all other dropdowns first
                 document.querySelectorAll('.dropdown-nav-item .collapse').forEach(collapse => {
                     const $collapse = $(collapse);
@@ -1077,16 +1378,16 @@ function initializeMenuDropdowns() {
                         }
                     }
                 });
-                
+
                 // Toggle current dropdown after a small delay to ensure others are closed
                 setTimeout(() => {
                     $target.collapse('toggle');
                     this.setAttribute('aria-expanded', !isExpanded);
                 }, 50);
-                
+
                 return false;
             }
-            
+
             // Don't prevent default if it's not a hash link
             if (this.getAttribute('href') !== '#') {
                 // Remove active class from all links
@@ -1096,56 +1397,56 @@ function initializeMenuDropdowns() {
             }
         });
     });
-    
+
     // Set active based on current URL on page load
     const currentUrl = window.location.href;
     const currentPath = window.location.pathname;
-    
+
     // Function to check if URL matches
     function urlMatches(linkHref, currentUrl, currentPath) {
         if (!linkHref || linkHref === '#') return false;
-        
+
         // Remove query strings and fragments for comparison
         let linkPath = linkHref.split('?')[0].split('#')[0].replace(/\/$/, '');
         let currentPathClean = currentPath.split('?')[0].split('#')[0].replace(/\/$/, '');
         let currentUrlClean = currentUrl.split('?')[0].split('#')[0].replace(/\/$/, '');
-        
+
         // Normalize paths
         linkPath = linkPath.toLowerCase();
         currentPathClean = currentPathClean.toLowerCase();
         currentUrlClean = currentUrlClean.toLowerCase();
-        
+
         // Check exact match
         if (currentPathClean === linkPath || currentUrlClean === linkPath) {
             return true;
         }
-        
+
         // Check if current URL/path ends with link path
         if (currentPathClean.endsWith(linkPath) || currentUrlClean.endsWith(linkPath)) {
             return true;
         }
-        
+
         // Check if current URL/path contains link path
         if (linkPath && (currentPathClean.includes(linkPath) || currentUrlClean.includes(linkPath))) {
             return true;
         }
-        
+
         return false;
     }
-    
+
     // First reset all dropdowns
     resetAllDropdowns();
-    
+
     // Then set active link and expand parent dropdown if needed
     setTimeout(() => {
         let activeLinkFound = false;
-        
+
         menuLinks.forEach(link => {
             const linkHref = link.getAttribute('href');
             if (urlMatches(linkHref, currentUrl, currentPath)) {
                 link.classList.add('menu-active');
                 activeLinkFound = true;
-                
+
                 // If link is in a submenu, expand the parent dropdown and make it active
                 const submenu = link.closest('.submenu');
                 if (submenu) {
@@ -1162,7 +1463,7 @@ function initializeMenuDropdowns() {
                 }
             }
         });
-        
+
         // Ensure all parent dropdowns of active links are open and highlighted
         if (activeLinkFound) {
             document.querySelectorAll('#left-panel .nav-link.menu-active').forEach(activeLink => {
@@ -1179,7 +1480,7 @@ function initializeMenuDropdowns() {
             });
         }
     }, 300);
-    
+
     // Initialize Bootstrap collapse events for dropdowns
     $('.dropdown-nav-item .collapse').off('show.bs.collapse hide.bs.collapse').on('show.bs.collapse', function() {
         const toggle = $(this).prev('.dropdown-toggle');
@@ -1247,4 +1548,80 @@ window.addEventListener('pageshow', function(event) {
 setTimeout(function() {
     ensureJqueryAndBootstrap(initializeMenuDropdowns);
 }, 500);
+</script>
+
+<script>
+(function() {
+    const IDLE_MS = 60 * 1000;
+    const WARN_SECONDS = 30;
+    const LOGOUT_URL = '{{ route('logout') }}';
+
+    let idleTimer = null;
+    let countdownTimer = null;
+    let remaining = WARN_SECONDS;
+    let overlay = null;
+
+    function ensureOverlay() {
+        if (overlay) return overlay;
+        overlay = document.createElement('div');
+        overlay.id = 'idle-logout-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:99999;';
+        overlay.innerHTML =
+            '<div style="width:min(520px,92vw);background:#fff;border-radius:12px;padding:18px 18px 14px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:inherit;">'
+            + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+            + '<div style="font-weight:800;color:#940000;">Security Warning</div>'
+            + '<button type="button" id="idleStayBtn" style="border:1px solid rgba(148,0,0,.3);background:#fff;color:#940000;border-radius:8px;padding:6px 10px;cursor:pointer;">Stay Logged In</button>'
+            + '</div>'
+            + '<div style="margin-top:10px;color:#333;line-height:1.4;">System is idle. You will be logged out after <b id="idleCountdown">30</b> seconds.</div>'
+            + '<div style="margin-top:10px;color:#666;font-size:.9rem;">Move the mouse, type, or click to continue.</div>'
+            + '</div>';
+        document.body.appendChild(overlay);
+        const stayBtn = overlay.querySelector('#idleStayBtn');
+        if (stayBtn) stayBtn.addEventListener('click', resetAll);
+        return overlay;
+    }
+
+    function showWarning() {
+        ensureOverlay();
+        remaining = WARN_SECONDS;
+        overlay.style.display = 'flex';
+        const c = overlay.querySelector('#idleCountdown');
+        if (c) c.textContent = String(remaining);
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            remaining -= 1;
+            if (c) c.textContent = String(Math.max(0, remaining));
+            if (remaining <= 0) {
+                logoutNow();
+            }
+        }, 1000);
+    }
+
+    function hideWarning() {
+        if (overlay) overlay.style.display = 'none';
+        if (countdownTimer) clearInterval(countdownTimer);
+        countdownTimer = null;
+    }
+
+    function logoutNow() {
+        hideWarning();
+        window.location.href = LOGOUT_URL;
+    }
+
+    function scheduleIdle() {
+        if (idleTimer) clearTimeout(idleTimer);
+        idleTimer = setTimeout(showWarning, IDLE_MS);
+    }
+
+    function resetAll() {
+        hideWarning();
+        scheduleIdle();
+    }
+
+    ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(evt => {
+        window.addEventListener(evt, resetAll, { passive: true });
+    });
+
+    scheduleIdle();
+})();
 </script>

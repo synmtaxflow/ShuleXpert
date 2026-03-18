@@ -20,7 +20,7 @@ class WatchmanController extends Controller
     public function manage()
     {
         $userType = Session::get('user_type');
-        if ($userType !== 'Admin') {
+        if (!in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
             return redirect()->route('login')->with('error', 'Unauthorized access');
         }
 
@@ -28,6 +28,110 @@ class WatchmanController extends Controller
         $watchmen = Watchman::where('schoolID', $schoolID)->orderBy('id', 'desc')->get();
 
         return view('Admin.manage_watchman', compact('watchmen'));
+    }
+
+    public function get($id)
+    {
+        $userType = Session::get('user_type');
+        if (!in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $schoolID = Session::get('schoolID');
+        $watchman = Watchman::where('schoolID', $schoolID)->where('id', $id)->first();
+        if (!$watchman) {
+            return response()->json(['success' => false, 'message' => 'Watchman not found'], 404);
+        }
+
+        return response()->json(['success' => true, 'watchman' => $watchman]);
+    }
+
+    public function update(Request $request)
+    {
+        $userType = Session::get('user_type');
+        if (!in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $schoolID = Session::get('schoolID');
+
+        $validator = Validator::make($request->all(), [
+            'id'           => 'required|integer',
+            'first_name'   => 'required|string|max:255',
+            'last_name'    => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'email'        => 'nullable|email|max:255',
+            'status'       => 'required|in:Active,Inactive',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $watchman = Watchman::where('schoolID', $schoolID)->where('id', $request->id)->first();
+        if (!$watchman) {
+            return response()->json(['success' => false, 'message' => 'Watchman not found'], 404);
+        }
+
+        $newEmail = $request->email ?: ($request->phone_number . '@watchman.local');
+        $oldPhone = $watchman->phone_number;
+
+        $uniqueValidator = Validator::make($request->all(), [
+            'phone_number' => 'unique:watchmen,phone_number,' . $watchman->id . '|unique:users,name,' . $oldPhone . ',name',
+            'email'        => 'unique:users,email,' . $watchman->email . ',email',
+        ]);
+
+        if ($uniqueValidator->fails()) {
+            return response()->json(['success' => false, 'errors' => $uniqueValidator->errors()], 422);
+        }
+
+        DB::transaction(function () use ($request, $watchman, $newEmail, $oldPhone) {
+            $watchman->update([
+                'first_name'   => $request->first_name,
+                'last_name'    => $request->last_name,
+                'phone_number' => $request->phone_number,
+                'email'        => $newEmail,
+                'status'       => $request->status,
+            ]);
+
+            $user = User::where('user_type', 'Watchman')->where('name', $oldPhone)->first();
+            if ($user) {
+                $user->name = $request->phone_number;
+                $user->email = $newEmail;
+                $user->password = Hash::make($request->last_name);
+                $user->save();
+            }
+        });
+
+        return response()->json(['success' => true, 'message' => 'Watchman updated successfully.']);
+    }
+
+    public function destroy($id)
+    {
+        $userType = Session::get('user_type');
+        if (!in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized access'], 403);
+        }
+
+        $schoolID = Session::get('schoolID');
+        $watchman = Watchman::where('schoolID', $schoolID)->where('id', $id)->first();
+        if (!$watchman) {
+            return response()->json(['success' => false, 'message' => 'Watchman not found'], 404);
+        }
+
+        DB::transaction(function () use ($watchman) {
+            User::where('user_type', 'Watchman')
+                ->where(function ($q) use ($watchman) {
+                    $q->where('name', $watchman->phone_number);
+                    if ($watchman->email) {
+                        $q->orWhere('email', $watchman->email);
+                    }
+                })
+                ->delete();
+            $watchman->delete();
+        });
+
+        return response()->json(['success' => true, 'message' => 'Watchman deleted successfully.']);
     }
 
     public function store(Request $request)

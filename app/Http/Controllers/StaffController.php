@@ -426,7 +426,16 @@ class StaffController extends Controller
         $request->validate([
             'profile_image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
             'current_password' => 'nullable|string|min:4',
-            'new_password' => 'nullable|string|min:6|confirmed',
+            'new_password' => [
+                'nullable',
+                'string',
+                'min:8',
+                'confirmed',
+                'regex:/[a-z]/',
+                'regex:/[A-Z]/',
+                'regex:/[0-9]/',
+                'regex:/[^a-zA-Z0-9]/',
+            ],
         ]);
 
         if ($request->filled('new_password')) {
@@ -435,6 +444,8 @@ class StaffController extends Controller
             }
             $user->password = Hash::make($request->new_password);
             $user->save();
+
+            Session::forget('force_password_change');
         }
 
         if ($request->hasFile('profile_image')) {

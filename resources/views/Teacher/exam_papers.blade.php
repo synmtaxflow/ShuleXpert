@@ -11,6 +11,48 @@
         color: #940000 !important;
     }
     
+    /* Timeline styles for approval chain */
+    .timeline {
+        position: relative;
+        padding: 20px 0;
+        list-style: none;
+    }
+    .timeline:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 40px;
+        width: 2px;
+        background: #dee2e6;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 20px;
+    }
+    .timeline-badge {
+        position: absolute;
+        top: 0;
+        left: 30px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid #dee2e6;
+        z-index: 100;
+    }
+    .timeline-badge.approved { border-color: #28a745; background: #28a745; }
+    .timeline-badge.pending { border-color: #ffc107; background: #ffc107; }
+    .timeline-badge.rejected { border-color: #dc3545; background: #dc3545; }
+    .timeline-badge.current { border-color: #940000; background: #fff; box-shadow: 0 0 0 4px rgba(148, 0, 0, 0.1); }
+    
+    .timeline-panel {
+        margin-left: 70px;
+        padding: 15px;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        background: #fff;
+    }
+    
     /* Font and Border Radius Resets */
     div, .card, .exam-widget-card, .btn, .nav-link, .alert {
         border-radius: 0 !important;
@@ -771,8 +813,13 @@
                                                     <i class="bi bi-file-earmark-text"></i> {{ ucfirst($paper->upload_type) }}
                                                 </span>
                                                 <span class="badge badge-status-{{ $paper->status }}">
-                                                    @if($paper->status == 'wait_approval')
-                                                        <i class="bi bi-clock-history"></i> Pending
+                                                    @if($paper->status == 'wait_approval' || $paper->status == 'pending')
+                                                        <i class="bi bi-clock-history"></i> 
+                                                        @if($paper->status == 'pending' && $paper->current_approval_order)
+                                                            Awaiting: {{ $paper->current_step_name }}
+                                                        @else
+                                                            Pending
+                                                        @endif
                                                     @elseif($paper->status == 'approved')
                                                         <i class="bi bi-check-circle"></i> Approved
                                                     @else
@@ -839,6 +886,11 @@
                                                     <a href="{{ route('download_exam_paper', $paper->exam_paperID) }}" class="btn btn-exam-action btn-sm">
                                                         <i class="bi bi-download"></i> Download
                                                     </a>
+                                                @endif
+                                                @if(in_array($paper->status, ['pending', 'approved', 'rejected']))
+                                                    <button class="btn btn-exam-action btn-sm btn-view-chain" data-paper-id="{{ $paper->exam_paperID }}" data-exam-id="{{ $paper->examID }}">
+                                                        <i class="bi bi-list-ol"></i> View Chain
+                                                    </button>
                                                 @endif
                                             </div>
                                         </div>
@@ -1068,8 +1120,117 @@
     </div>
 </div>
 
+<!-- Modal for View Chain -->
+<div class="modal fade" id="viewChainModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary-custom text-white">
+                <h5 class="modal-title">Approval Progress Chain</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="chainTimelineContent">
+                    <div class="text-center py-4">
+                        <i class="fa fa-spinner fa-spin fa-2x text-primary-custom"></i>
+                        <p>Loading chain details...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 $(document).ready(function() {
+    // Handle View Chain
+    $('.btn-view-chain').on('click', function() {
+        const paperId = $(this).data('paper-id');
+        const examId = $(this).data('exam-id');
+        
+        $('#viewChainModal').modal('show');
+        $('#chainTimelineContent').html('<div class="text-center py-4"><i class="fa fa-spinner fa-spin fa-2x text-primary-custom"></i><p>Loading chain details...</p></div>');
+        
+        $.ajax({
+            url: "{{ url('view_paper_approval_chain') }}/" + examId,
+            method: 'GET',
+            data: { paper_id: paperId },
+            success: function(response) {
+                let html = '<ul class="timeline">';
+                
+                // Approval Chain Config from Examination
+                const chain = response.chain;
+                const logs = response.logs || [];
+                const currentOrder = response.current_order;
+                
+                chain.forEach(function(step) {
+                    let statusClass = 'pending';
+                    let statusText = 'Pending';
+                    let comment = '';
+                    let approver = '';
+                    let date = '';
+                    
+                    // Check if we have a log entry for this step
+                    const log = logs.find(l => l.approval_order === step.approval_order);
+                    
+                    if (log) {
+                        if (log.status === 'approved') {
+                            statusClass = 'approved';
+                            statusText = 'Approved';
+                            approver = log.approver ? log.approver.first_name + ' ' + log.approver.last_name : 'N/A';
+                            date = new Date(log.updated_at).toLocaleString();
+                            comment = log.comment ? '<div class="small mt-2 p-2 bg-light border-left border-success">" ' + log.comment + ' "</div>' : '';
+                        } else if (log.status === 'rejected') {
+                            statusClass = 'rejected';
+                            statusText = 'Rejected';
+                            approver = log.approver ? log.approver.first_name + ' ' + log.approver.last_name : 'N/A';
+                            date = new Date(log.updated_at).toLocaleString();
+                            comment = log.comment ? '<div class="small mt-2 p-2 bg-light border-left border-danger">" ' + log.comment + ' "</div>' : '';
+                        } else if (log.status === 'pending') {
+                            statusClass = 'current';
+                            statusText = 'Awaiting Approval';
+                        }
+                    }
+                    
+                    let roleName = step.special_role_type ? 
+                        step.special_role_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : 
+                        (step.role ? step.role.name : 'Unknown Role');
+
+                    let contentHtml = '';
+                    if (approver || date || comment) {
+                        contentHtml = `
+                            <div class="small text-muted">
+                                ${approver ? 'By: ' + approver + (date ? ' | ' + date : '') : 'Progressing...'}
+                            </div>
+                            ${comment}
+                        `;
+                    } else {
+                        contentHtml = `<div class="small text-muted">Progressing...</div>`;
+                    }
+
+                    html += `
+                        <li class="timeline-item">
+                            <div class="timeline-badge ${statusClass}"></div>
+                            <div class="timeline-panel">
+                                <div class="d-flex justify-content-between">
+                                    <h6 class="mb-1 text-primary-custom font-weight-bold">Step ${step.approval_order}: ${roleName}</h6>
+                                    <span class="badge ${statusClass === 'approved' ? 'badge-success' : (statusClass === 'rejected' ? 'badge-danger' : 'badge-warning')} text-capitalize">${statusText}</span>
+                                </div>
+                                ${contentHtml}
+                            </div>
+                        </li>
+                    `;
+                });
+                
+                html += '</ul>';
+                $('#chainTimelineContent').html(html);
+            },
+            error: function() {
+                $('#chainTimelineContent').html('<div class="alert alert-danger">Failed to load chain details.</div>');
+            }
+        });
+    });
     const examinations = @json($examinations ?? []);
     let allowedClassIds = [];
     let existingExamPapers = [];

@@ -93,7 +93,7 @@ class SendSessionTimeNotifications extends Command
                     
                     // Get school name
                     $school = School::find($definition->schoolID);
-                    $schoolName = $school ? $school->school_name : 'ShuleLink';
+                    $schoolName = $school ? $school->school_name : 'ShuleXpert';
                     
                     // Prepare message
                     $subjectName = $session->subject->subject_name ?? 'N/A';

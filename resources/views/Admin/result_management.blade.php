@@ -269,6 +269,21 @@
                                 </select>
                             </div>
 
+                            <!-- Subject Filter -->
+                            <div class="col-md-3 mb-3">
+                                <label for="subjectID" class="form-label">
+                                    <i class="bi bi-book"></i> Subject
+                                </label>
+                                <select class="form-control" id="subjectID" name="subjectID">
+                                    <option value="">All Subjects</option>
+                                    @foreach($schoolSubjects as $subject)
+                                        <option value="{{ $subject->subjectID }}" {{ ($filters['subjectID'] ?? '') == $subject->subjectID ? 'selected' : '' }}>
+                                            {{ $subject->subject_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+
                             <!-- Submit Button -->
                             <div class="col-md-12 mb-3">
                                 <button type="submit" class="btn btn-primary-custom" id="filterSubmitBtn">
@@ -1154,7 +1169,7 @@
                                                 'position' => $s['position'] ?? null
                                             ];
                                         }, $examStudents),
-                                        'schoolName' => $school->school_name ?? Session::get('school_name', 'ShuleLink')
+                                        'schoolName' => $school->school_name ?? Session::get('school_name', 'ShuleXpert')
                                     ];
                                 @endphp
                                 
@@ -3596,6 +3611,11 @@ $(document).ready(function() {
             description += ' (' + filters.week + ')';
         }
 
+        if ($('#subjectID').val()) {
+            const subjectName = $('#subjectID option:selected').text();
+            description += ' - Subject: ' + subjectName;
+        }
+
         if (description) {
             $('#filteringText').text(description);
             $('#filteringDescription').show();
@@ -3645,11 +3665,12 @@ $(document).ready(function() {
     });
 
     // Update filtering description on filter change
-    $('#term, #year, #type, #status, #class, #subclass, #examID, #grade, #gender, #week').on('change', function() {
+    $('#term, #year, #type, #status, #class, #subclass, #examID, #grade, #gender, #week, #subjectID').on('change', function() {
         updateFilteringDescription();
         
-        // Auto-filter when term or year changes (if type is exam) to reload exams
-        if ($(this).attr('id') === 'term' || $(this).attr('id') === 'year') {
+        // Auto-filter when term or year or type changes to reload exams
+        const changedId = $(this).attr('id');
+        if (changedId === 'term' || changedId === 'year' || (changedId === 'type' && $(this).val() === 'exam')) {
             if ($('#type').val() === 'exam') {
                 setTimeout(function() {
                     filterResultsAjax();
@@ -3720,7 +3741,8 @@ $(document).ready(function() {
                 examID: $('#examID').val() || '',
                 grade: $('#grade').val() || '',
                 gender: $('#gender').val() || '',
-                week: $('#week').val() || 'all'
+                week: $('#week').val() || 'all',
+                subjectID: $('#subjectID').val() || ''
             };
         @elseif(isset($isCoordinatorResultsView) && $isCoordinatorResultsView)
             // Coordinator view: main class is locked, subclass can be selected
@@ -3736,7 +3758,8 @@ $(document).ready(function() {
                 examID: $('#examID').val() || '',
                 grade: $('#grade').val() || '',
                 gender: $('#gender').val() || '',
-                week: $('#week').val() || 'all'
+                week: $('#week').val() || 'all',
+                subjectID: $('#subjectID').val() || ''
             };
         @else
             const formData = {
@@ -3749,7 +3772,8 @@ $(document).ready(function() {
                 examID: $('#examID').val() || '',
                 grade: $('#grade').val() || '',
                 gender: $('#gender').val() || '',
-                week: $('#week').val() || 'all'
+                week: $('#week').val() || 'all',
+                subjectID: $('#subjectID').val() || ''
             };
         @endif
 
@@ -3809,6 +3833,22 @@ $(document).ready(function() {
                 if ($newResultsContainer.length > 0) {
                     // Replace the entire results container content
                     $('#resultsContainer').html($newResultsContainer.html());
+                    
+                    // Also update the exam list in the filter form if year/term changed
+                    const $newExamID = $response.find('#examID');
+                    if ($newExamID.length > 0) {
+                        const currentVal = $('#examID').val();
+                        $('#examID').html($newExamID.html());
+                        $('#examID').val(currentVal); // Try to restore selection if it still exists
+                    }
+
+                    // And week list
+                    const $newWeek = $response.find('#week');
+                    if ($newWeek.length > 0) {
+                        const currentVal = $('#week').val();
+                        $('#week').html($newWeek.html());
+                        $('#week').val(currentVal);
+                    }
                     
                     // Update result count
                     updateResultCount();

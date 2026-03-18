@@ -5,16 +5,24 @@ namespace App\Http\Controllers;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Session;
 
 class ConfigurationController extends Controller
 {
     public function index()
     {
-        return view('configuration');
+        if (Session::get('user_type') !== 'SuperAdmin') {
+            return redirect()->route('login')->with('error', 'Unauthorized access. Please login as Super Admin.');
+        }
+        return view('SuperAdmin.school_registration');
     }
 
    public function storeSchool(Request $request)
 {
+    if (Session::get('user_type') !== 'SuperAdmin') {
+        return redirect()->route('login')->with('error', 'Unauthorized access. Please login as Super Admin.');
+    }
     //check if username exist??
     $check_username = User::where('name',$request->registration_number)->first();
     //check if Email exist??
@@ -41,7 +49,15 @@ class ConfigurationController extends Controller
         'established_year' => 'nullable|integer|min:1900|max:' . date('Y'),
         'school_logo' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         'status' => 'required|in:Active,Inactive',
+        'environment' => 'nullable|in:Demo,Live',
+        'two_factor_enabled' => 'nullable|boolean',
     ]);
+
+    if (!array_key_exists('environment', $validated) || !$validated['environment']) {
+        $validated['environment'] = 'Demo';
+    }
+
+    $validated['two_factor_enabled'] = (bool)($request->input('two_factor_enabled', false));
     $password = 'Admin@3345';
     if ($request->hasFile('school_logo')) {
         // Determine upload path - Prioritize public_html for cPanel
@@ -73,11 +89,11 @@ class ConfigurationController extends Controller
     User::create([
         'name' => $request->registration_number,
         'email' => $request->email,
-        'password' => $password,
+        'password' => Hash::make($password),
         'user_type' => 'Admin'
     ]);
 
-    return redirect()->back()->with('success', 'School saved successfully.');
+    return redirect()->route('superadmin.schools.index')->with('success', 'School saved successfully.');
 }
 
 

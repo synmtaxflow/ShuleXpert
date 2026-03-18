@@ -183,7 +183,7 @@
     <!-- Left Panel -->
 
     <!-- Right Panel -->
-    
+
     <!-- Language Translation Script -->
     <script>
     (function() {
@@ -241,7 +241,7 @@
                 option.addEventListener('click', function(e) {
                     e.preventDefault();
                     const lang = this.getAttribute('data-lang');
-                    
+
                     // Update language via AJAX
                     fetch('/change-language', {
                         method: 'POST',
@@ -256,7 +256,7 @@
                         if (data.success) {
                             currentLang = lang;
                             updateTranslations();
-                            
+
                             // Update language selector display
                             const langText = lang === 'en' ? 'English' : 'Kiswahili';
                             const langFlag = lang === 'en' ? 'us' : 'tz';
@@ -264,7 +264,7 @@
                             if (selector) {
                                 selector.innerHTML = '<span class="flag-icon flag-icon-' + langFlag + '" style="margin-right: 5px;"></span><span>' + langText + '</span>';
                             }
-                            
+
                             // Reload page to apply translations to all pages
                             setTimeout(function() {
                                 window.location.reload();
@@ -419,7 +419,59 @@
 
         </header><!-- /header -->
         <!-- Header-->
-        
+
+        @php
+            $systemAlerts = collect();
+            try {
+                $navSchoolID = \Illuminate\Support\Facades\Session::get('schoolID');
+                if ($navSchoolID) {
+                    $systemAlerts = \App\Models\SystemAlert::where('schoolID', $navSchoolID)
+                        ->where('target_user_type', 'parent')
+                        ->where('is_active', 1)
+                        ->orderBy('id', 'desc')
+                        ->get();
+                }
+            } catch (\Throwable $e) {
+                $systemAlerts = collect();
+            }
+
+            $alertIcons = [
+                'info' => 'fa-info-circle',
+                'warning' => 'fa-exclamation-triangle',
+                'success' => 'fa-check-circle',
+                'danger' => 'fa-times-circle',
+            ];
+        @endphp
+
+        @if($systemAlerts->count() > 0)
+            <div class="px-3 pt-2">
+                @foreach($systemAlerts as $a)
+                    @php
+                        $type = $a->alert_type ?: 'info';
+                        $icon = $alertIcons[$type] ?? 'fa-info-circle';
+                        $bg = $a->bg_color;
+                        $tc = $a->text_color;
+                        $w = $a->width;
+                        $style = '';
+                        if ($bg) $style .= 'background-color:' . $bg . ' !important;';
+                        if ($tc) $style .= 'color:' . $tc . ' !important;';
+                        if (!$bg && !$tc && in_array($type, ['danger', 'success', 'info'], true)) $style .= 'color:#ffffff !important;';
+                        if ($a->is_bold) $style .= 'font-weight:700;';
+                        if ($a->font_size) $style .= 'font-size:' . $a->font_size . ';';
+                        if ($w) $style .= 'width:' . $w . ';';
+                    @endphp
+                    <div class="alert alert-{{ $type }}" role="alert" style="margin-bottom: 8px; {!! $style !!}">
+                        @if($a->is_marquee)
+                            <marquee behavior="scroll" direction="left" scrollamount="6" style="white-space:nowrap; width:100%;">{{ $a->message }}</marquee>
+                        @else
+                            <i class="fa {{ $icon }}" style="margin-right: 8px;"></i>
+                            {{ $a->message }}
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        @endif
+
     <!-- Language Translation Script - Global -->
     <script>
     // Make translation system global so it works on all pages
@@ -464,7 +516,7 @@
                     // Preserve HTML content if exists
                     const html = element.innerHTML;
                     const hasHTML = html !== element.textContent;
-                    
+
                     if (hasHTML) {
                         // Replace only text content, keep HTML structure
                         const textNodes = [];
@@ -500,14 +552,14 @@
                     e.preventDefault();
                     const option = e.target.closest('.language-option');
                     const lang = option.getAttribute('data-lang');
-                    
+
                     // Update language via AJAX
                     const csrfToken = document.querySelector('meta[name="csrf-token"]');
                     if (!csrfToken) {
                         console.error('CSRF token not found');
                         return;
                     }
-                    
+
                     fetch('/change-language', {
                         method: 'POST',
                         headers: {
@@ -525,7 +577,7 @@
                     .then(data => {
                         if (data.success) {
                             currentLang = lang;
-                            
+
                             // Update language selector display immediately
                             const langText = lang === 'en' ? 'English' : 'Kiswahili';
                             const langFlag = lang === 'en' ? 'us' : 'tz';
@@ -533,10 +585,10 @@
                             if (selector) {
                                 selector.innerHTML = '<span class="flag-icon flag-icon-' + langFlag + '" style="margin-right: 5px;"></span><span>' + langText + '</span>';
                             }
-                            
+
                             // Update translations immediately
                             updateTranslations();
-                            
+
                             // Reload page to apply translations to all pages (including server-side content)
                             setTimeout(function() {
                                 window.location.reload();
@@ -582,9 +634,85 @@
             setCurrentLang: function(lang) { currentLang = lang; updateTranslations(); }
         };
     })();
-    
+
     // Make sure translations are applied even if script loads late
     if (window.ParentTranslationSystem) {
         window.ParentTranslationSystem.updateTranslations();
     }
+    </script>
+
+    <script>
+    (function() {
+        const IDLE_MS = 60 * 1000;
+        const WARN_SECONDS = 30;
+        const LOGOUT_URL = '{{ route('logout') }}';
+
+        let idleTimer = null;
+        let countdownTimer = null;
+        let remaining = WARN_SECONDS;
+        let overlay = null;
+
+        function ensureOverlay() {
+            if (overlay) return overlay;
+            overlay = document.createElement('div');
+            overlay.id = 'idle-logout-overlay';
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:99999;';
+            overlay.innerHTML =
+                '<div style="width:min(520px,92vw);background:#fff;border-radius:12px;padding:18px 18px 14px;box-shadow:0 20px 60px rgba(0,0,0,.25);font-family:inherit;">'
+                + '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">'
+                + '<div style="font-weight:800;color:#940000;">Security Warning</div>'
+                + '<button type="button" id="idleStayBtn" style="border:1px solid rgba(148,0,0,.3);background:#fff;color:#940000;border-radius:8px;padding:6px 10px;cursor:pointer;">Stay Logged In</button>'
+                + '</div>'
+                + '<div style="margin-top:10px;color:#333;line-height:1.4;">System is idle. You will be logged out after <b id="idleCountdown">30</b> seconds.</div>'
+                + '<div style="margin-top:10px;color:#666;font-size:.9rem;">Move the mouse, type, or click to continue.</div>'
+                + '</div>';
+            document.body.appendChild(overlay);
+            const stayBtn = overlay.querySelector('#idleStayBtn');
+            if (stayBtn) stayBtn.addEventListener('click', resetAll);
+            return overlay;
+        }
+
+        function showWarning() {
+            ensureOverlay();
+            remaining = WARN_SECONDS;
+            overlay.style.display = 'flex';
+            const c = overlay.querySelector('#idleCountdown');
+            if (c) c.textContent = String(remaining);
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = setInterval(() => {
+                remaining -= 1;
+                if (c) c.textContent = String(Math.max(0, remaining));
+                if (remaining <= 0) {
+                    logoutNow();
+                }
+            }, 1000);
+        }
+
+        function hideWarning() {
+            if (overlay) overlay.style.display = 'none';
+            if (countdownTimer) clearInterval(countdownTimer);
+            countdownTimer = null;
+        }
+
+        function logoutNow() {
+            hideWarning();
+            window.location.href = LOGOUT_URL;
+        }
+
+        function scheduleIdle() {
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(showWarning, IDLE_MS);
+        }
+
+        function resetAll() {
+            hideWarning();
+            scheduleIdle();
+        }
+
+        ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(evt => {
+            window.addEventListener(evt, resetAll, { passive: true });
+        });
+
+        scheduleIdle();
+    })();
     </script>

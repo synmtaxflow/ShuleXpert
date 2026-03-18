@@ -205,6 +205,12 @@
                         <div class="form-group">
                             <label for="new_password">New Password</label>
                             <input type="password" class="form-control" id="new_password" name="new_password">
+                            <div class="mt-2">
+                                <div class="progress" style="height: 8px;">
+                                    <div id="staff_pw_bar" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                                </div>
+                                <small id="staff_pw_label" class="text-muted">Strength: 0%</small>
+                            </div>
                         </div>
                         <div class="form-group">
                             <label for="new_password_confirmation">Confirm New Password</label>
@@ -225,5 +231,39 @@
         </div>
     </div>
 </div>
+
+<script>
+(function() {
+    const input = document.getElementById('new_password');
+    const bar = document.getElementById('staff_pw_bar');
+    const label = document.getElementById('staff_pw_label');
+    if (!input || !bar || !label) return;
+
+    function calc(pw) {
+        let score = 0;
+        if (!pw) return 0;
+        if (pw.length >= 8) score += 25;
+        if (/[a-z]/.test(pw)) score += 15;
+        if (/[A-Z]/.test(pw)) score += 15;
+        if (/[0-9]/.test(pw)) score += 15;
+        if (/[^a-zA-Z0-9]/.test(pw)) score += 15;
+        if (pw.length >= 12) score += 15;
+        return Math.min(100, score);
+    }
+
+    function color(p) {
+        if (p < 35) return 'bg-danger';
+        if (p < 70) return 'bg-warning';
+        return 'bg-success';
+    }
+
+    input.addEventListener('input', function() {
+        const p = calc(input.value);
+        bar.style.width = p + '%';
+        bar.className = 'progress-bar ' + color(p);
+        label.textContent = 'Strength: ' + p + '%';
+    });
+})();
+</script>
 
 @include('includes.footer')

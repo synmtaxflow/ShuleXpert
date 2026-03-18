@@ -15,14 +15,29 @@
             <div class="approval-chain-container">
                 @foreach($chain as $index => $step)
                     <div class="approval-step mb-4">
-                        <div class="card {{ $step['is_teacher_step'] ? 'border-primary' : '' }}">
-                            <div class="card-header {{ $step['is_teacher_step'] ? 'bg-primary text-white' : ($step['status'] === 'approved' ? 'bg-success text-white' : ($step['status'] === 'rejected' ? 'bg-danger text-white' : 'bg-secondary text-white')) }}">
+                        @php
+                            $isAdmin = ($step['special_role_type'] ?? '') === 'admin';
+                            $headerClass = $step['is_teacher_step']
+                                ? 'bg-primary text-white'
+                                : ($isAdmin
+                                    ? ($step['status'] === 'approved' ? 'bg-success text-white' : ($step['status'] === 'rejected' ? 'bg-danger text-white' : 'bg-dark text-white'))
+                                    : ($step['status'] === 'approved' ? 'bg-success text-white' : ($step['status'] === 'rejected' ? 'bg-danger text-white' : 'bg-secondary text-white'))
+                                  );
+                        @endphp
+                        <div class="card {{ $step['is_teacher_step'] ? 'border-primary' : ($isAdmin ? 'border-dark' : '') }}">
+                            <div class="card-header {{ $headerClass }}">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
                                         <h5 class="mb-0">
+                                            @if($isAdmin)
+                                                <i class="bi bi-shield-lock-fill mr-1"></i>
+                                            @endif
                                             Step {{ $step['approval_order'] }}: {{ $step['role_name'] }}
-                                            @if($step['is_teacher_step'])
+                                              @if($step['is_teacher_step'])
                                                 <span class="badge badge-light ml-2">Your Step</span>
+                                            @endif
+                                            @if($isAdmin)
+                                                <span class="badge badge-light ml-2">Final Approval</span>
                                             @endif
                                         </h5>
                                     </div>
@@ -38,10 +53,14 @@
                                 </div>
                             </div>
                             <div class="card-body">
-                                @if($step['status'] === 'approved' && $step['approver'])
-                                    <p><strong>Approved by:</strong> {{ $step['approver']['name'] }}</p>
+                                @if($step['status'] === 'approved')
+                                    @if($step['approver'])
+                                        <p><strong>Approved by:</strong> {{ $step['approver']['name'] }}</p>
+                                    @endif
                                     @if($step['approved_at'])
-                                        <p><strong>Approved at:</strong> {{ \Carbon\Carbon::parse($step['approved_at'])->format('M d, Y H:i') }}</p>
+                                        <p><strong>Approved at:</strong>
+                                            {{ \Carbon\Carbon::parse($step['approved_at'])->format('M d, Y H:i') }}
+                                        </p>
                                     @endif
                                 @elseif($step['status'] === 'rejected')
                                     @if($step['rejection_reason'])
@@ -50,7 +69,13 @@
                                         </div>
                                     @endif
                                 @else
-                                    <p class="text-muted">Waiting for approval...</p>
+                                    <p class="text-muted">
+                                        @if($isAdmin)
+                                            Awaiting final admin approval after all steps are completed...
+                                        @else
+                                            Waiting for approval...
+                                        @endif
+                                    </p>
                                 @endif
                                 
                                 @if($step['is_teacher_step'] && $step['status'] === 'pending')

@@ -31,6 +31,8 @@ class Examination extends Model
         'enter_result',
         'publish_result',
         'upload_paper',
+        'use_paper_approval',
+        'no_approval_required',
     ];
 
     protected $casts = [
@@ -59,5 +61,10 @@ class Examination extends Model
     public function examPapers()
     {
         return $this->hasMany(ExamPaper::class, 'examID', 'examID');
+    }
+
+    public function paperApprovalChains()
+    {
+        return $this->hasMany(PaperApprovalChain::class, 'examID', 'examID')->orderBy('approval_order');
     }
 }

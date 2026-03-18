@@ -801,13 +801,10 @@ class TimeTableController extends Controller
      */
     private function syncTestResults($schoolID, $examID, $testType, $scope, $scopeId, $scheduleData, $startDate = null)
     {
-        // 1. Delete Existing Results (Only those without marks) for this Exam
-        // ... (existing delete logic)
-        
+        // 1. Delete Existing Results (Only those without marks) for this Exam and Scope
         $query = Result::where('examID', $examID)->whereNull('marks');
         
         if ($scope === 'class') {
-           // Filter by studentID IN (select studentID from students JOIN subclasses ... where classID = ?)
            $query->whereIn('studentID', function($q) use ($scopeId) {
                $q->select('studentID')
                  ->from('students')
@@ -818,8 +815,9 @@ class TimeTableController extends Controller
            $query->whereIn('studentID', function($q) use ($scopeId) {
                $q->select('studentID')->from('students')->where('subclassID', $scopeId);
            });
+        } elseif ($scope === 'school_wide') {
+            $query->where('schoolID', $schoolID);
         }
-        // School wide: delete all for examID (that have no marks)
         
         $query->delete();
 
@@ -827,9 +825,9 @@ class TimeTableController extends Controller
         $exam = Examination::find($examID);
         if (!$exam) return;
         
-        $examStartDate = $startDate ? \Carbon\Carbon::parse($startDate) : \Carbon\Carbon::parse($exam->start_date);
+        $examStartDate = (!empty($startDate)) ? \Carbon\Carbon::parse($startDate) : \Carbon\Carbon::parse($exam->start_date);
         
-        // Fetch Students - eager load subclass to get classID
+        // Fetch current Active Students for the specified scope
         $studentsQuery = \App\Models\Student::with('subclass')->where('schoolID', $schoolID)->where('status', 'Active');
         if ($scope === 'class') {
             $studentsQuery->whereHas('subclass', function($q) use ($scopeId) {
@@ -854,20 +852,18 @@ class TimeTableController extends Controller
                  // Calculate Date
                  // Start of Week 1 + specific Day
                  $weekStartDate = $examStartDate->copy()->addWeeks($weekNum - 1)->startOfWeek(); 
-                 // Carbon startOfWeek() -> Monday. 
-                 // Map day name to date
+                 
                  try {
                      $testDate = $weekStartDate->copy()->modify($dayName);
-                     // If test date is before exam start date for week 1, it might be due to day order (e.g. exam starts Wed, but test is Mon).
-                     // However, usually we assume standard weeks. 
                  } catch (\Exception $e) {
                      $testDate = $weekStartDate; // Fallback
                  }
                  
                  foreach ($students as $student) {
-                      // Find ClassSubject for this student/subject
+                      // Find ClassSubject link for this student/subject
                       $stuClassID = $student->subclass ? $student->subclass->classID : null;
                       if (!$stuClassID) continue;
+                      
                       $classSubject = \App\Models\ClassSubject::where('classID', $stuClassID)
                                      ->where('subjectID', $subjectID)
                                      ->where(function($q) use ($student) {
@@ -885,18 +881,18 @@ class TimeTableController extends Controller
                           ->where('test_week', 'Week '.$weekNum)
                           ->exists();
 
-                      if ($exists) continue;
-
-                      Result::create([
-                          'studentID' => $student->studentID,
-                          'examID' => $examID,
-                          'subclassID' => $student->subclassID, // Use student current subclass
-                          'class_subjectID' => $classSubject->class_subjectID,
-                          'test_week' => 'Week ' . $weekNum,
-                          'test_date' => $testDate->format('Y-m-d'),
-                          'marks' => null,
-                          // 'status' => 'Pending' // if column exists
-                      ]);
+                      if (!$exists) {
+                          Result::create([
+                              'studentID' => $student->studentID,
+                              'examID' => $examID,
+                              'subclassID' => $student->subclassID,
+                              'class_subjectID' => $classSubject->class_subjectID,
+                              'test_week' => 'Week ' . $weekNum,
+                              'test_date' => $testDate->format('Y-m-d'),
+                              'marks' => null,
+                              'status' => 'Pending'
+                          ]);
+                      }
                  }
              }
         }
@@ -3699,7 +3695,7 @@ class TimeTableController extends Controller
             
             $smsService = new SmsService();
             $school = DB::table('schools')->where('schoolID', $schoolID)->first();
-            $schoolName = $school ? $school->school_name : 'ShuleLink';
+            $schoolName = $school ? $school->school_name : 'ShuleXpert';
             
             $smsResults = [
                 'sent' => 0,

@@ -61,6 +61,7 @@ class ResultManagementController extends Controller
         $isCoordinatorView = $request->get('coordinator') === 'true';
         $examFilter = $request->get('examID', ''); // Specific exam filter
         $weekFilter = $request->get('week', ''); // Week filter for weekly/monthly tests
+        $subjectFilter = $request->get('subjectID', ''); // Specific subject filter
 
         // Check if coordinator view is requested
         $isCoordinatorResultsView = false;
@@ -229,28 +230,28 @@ class ResultManagementController extends Controller
                         'display_name' => $subclass->class->class_name,
                         'class_name' => $subclass->class->class_name,
                     ]);
+                } else {
+                    // Single subclass with name
+                    $subclassName = trim($subclass->subclass_name);
+                    $displayName = $isCoordinatorResultsView
+                        ? (empty($subclassName) ? $subclass->class->class_name : $subclass->class->class_name . ' - ' . $subclassName)
+                        : $subclass->class->class_name . ' ' . $subclass->subclass_name;
+                    $subclasses->push((object)[
+                        'subclassID' => $subclass->subclassID,
+                        'subclass_name' => $subclass->subclass_name,
+                        'display_name' => $displayName,
+                        'class_name' => $subclass->class->class_name,
+                    ]);
+                }
             } else {
-                // Single subclass with name
-                $subclassName = trim($subclass->subclass_name);
-                $displayName = $isCoordinatorResultsView
-                    ? (empty($subclassName) ? $subclass->class->class_name : $subclass->class->class_name . ' - ' . $subclassName)
-                    : $subclass->class->class_name . ' ' . $subclass->subclass_name;
-                $subclasses->push((object)[
-                    'subclassID' => $subclass->subclassID,
-                    'subclass_name' => $subclass->subclass_name,
-                    'display_name' => $displayName,
-                    'class_name' => $subclass->class->class_name,
-                ]);
-            }
-        } else {
-            // Multiple subclasses - show all with class_name + subclass_name
-            foreach ($classSubclasses as $subclass) {
-                $subclassName = trim($subclass->subclass_name);
-                $displayName = empty($subclassName)
-                    ? $subclass->class->class_name
-                    : ($isCoordinatorResultsView
-                        ? $subclass->class->class_name . ' - ' . $subclassName
-                        : $subclass->class->class_name . ' ' . $subclassName);
+                // Multiple subclasses - show all with class_name + subclass_name
+                foreach ($classSubclasses as $subclass) {
+                    $subclassName = trim($subclass->subclass_name);
+                    $displayName = empty($subclassName)
+                        ? $subclass->class->class_name
+                        : ($isCoordinatorResultsView
+                            ? $subclass->class->class_name . ' - ' . $subclassName
+                            : $subclass->class->class_name . ' ' . $subclassName);
 
                     $subclasses->push((object)[
                         'subclassID' => $subclass->subclassID,
@@ -759,13 +760,14 @@ class ResultManagementController extends Controller
 
         // Get available exams for the selected term and year
         $availableExams = collect();
-        if ($termFilter && $yearFilter) {
-            $availableExams = Examination::where('schoolID', $schoolID)
+        if ($yearFilter) {
+            $examQuery = Examination::where('schoolID', $schoolID)
                 ->where('year', $yearFilter)
-                ->where('term', $termFilter)
-                // ->where('approval_status', 'Approved') // Removed check
-                ->orderBy('start_date')
-                ->get();
+                ->orderBy('start_date');
+            if ($termFilter) {
+                $examQuery->where('term', $termFilter);
+            }
+            $availableExams = $examQuery->get();
         }
 
         // Get Available Weeks if it's a test
@@ -939,8 +941,11 @@ class ResultManagementController extends Controller
         if ($termFilter && $yearFilter) {
             if ($typeFilter === 'exam') {
                 // Get exam results
-                $resultsData = $this->getExamResults($students, $termFilter, $yearFilter, $schoolType, $examFilter, $weekFilter);
-                
+                $resultsData = $this->getExamResults($students, $termFilter, $yearFilter, $schoolType, $examFilter, $weekFilter, $subjectFilter);
+            } elseif ($typeFilter === 'report') {
+                // Get term report
+                $resultsData = $this->getTermReport($students, $termFilter, $yearFilter, $schoolType, $subjectFilter);
+            }
                 // Debug: Check why results might be empty
                 if (empty($resultsData) && $students->count() > 0) {
                     // Check if exam exists and is approved
@@ -1008,7 +1013,6 @@ class ResultManagementController extends Controller
                     }
                 }
             }
-        }
 
         return view('Admin.result_management', [
             'school' => $school,
@@ -1029,6 +1033,7 @@ class ResultManagementController extends Controller
                 'subclass' => $subclassFilter,
                 'examID' => $examFilter,
                 'week' => $weekFilter,
+                'subjectID' => $subjectFilter,
             ],
             'availableExams' => $availableExams,
             'schoolSubjects' => SchoolSubject::where('schoolID', $schoolID)
@@ -1248,6 +1253,7 @@ class ResultManagementController extends Controller
 
         $groupedAnalysis = collect($analysisData)->groupBy('class_display');
 
+        $user_type = Session::get('user_type');
         return view('Admin.subject_analysis', compact(
             'availableYears',
             'classes',
@@ -1262,7 +1268,8 @@ class ResultManagementController extends Controller
             'classID',
             'subclassID',
             'subjectID',
-            'allSubclasses'
+            'allSubclasses',
+            'user_type'
         ));
     }
 
@@ -1509,7 +1516,7 @@ class ResultManagementController extends Controller
         if (empty($weekRange)) $weekRange = $week;
 
         $school = \App\Models\School::find($schoolID);
-        $schoolName = $school ? $school->school_name : 'ShuleLink';
+        $schoolName = $school ? $school->school_name : 'ShuleXpert';
 
         $weekLabel = $week;
         if ($type === 'report') {
@@ -1552,7 +1559,7 @@ class ResultManagementController extends Controller
     /**
      * Get exam results for students
      */
-    private function getExamResults($students, $term, $year, $schoolType, $examID = null, $weekFilter = null)
+    private function getExamResults($students, $term, $year, $schoolType, $examID = null, $weekFilter = null, $subjectFilter = null)
     {
         $resultsData = [];
 
@@ -1582,6 +1589,12 @@ class ResultManagementController extends Controller
                 
                 if ($exam->exam_name === 'Weekly Test' && $weekFilter && $weekFilter !== 'all') {
                     $resultsQuery->where('test_week', $weekFilter);
+                }
+
+                if ($subjectFilter) {
+                    $resultsQuery->whereHas('classSubject', function($q) use ($subjectFilter) {
+                        $q->where('subjectID', $subjectFilter);
+                    });
                 }
 
                 $results = $resultsQuery->with(['classSubject.subject', 'examination'])
@@ -1777,7 +1790,7 @@ class ResultManagementController extends Controller
     /**
      * Get term report (average of all exams in term)
      */
-    private function getTermReport($students, $term, $year, $schoolType)
+    private function getTermReport($students, $term, $year, $schoolType, $subjectFilter = null)
     {
         $resultsData = [];
         $schoolID = Session::get('schoolID');
@@ -1800,10 +1813,17 @@ class ResultManagementController extends Controller
         $studentIDs = $students->pluck('studentID')->toArray();
 
         // Fetch all results in batch
-        $allResults = Result::whereIn('studentID', $studentIDs)
+        $allResultsQuery = Result::whereIn('studentID', $studentIDs)
             ->whereIn('examID', $examIDs)
-            ->with(['classSubject.subject'])
-            ->get()
+            ->with(['classSubject.subject']);
+
+        if ($subjectFilter) {
+            $allResultsQuery->whereHas('classSubject', function($q) use ($subjectFilter) {
+                $q->where('subjectID', $subjectFilter);
+            });
+        }
+
+        $allResults = $allResultsQuery->get()
             ->groupBy('studentID');
 
         // Store results by studentID and examID for quick lookup

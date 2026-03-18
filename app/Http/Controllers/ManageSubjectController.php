@@ -734,10 +734,12 @@ class ManageSubjectController extends Controller
                 ], 400);
             }
 
-            // Get all subclasses with their subjects
+            // Get all ACTIVE subclasses with their subjects (current year only)
             $subclasses = DB::table('subclasses')
                 ->join('classes', 'subclasses.classID', '=', 'classes.classID')
                 ->where('classes.schoolID', $schoolID)
+                ->where('classes.status', 'Active')
+                ->where('subclasses.status', 'Active')
                 ->select(
                     'subclasses.subclassID',
                     'subclasses.subclass_name',
@@ -1302,7 +1304,7 @@ class ManageSubjectController extends Controller
             // Get school name
             $schoolID = Session::get('schoolID');
             $school = School::where('schoolID', $schoolID)->first();
-            $schoolName = $school ? $school->school_name : 'ShuleLink';
+            $schoolName = $school ? $school->school_name : 'ShuleXpert';
 
             // Get student name
             $studentName = trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name);

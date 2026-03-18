@@ -775,6 +775,36 @@
                         </div>
                     </div>
 
+                    <!-- Exam Paper Approval Chain -->
+                    <div class="form-group" id="paper_approval_group">
+                        <label>
+                            <input type="checkbox" id="use_paper_approval" name="use_paper_approval" value="1">
+                            <strong>Enable Exam Paper Approval Chain</strong>
+                        </label>
+                        <small class="form-text text-muted d-block mb-2">
+                            <i class="bi bi-info-circle"></i> Kama ikiwashwa, kila mwalimu anapopandisha (upload) karatasi ya mtihani, itabidi ipite kwenye hatua za approval zilizopangwa hapon chini.
+                        </small>
+                        <div id="paper_approval_fields" style="display: none;">
+                            <div class="form-group">
+                                <label for="number_of_paper_approvals">Number of Approvals <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="number_of_paper_approvals" name="number_of_paper_approvals" min="1" max="{{ count($roles ?? []) }}" value="1">
+                            </div>
+                            <div id="paper_approval_role_selections">
+                                <!-- Dynamic paper approval role selects will be added here -->
+                            </div>
+                        </div>
+
+                        <div class="mt-2" id="no_approval_required_group">
+                            <label>
+                                <input type="checkbox" id="no_approval_required" name="no_approval_required" value="1">
+                                <strong>Exam upload without approval</strong>
+                            </label>
+                            <small class="form-text text-muted d-block">
+                                <i class="bi bi-info-circle"></i> Ikishachaguliwa hii, mwalimu aki-upload mtihani unakuwa approved moja kwa moja.
+                            </small>
+                        </div>
+                    </div>
+
                     <!-- Exam Attendance Tracking -->
                     <div class="form-group" id="exam_attendance_group">
                         <label>
@@ -1077,6 +1107,21 @@
                                 <input type="number" class="form-control" id="edit_number_of_approvals" name="number_of_approvals" min="1" value="1">
                             </div>
                             <div id="edit_approval_role_selections"></div>
+                        </div>
+                    </div>
+
+                    <!-- Exam Paper Approval Chain -->
+                    <div class="form-group" id="edit_paper_approval_group">
+                        <label>
+                            <input type="checkbox" id="edit_use_paper_approval" name="use_paper_approval" value="1">
+                            <strong>Enable Exam Paper Approval Chain</strong>
+                        </label>
+                        <div id="edit_paper_approval_fields" style="display: none;">
+                            <div class="form-group">
+                                <label for="edit_number_of_paper_approvals">Number of Approvals <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="edit_number_of_paper_approvals" name="number_of_paper_approvals" min="1" value="1">
+                            </div>
+                            <div id="edit_paper_approval_role_selections"></div>
                         </div>
                     </div>
 
@@ -1621,15 +1666,45 @@ jQuery(document).ready(function($) {
     $('#number_of_approvals').on('change', function() {
         const numApprovals = parseInt($(this).val()) || 0;
         if (numApprovals > maxApprovals) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Invalid Number',
-                text: 'Number of approvals cannot exceed ' + maxApprovals + ' (number of available roles + 2 special roles).'
-            });
+            Swal.fire({ icon: 'warning', title: 'Invalid Number', text: 'Number of approvals cannot exceed ' + maxApprovals });
             $(this).val(maxApprovals);
             generateApprovalRoleSelects();
         } else if (numApprovals > 0) {
             generateApprovalRoleSelects();
+        }
+    });
+
+    // Handle paper approval checkbox
+    $('#use_paper_approval').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#paper_approval_fields').show();
+            $('#number_of_paper_approvals').prop('required', true);
+            generatePaperApprovalRoleSelects();
+            // Uncheck no_approval_required if paper approval chain is enabled
+            $('#no_approval_required').prop('checked', false);
+        } else {
+            $('#paper_approval_fields').hide();
+            $('#number_of_paper_approvals').prop('required', false);
+            $('#paper_approval_role_selections').empty();
+        }
+    });
+
+    $('#no_approval_required').on('change', function() {
+        if ($(this).is(':checked')) {
+            // Uncheck and hide paper approval chain if no approval required is checked
+            $('#use_paper_approval').prop('checked', false).trigger('change');
+        }
+    });
+
+    // Handle number of paper approvals change
+    $('#number_of_paper_approvals').on('change', function() {
+        const numApprovals = parseInt($(this).val()) || 0;
+        if (numApprovals > roles.length) {
+            Swal.fire({ icon: 'warning', title: 'Invalid Number', text: 'Number of approvals cannot exceed ' + roles.length });
+            $(this).val(roles.length);
+            generatePaperApprovalRoleSelects();
+        } else if (numApprovals > 0) {
+            generatePaperApprovalRoleSelects();
         }
     });
 
@@ -1638,12 +1713,7 @@ jQuery(document).ready(function($) {
         const numApprovals = parseInt($('#number_of_approvals').val()) || 0;
         const container = $('#approval_role_selections');
         container.empty();
-
-        // Check if we have roles or special roles available
-        if (numApprovals <= 0 || (roles.length === 0 && specialRoles.length === 0)) {
-            return;
-        }
-
+        if (numApprovals <= 0 || (roles.length === 0 && specialRoles.length === 0)) return;
         for (let i = 1; i <= numApprovals; i++) {
             const selectId = 'approval_role_' + i;
             const selectHtml = `
@@ -1652,34 +1722,71 @@ jQuery(document).ready(function($) {
                     <select class="form-control approval-role-select" id="${selectId}" name="approval_role_ids[]" required>
                         <option value="">Select Role</option>
                     </select>
-                    <small class="form-text text-muted">
-                        <i class="bi bi-info-circle"></i> Role that will approve at step ${i}
-                    </small>
-                </div>
-            `;
+                </div>`;
             container.append(selectHtml);
+            const select = $('#' + selectId);
+            specialRoles.forEach(role => select.append($('<option>', { value: role.id, text: role.name || role.role_name })));
+            roles.forEach(role => select.append($('<option>', { value: role.id, text: role.name || role.role_name })));
+        }
+        updateRoleSelectOptions('.approval-role-select');
+    }
 
-            // Populate options for this select
+    // Generate paper approval role selects
+    function generatePaperApprovalRoleSelects() {
+        const numApprovals = parseInt($('#number_of_paper_approvals').val()) || 0;
+        const container = $('#paper_approval_role_selections');
+        container.empty();
+        if (numApprovals <= 0 || roles.length === 0) return;
+        for (let i = 1; i <= numApprovals; i++) {
+            const selectId = 'paper_approval_role_' + i;
+            const selectHtml = `
+                <div class="form-group">
+                    <label for="${selectId}">Paper Approval ${i} - Select Role <span class="text-danger">*</span></label>
+                    <select class="form-control paper-approval-role-select" id="${selectId}" name="paper_approval_role_ids[]" required>
+                        <option value="">Select Role</option>
+                    </select>
+                </div>`;
+            container.append(selectHtml);
             const select = $('#' + selectId);
             
-            // Add special roles first (hard-coded)
-            specialRoles.forEach(function(role) {
-                select.append($('<option>', {
-                    value: role.id,
-                    text: role.name || role.role_name,
-                    'data-is-special': 'true'
-                }));
-            });
+            // Add Special Roles first
+            select.append('<option value="class_teacher">Class Teacher</option>');
+            select.append('<option value="coordinator">Coordinator</option>');
             
-            // Add regular roles from database
-            roles.forEach(function(role) {
-                select.append($('<option>', {
-                    value: role.id,
-                    text: role.name || role.role_name,
-                    'data-is-special': 'false'
-                }));
-            });
+            // Add Regular Roles
+            roles.forEach(role => select.append($('<option>', { 
+                value: role.id, text: role.name || role.role_name 
+            })));
         }
+        updateRoleSelectOptions('.paper-approval-role-select');
+    }
+
+    function updateRoleSelectOptions(selector) {
+        $(selector).on('change', function() {
+            const allSelects = $(selector);
+            const selectedValues = [];
+            allSelects.each(function() {
+                if ($(this).val()) selectedValues.push($(this).val());
+            });
+
+            allSelects.each(function() {
+                const currentSelect = $(this);
+                const currentValue = currentSelect.val();
+                currentSelect.find('option').each(function() {
+                    const opt = $(this);
+                    if (opt.val() && opt.val() !== currentValue) {
+                        if (selectedValues.indexOf(opt.val()) !== -1) {
+                            opt.prop('disabled', true).css('background-color', '#eee');
+                        } else {
+                            opt.prop('disabled', false).css('background-color', '');
+                        }
+                    } else {
+                        opt.prop('disabled', false).css('background-color', '');
+                    }
+                });
+            });
+        });
+    }
 
         // Add change handlers to prevent duplicates
         $('.approval-role-select').on('change', function() {
@@ -1731,7 +1838,6 @@ jQuery(document).ready(function($) {
                 });
             });
         });
-    }
 
 
     function addSubclassField() {
@@ -2068,6 +2174,12 @@ jQuery(document).ready(function($) {
             formData.delete('use_result_approval');
             formData.delete('number_of_approvals');
             formData.delete('approval_role_ids[]');
+        }
+
+        if ($('#no_approval_required').is(':checked')) {
+            formData.append('no_approval_required', '1');
+        } else {
+            formData.delete('no_approval_required');
         }
 
         $.ajaxSetup({
@@ -3283,73 +3395,40 @@ jQuery(document).ready(function($) {
         const numApprovals = parseInt($('#edit_number_of_approvals').val()) || 0;
         const container = $('#edit_approval_role_selections');
         container.empty();
-
-        if (numApprovals <= 0 || (roles.length === 0 && specialRoles.length === 0)) {
-            return;
-        }
-
+        if (numApprovals <= 0) return;
         for (let i = 1; i <= numApprovals; i++) {
             const selectId = 'edit_approval_role_' + i;
-            const selectHtml = `
-                <div class="form-group">
-                    <label for="${selectId}">Approval ${i} - Select Role <span class="text-danger">*</span></label>
-                    <select class="form-control edit-approval-role-select" id="${selectId}" name="approval_role_ids[]" required>
-                        <option value="">Select Role</option>
-                    </select>
-                    <small class="form-text text-muted">
-                        <i class="bi bi-info-circle"></i> Role that will approve at step ${i}
-                    </small>
-                </div>
-            `;
-            container.append(selectHtml);
-
+            container.append(`<div class="form-group"><label>Approval ${i}</label><select class="form-control edit-approval-role-select" id="${selectId}" name="approval_role_ids[]" required><option value="">Select Role</option></select></div>`);
             const select = $('#' + selectId);
-
-            specialRoles.forEach(function(role) {
-                select.append($('<option>', {
-                    value: role.id,
-                    text: role.name || role.role_name,
-                    'data-is-special': 'true'
-                }));
-            });
-
-            roles.forEach(function(role) {
-                select.append($('<option>', {
-                    value: role.id,
-                    text: role.name || role.role_name,
-                    'data-is-special': 'false'
-                }));
-            });
-
-            if (selectedRoles[i - 1]) {
-                select.val(selectedRoles[i - 1]);
-            }
+            specialRoles.forEach(r => select.append($('<option>', { value: r.id, text: r.name || r.role_name })));
+            roles.forEach(r => select.append($('<option>', { value: r.id, text: r.name || r.role_name })));
+            if (selectedRoles[i - 1]) select.val(selectedRoles[i - 1]);
         }
+        updateRoleSelectOptions('.edit-approval-role-select');
+        $('.edit-approval-role-select').trigger('change');
+    }
 
-        const updateDisabledOptions = () => {
-            const selectedValues = [];
-            $('.edit-approval-role-select').each(function() {
-                const val = $(this).val();
-                if (val) {
-                    selectedValues.push(val);
-                }
-            });
-
-            $('.edit-approval-role-select').each(function() {
-                const currentSelect = $(this);
-                const currentVal = currentSelect.val();
-                currentSelect.find('option').prop('disabled', false);
-
-                selectedValues.forEach(function(value) {
-                    if (value !== currentVal) {
-                        currentSelect.find('option[value="' + value + '"]').prop('disabled', true);
-                    }
-                });
-            });
-        };
-
-        $('.edit-approval-role-select').on('change', updateDisabledOptions);
-        updateDisabledOptions();
+    function generateEditPaperApprovalRoleSelects(selectedRoles = []) {
+        const numApprovals = parseInt($('#edit_number_of_paper_approvals').val()) || 0;
+        const container = $('#edit_paper_approval_role_selections');
+        container.empty();
+        if (numApprovals <= 0) return;
+        for (let i = 1; i <= numApprovals; i++) {
+            const selectId = 'edit_paper_approval_role_' + i;
+            container.append(`<div class="form-group"><label>Paper Approval ${i}</label><select class="form-control edit-paper-approval-role-select" id="${selectId}" name="paper_approval_role_ids[]" required><option value="">Select Role</option></select></div>`);
+            const select = $('#' + selectId);
+            
+            // Add Special Roles
+            select.append('<option value="class_teacher">Class Teacher</option>');
+            select.append('<option value="coordinator">Coordinator</option>');
+            
+            // Add Regular Roles
+            roles.forEach(r => select.append($('<option>', { value: r.id, text: r.name || r.role_name })));
+            
+            if (selectedRoles[i - 1]) select.val(selectedRoles[i - 1]);
+        }
+        updateRoleSelectOptions('.edit-paper-approval-role-select');
+        $('.edit-paper-approval-role-select').trigger('change');
     }
 
     // Edit exam dynamic handlers
@@ -3370,6 +3449,7 @@ jQuery(document).ready(function($) {
         }
     });
 
+    // Handle use_result_approval change in edit modal
     $('#edit_use_result_approval').on('change', function() {
         if ($(this).is(':checked')) {
             $('#edit_result_approval_fields').show();
@@ -3380,6 +3460,28 @@ jQuery(document).ready(function($) {
             $('#edit_number_of_approvals').prop('required', false);
             $('#edit_approval_role_selections').empty();
         }
+    });
+
+    // Handle use_paper_approval change in edit modal
+    $('#edit_use_paper_approval').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#edit_paper_approval_fields').show();
+            $('#edit_number_of_paper_approvals').prop('required', true);
+            generateEditPaperApprovalRoleSelects();
+        } else {
+            $('#edit_paper_approval_fields').hide();
+            $('#edit_number_of_paper_approvals').prop('required', false);
+            $('#edit_paper_approval_role_selections').empty();
+        }
+    });
+
+    // Handle number of approvals change in edit
+    $('#edit_number_of_approvals').on('change', function() {
+        if (parseInt($(this).val()) > 0) generateEditApprovalRoleSelects();
+    });
+
+    $('#edit_number_of_paper_approvals').on('change', function() {
+        if (parseInt($(this).val()) > 0) generateEditPaperApprovalRoleSelects();
     });
 
     $('#edit_number_of_approvals').on('change', function() {
@@ -4655,20 +4757,64 @@ window.loadExamPapers = function(examID, search = '', status = '', week = '') {
                             `;
                         }
 
+                        function renderApprovalChainMap(paper) {
+                            const chain = paper.full_chain || [];
+                            if (chain.length === 0) return '';
+                            
+                            let html = '<div class="approval-chain-wrapper mt-4 mb-4 p-3 border rounded" style="background-color: #fcfcfc;">';
+                            html += '<h6 class="text-muted small font-weight-bold mb-3"><i class="bi bi-diagram-3"></i> Approval Chain Tracking</h6>';
+                            html += '<div class="d-flex justify-content-between align-items-start position-relative px-2 overflow-auto">';
+                            
+                            // Background connection line
+                            html += '<div class="position-absolute" style="top: 15px; left: 35px; right: 35px; height: 3px; background-color: #dee2e6; z-index: 1;"></div>';
+                            
+                            chain.forEach((step, index) => {
+                                let icon = 'bi-circle';
+                                let color = '#adb5bd'; // Grey
+                                let statusText = 'Waiting';
+                                let bg = '#ffffff';
+                                let border = '#dee2e6';
+                                
+                                if (step.status === 'approved') {
+                                    icon = 'bi-check-circle-fill';
+                                    color = '#28a745'; // Green
+                                    statusText = 'Complete';
+                                    bg = '#f1f8f3';
+                                    border = '#28a745';
+                                } else if (step.status === 'pending') {
+                                    icon = 'bi-clock-history';
+                                    color = '#ffc107'; // Yellow/Orange
+                                    statusText = 'Pending';
+                                    bg = '#fffdf5';
+                                    border = '#ffc107';
+                                } else if (step.status === 'rejected') {
+                                    icon = 'bi-x-circle-fill';
+                                    color = '#dc3545'; // Red
+                                    statusText = 'Rejected';
+                                    bg = '#fff5f6';
+                                    border = '#dc3545';
+                                }
+                                
+                                html += `
+                                    <div class="text-center" style="z-index: 2; min-width: 80px; flex: 1;">
+                                        <div class="d-flex align-items-center justify-content-center mx-auto mb-2 shadow-sm" style="width: 32px; height: 32px; border-radius: 50%; background-color: ${bg}; border: 2px solid ${border};">
+                                            <i class="bi ${icon}" style="color: ${color}; font-size: 1.1rem;"></i>
+                                        </div>
+                                        <div class="small font-weight-bold mb-1" style="font-size: 0.7rem; color: #495057; line-height: 1.2; min-height: 2.4em;">${step.name}</div>
+                                        <span class="badge" style="font-size: 0.6rem; padding: 0.2rem 0.4rem; color: ${color}; background-color: ${bg}; border: 1px solid ${border};">${statusText}</span>
+                                    </div>
+                                `;
+                            });
+                            
+                            html += '</div></div>';
+                            return html;
+                        }
+
                         group.papers.forEach(function(paper) {
                             const subjectName = paper.class_subject?.subject?.subject_name || 'N/A';
                             const teacherName = paper.teacher ? (paper.teacher.first_name + ' ' + paper.teacher.last_name) : 'N/A';
                             const className = paper.class_subject?.class?.class_name || 'N/A';
                             const subclassName = paper.class_subject?.subclass?.subclass_name || 'N/A';
-
-                        let statusBadge = '';
-                        if (paper.status === 'wait_approval') {
-                            statusBadge = '<span class="badge badge-warning"><i class="bi bi-clock-history"></i> Waiting Approval</span>';
-                        } else if (paper.status === 'approved') {
-                            statusBadge = '<span class="badge badge-success"><i class="bi bi-check-circle"></i> Approved</span>';
-                        } else {
-                            statusBadge = '<span class="badge badge-danger"><i class="bi bi-x-circle"></i> Rejected</span>';
-                        }
 
                         html += `
                             <div class="card mb-3 exam-paper-item" data-paper-id="${paper.exam_paperID}">
@@ -4679,17 +4825,17 @@ window.loadExamPapers = function(examID, search = '', status = '', week = '') {
                                                 <i class="bi bi-file-earmark-text"></i> ${subjectName}
                                             </h5>
                                             <p class="mb-2">
-                                                <strong>Class:</strong> ${className}<br>
-                                                <strong>Subclass:</strong> ${subclassName}<br>
+                                                <strong>Subject & Class:</strong> ${subjectName} - ${className} ${subclassName}<br>
                                                 <strong>Teacher:</strong> ${teacherName}<br>
                                                 ${paper.test_week ? `<strong>Week:</strong> ${paper.test_week}${paper.test_week_range ? ` (${paper.test_week_range})` : ''}<br>` : ''}
                                                 ${paper.test_date ? `<strong>Test Date:</strong> ${new Date(paper.test_date).toLocaleDateString('en-GB', {day: '2-digit', month: 'short', year: 'numeric'})}<br>` : ''}
                                                 <strong>Type:</strong> <span class="badge badge-info">${paper.upload_type === 'upload' ? 'File Upload' : 'Created'}</span><br>
-                                                <strong>Status:</strong> ${statusBadge}
+                                                <strong>Approval Stage:</strong> <span class="badge badge-dark">${paper.chain_progress || 'N/A'}</span><br>
+                                                <strong>Status:</strong> <span class="badge ${paper.status === 'approved' ? 'badge-success' : (paper.status === 'rejected' ? 'badge-danger' : 'badge-warning')}">${paper.detailed_status || paper.status}</span>
                                             </p>
                                             ${paper.rejection_reason ? `
                                                 <div class="alert alert-danger mt-2">
-                                                    <strong><i class="bi bi-exclamation-triangle"></i> Rejection Reason:</strong>
+                                                    <strong><i class="bi bi-exclamation-triangle"></i> Rejection Reason / Note:</strong>
                                                     <p class="mb-0">${paper.rejection_reason}</p>
                                                 </div>
                                             ` : ''}
@@ -4702,15 +4848,27 @@ window.loadExamPapers = function(examID, search = '', status = '', week = '') {
                                             <p class="mb-0 text-muted">
                                                 <small><i class="bi bi-calendar"></i> Uploaded: ${new Date(paper.created_at).toLocaleString()}</small>
                                             </p>
-                                            ${renderQuestionFormats(paper)}
+
+                                            ${renderApprovalChainMap(paper)}
+                                            
+                                            ${paper.can_view_content ? `
+                                                ${renderQuestionFormats(paper)}
+                                            ` : `
+                                                <div class="mt-3 p-3 border rounded bg-light text-center">
+                                                    <i class="bi bi-shield-lock" style="font-size: 1.5rem; color: #6c757d;"></i>
+                                                    <p class="mb-0 mt-2 text-muted small">
+                                                        Paper content is hidden. It will be visible to you once it reaches the <strong>Admin Approval</strong> stage.
+                                                    </p>
+                                                </div>
+                                            `}
                                         </div>
                                         <div class="col-md-4 text-md-right mt-3 mt-md-0">
-                                            ${hasPermission('view_exam_papers') ? `
+                                            ${hasPermission('view_exam_papers') && paper.can_view_content ? `
                                                 <button class="btn btn-sm btn-info view-paper-btn mb-2 w-100 w-md-auto" data-paper-id="${paper.exam_paperID}" data-exam-id="${examID}" title="View Exam Paper">
                                                     <i class="bi bi-eye"></i> View
                                                 </button><br class="d-none d-md-block">
                                             ` : ''}
-                                            ${paper.upload_type === 'upload' && paper.file_path ? `
+                                            ${paper.upload_type === 'upload' && paper.file_path && paper.can_view_content ? `
                                                 <a href="/download_exam_paper/${paper.exam_paperID}" class="btn btn-sm btn-primary-custom mb-2 w-100 w-md-auto" title="Download">
                                                     <i class="bi bi-download"></i> Download
                                                 </a><br class="d-none d-md-block">
@@ -4718,21 +4876,23 @@ window.loadExamPapers = function(examID, search = '', status = '', week = '') {
                                                     <i class="bi bi-printer"></i> Print
                                                 </button><br class="d-none d-md-block">
                                             ` : ''}
-                                            ${paper.status === 'wait_approval' ? `
+                                            ${paper.status === 'wait_approval' || (paper.status === 'pending' && paper.can_approve) ? `
                                                 <div class="approve-reject-actions" data-paper-id="${paper.exam_paperID}">
-                                                    ${hasPermission('approve_exam_paper') ? `
-                                                        <button class="btn btn-sm btn-success show-approve-form-btn mb-2 w-100 w-md-auto" data-paper-id="${paper.exam_paperID}" title="Approve">
+                                                    ${paper.can_approve ? `
+                                                        <button class="btn btn-sm btn-success show-approve-form-btn mb-2 w-100 w-md-auto" data-paper-id="${paper.exam_paperID}" data-log-id="${paper.pending_log_id}" title="Approve">
                                                             <i class="bi bi-check-circle"></i> Approve
                                                         </button><br class="d-none d-md-block">
-                                                    ` : ''}
-                                                    ${hasPermission('reject_exam_paper') ? `
-                                                        <button class="btn btn-sm btn-danger show-reject-form-btn mb-2 w-100 w-md-auto" data-paper-id="${paper.exam_paperID}" title="Reject">
+                                                        <button class="btn btn-sm btn-danger show-reject-form-btn mb-2 w-100 w-md-auto" data-paper-id="${paper.exam_paperID}" data-log-id="${paper.pending_log_id}" title="Reject">
                                                             <i class="bi bi-x-circle"></i> Reject
                                                         </button>
-                                                    ` : ''}
+                                                    ` : `
+                                                        <div class="small text-muted font-italic mb-2">
+                                                            <i class="bi bi-clock"></i> Currently Pending at: <br><strong>${paper.current_approver_role}</strong>
+                                                        </div>
+                                                    `}
                                                     <div class="approve-form mt-2" id="approve-form-${paper.exam_paperID}" style="display: none;">
                                                         <textarea class="form-control mb-2" rows="3" placeholder="Approval comment (optional)..." id="approval-comment-${paper.exam_paperID}"></textarea>
-                                                        <button class="btn btn-sm btn-success submit-approve-btn w-100" data-paper-id="${paper.exam_paperID}">
+                                                        <button class="btn btn-sm btn-success submit-approve-btn w-100" data-paper-id="${paper.exam_paperID}" data-log-id="${paper.pending_log_id}">
                                                             <i class="bi bi-check-circle"></i> Submit Approval
                                                         </button>
                                                         <button class="btn btn-sm btn-secondary cancel-approve-btn w-100 mt-1" data-paper-id="${paper.exam_paperID}">
@@ -4741,7 +4901,7 @@ window.loadExamPapers = function(examID, search = '', status = '', week = '') {
                                                     </div>
                                                     <div class="reject-form mt-2" id="reject-form-${paper.exam_paperID}" style="display: none;">
                                                         <textarea class="form-control mb-2" rows="3" placeholder="Rejection reason (required)..." id="rejection-reason-${paper.exam_paperID}" required></textarea>
-                                                        <button class="btn btn-sm btn-danger submit-reject-btn w-100" data-paper-id="${paper.exam_paperID}">
+                                                        <button class="btn btn-sm btn-danger submit-reject-btn w-100" data-paper-id="${paper.exam_paperID}" data-log-id="${paper.pending_log_id}">
                                                             <i class="bi bi-x-circle"></i> Submit Rejection
                                                         </button>
                                                         <button class="btn btn-sm btn-secondary cancel-reject-btn w-100 mt-1" data-paper-id="${paper.exam_paperID}">
@@ -4866,6 +5026,8 @@ $(document).on('click', '.submit-approve-btn', function() {
         }
     });
 
+    const logID = $(this).data('log-id');
+
     // Submit approval
     $.ajax({
         url: '/approve_reject_exam_paper/' + paperID,
@@ -4873,6 +5035,7 @@ $(document).on('click', '.submit-approve-btn', function() {
         data: {
             action: 'approve',
             approval_comment: approvalComment,
+            paper_approval_log_id: logID,
             _token: $('meta[name="csrf-token"]').attr('content')
         },
         success: function(response) {
@@ -4968,6 +5131,8 @@ $(document).on('click', '.submit-reject-btn', function() {
         }
     });
 
+    const logID = $(this).data('log-id');
+
     // Submit rejection
     $.ajax({
         url: '/approve_reject_exam_paper/' + paperID,
@@ -4975,6 +5140,7 @@ $(document).on('click', '.submit-reject-btn', function() {
         data: {
             action: 'reject',
             rejection_reason: rejectionReason,
+            paper_approval_log_id: logID,
             _token: $('meta[name="csrf-token"]').attr('content')
         },
         success: function(response) {

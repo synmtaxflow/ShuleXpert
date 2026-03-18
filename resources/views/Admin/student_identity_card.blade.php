@@ -415,7 +415,7 @@
                                                 }
                                             @endphp
                                             <img src="{{ $schoolLogo }}" alt="Logo">
-                                            <h6>{{ $student->school->school_name ?? 'ShuleLink Academy' }}<br><small>Student Identity Card</small></h6>
+                                            <h6>{{ $student->school->school_name ?? 'ShuleXpert Academy' }}<br><small>Student Identity Card</small></h6>
                                         </div>
                                         <div class="id-body">
                                             @php
@@ -444,7 +444,7 @@
                                             <p class="mb-1"><strong>Parent:</strong> {{ $student->parent->first_name ?? '' }} {{ $student->parent->last_name ?? '' }}</p>
                                             <p class="mb-1"><strong>Contact:</strong> {{ $student->parent->phone ?? 'N/A' }}</p>
                                             <p class="mb-1"><strong>Address:</strong> {{ $student->address ?? 'N/A' }}</p>
-                                            <p class="mt-2 small text-muted">This card is the property of {{ $student->school->school_name ?? 'ShuleLink' }}. If found, please return it to the nearest school office or call {{ $student->school->phone ?? 'the office' }}.</p>
+                                            <p class="mt-2 small text-muted">This card is the property of {{ $student->school->school_name ?? 'ShuleXpert' }}. If found, please return it to the nearest school office or call {{ $student->school->phone ?? 'the office' }}.</p>
                                             
                                             <div class="id-qr">
                                                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ $student->studentID }}" alt="QR" style="width: 100%; height: 100%;">

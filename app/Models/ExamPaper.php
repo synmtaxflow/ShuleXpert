@@ -27,6 +27,7 @@ class ExamPaper extends Model
         'status',
         'rejection_reason',
         'approval_comment',
+        'current_approval_order',
     ];
 
     protected $casts = [
@@ -63,6 +64,11 @@ class ExamPaper extends Model
     public function optionalRanges()
     {
         return $this->hasMany(ExamPaperOptionalRange::class, 'exam_paperID', 'exam_paperID');
+    }
+
+    public function approvalLogs()
+    {
+        return $this->hasMany(PaperApprovalLog::class, 'exam_paperID', 'exam_paperID');
     }
 }
 

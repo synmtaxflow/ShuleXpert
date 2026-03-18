@@ -666,11 +666,11 @@
 <div class="container-fluid mt-4">
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body bg-light rounded">
-            <div class="d-flex justify-content-between align-items-center">
-                <h4 class="mb-0 text-primary-custom">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                <h4 class="mb-0 text-primary-custom w-100 text-center text-md-start">
                     <i class="bi bi-people-fill"></i> Manage Students
                 </h4>
-                <div class="d-flex gap-2">
+                <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-end w-100">
                     @php
                         $canCreate = ($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('student_create');
                         $canUpdate = ($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('student_update');
@@ -678,7 +678,13 @@
                     @endphp
                     @if($canCreate)
                     <button class="btn btn-outline-primary-custom fw-bold" id="addStudentBtn" type="button" data-bs-toggle="modal" data-bs-target="#classSelectorModal">
-                        <i class="bi bi-person-plus"></i> Register New Student
+                        <i class="bi bi-person-plus"></i> Register
+                    </button>
+                    <a href="{{ route('download_student_template') }}" class="btn btn-outline-info fw-bold" target="_blank">
+                        <i class="bi bi-download"></i> Template
+                    </a>
+                    <button class="btn btn-outline-success fw-bold" id="importBtn" type="button">
+                        <i class="bi bi-file-earmark-excel"></i> Import
                     </button>
                     @endif
                 </div>
@@ -1330,6 +1336,50 @@
     </div>
 </div>
 
+<!-- Import Students Modal -->
+<div class="modal fade" id="importStudentsModal" tabindex="-1" aria-labelledby="importStudentsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 0;">
+            <div class="modal-header bg-success text-white" style="border-radius: 0;">
+                <h5 class="modal-title" id="importStudentsModalLabel">
+                    <i class="bi bi-file-earmark-excel"></i> Import Students from Excel
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="importStudentsForm" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <div class="alert alert-info" style="border-radius: 0; border-left: 4px solid #0dcaf0;">
+                        <strong><i class="bi bi-info-circle-fill"></i> Instructions:</strong>
+                         <ol class="mb-0 mt-2 ps-3">
+                            <li>Download the Excel template first.</li>
+                            <li>Fill in the <strong>complete registration details</strong> including parent info, health details, and emergency contacts.</li>
+                            <li>Make sure to use the exact Subclass ID listed in the <strong>"Valid Subclasses"</strong> sheet.</li>
+                            <li>Upload the completed file to register multiple students at once with full details.</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="text-center mb-4 mt-3">
+                        <a href="{{ route('download_student_template') }}" class="btn btn-outline-success fw-bold" target="_blank">
+                            <i class="bi bi-download"></i> Download Excel Template
+                        </a>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="excelFile" class="form-label fw-bold">Select Completed Excel Data File <span class="text-danger">*</span></label>
+                        <input class="form-control" type="file" id="excelFile" name="excel_file" accept=".xlsx,.xls,.csv" required style="border-radius: 0;">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light" style="border-radius: 0;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle"></i> Cancel</button>
+                    <button type="submit" class="btn btn-success px-4" id="importSubmitBtn">
+                        <i class="bi bi-upload"></i> Upload && Import Data
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- Select2 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
@@ -1428,6 +1478,116 @@
                     confirmButtonColor: '#940000'
                 });
             }
+        });
+
+        // Handle Import Excel Button Click
+        $('#importBtn').on('click', function(e) {
+            e.preventDefault();
+            const modal = document.getElementById('importStudentsModal');
+            if (modal) {
+                // Try Bootstrap 5 modal
+                if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                    const bsModal = new bootstrap.Modal(modal, {
+                        backdrop: true,
+                        keyboard: true
+                    });
+                    bsModal.show();
+                } else if (window.jQuery && typeof jQuery.fn.modal === 'function') {
+                    // Fallback to jQuery Bootstrap modal
+                    jQuery(modal).modal('show');
+                } else {
+                    // Manual fallback
+                    modal.style.display = 'block';
+                    modal.classList.add('show');
+                    document.body.classList.add('modal-open');
+                    const backdrop = document.createElement('div');
+                    backdrop.className = 'modal-backdrop fade show';
+                    backdrop.id = 'importSelectorBackdrop';
+                    document.body.appendChild(backdrop);
+                }
+            } else {
+                console.error('importStudentsModal not found');
+            }
+        });
+
+        // Add robust close handlers for the import modal
+        $('#importStudentsModal .btn-close, #importStudentsModal .btn-secondary').on('click', function() {
+            const modal = document.getElementById('importStudentsModal');
+            if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                const bsModal = bootstrap.Modal.getInstance(modal);
+                if (bsModal) {
+                    bsModal.hide();
+                } else {
+                    $('#importStudentsModal').removeClass('show').css('display', 'none');
+                    $('.modal-backdrop').remove();
+                    $('body').removeClass('modal-open');
+                }
+            } else if (window.jQuery && typeof jQuery.fn.modal === 'function') {
+                $('#importStudentsModal').modal('hide');
+            } else {
+                $('#importStudentsModal').removeClass('show').css('display', 'none');
+                $('#importSelectorBackdrop').remove();
+                $('body').removeClass('modal-open');
+            }
+        });
+
+        // Handle Import form
+        $('#importStudentsForm').on('submit', function(e) {
+            e.preventDefault();
+            let formData = new FormData(this);
+            formData.append('_token', '{{ csrf_token() }}');
+
+            $('#importSubmitBtn').prop('disabled', true).html('<i class="spinner-border spinner-border-sm"></i> Importing...');
+
+            $.ajax({
+                url: '{{ route("upload_students") }}',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(response) {
+                    $('#importSubmitBtn').prop('disabled', false).html('<i class="bi bi-upload"></i> Upload & Import Data');
+                    if (response.success) {
+                        $('#importStudentsModal').modal('hide');
+                        $('#importStudentsForm')[0].reset();
+                        
+                        let msg = response.message;
+                        if (response.errors && response.errors.length > 0) {
+                            msg += "<br><br><strong>Note:</strong> Some rows failed. See console or notify admin.";
+                            console.error("Import Row Errors:", response.errors);
+                        }
+                        
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Success!',
+                            html: msg,
+                            confirmButtonColor: '#28a745'
+                        }).then(() => {
+                            reloadData();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Import Failed',
+                            text: response.message,
+                            confirmButtonColor: '#dc3545'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    $('#importSubmitBtn').prop('disabled', false).html('<i class="bi bi-upload"></i> Upload & Import Data');
+                    let errorMsg = 'An error occurred during import.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'System Error',
+                        text: errorMsg,
+                        confirmButtonColor: '#dc3545'
+                    });
+                }
+            });
         });
 
         // Show/hide allergies details based on checkbox

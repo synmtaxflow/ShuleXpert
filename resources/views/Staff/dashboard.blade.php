@@ -193,3 +193,7 @@
 </div>
 
 @include('includes.footer')
+
+</div><!-- /#right-panel -->
+</body>
+</html>

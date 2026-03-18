@@ -25,7 +25,7 @@ class AcademicYearsController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (!$schoolID || $userType !== 'Admin') {
+        if (!$schoolID || !in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
             return redirect()->route('login')->with('error', 'Access denied');
         }
 
@@ -62,7 +62,7 @@ class AcademicYearsController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (!$schoolID || $userType !== 'Admin') {
+        if (!$schoolID || !in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
             return redirect()->route('login')->with('error', 'Access denied');
         }
 
@@ -159,7 +159,7 @@ class AcademicYearsController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (!$schoolID || $userType !== 'Admin') {
+        if (!$schoolID || !in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied'
@@ -249,7 +249,7 @@ class AcademicYearsController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (!$schoolID || $userType !== 'Admin') {
+        if (!$schoolID || !in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
             return response()->json([
                 'success' => false,
                 'message' => 'Access denied'
@@ -1391,7 +1391,7 @@ class AcademicYearsController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (!$schoolID || $userType !== 'Admin') {
+        if (!$schoolID || !in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
             return redirect()->route('login')->with('error', 'Access denied');
         }
 

@@ -62,7 +62,7 @@
         font-size: 0.875em;
         color: #dc3545;
     }
-    
+
     /* School Details Card Styles (like manage_school) */
     .school-details-card {
         background: white;
@@ -71,7 +71,7 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         margin-bottom: 25px;
     }
-    
+
     .school-header {
         display: flex;
         align-items: center;
@@ -80,14 +80,14 @@
         padding-bottom: 15px;
         border-bottom: 2px solid #e9ecef;
     }
-    
+
     .school-title {
         font-size: 1.5rem;
         font-weight: 600;
         color: #212529;
         margin: 0;
     }
-    
+
     .school-logo-preview {
         width: 80px;
         height: 80px;
@@ -99,19 +99,19 @@
         overflow: hidden;
         border: 2px solid #e9ecef;
     }
-    
+
     .school-logo-preview img {
         max-width: 100%;
         max-height: 100%;
         object-fit: cover;
     }
-    
+
     .school-info-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 15px;
     }
-    
+
     .info-item {
         display: flex;
         align-items: flex-start;
@@ -119,7 +119,7 @@
         background: #f8f9fa;
         border-radius: 8px;
     }
-    
+
     .info-item i {
         color: #6c757d;
         margin-right: 10px;
@@ -127,11 +127,11 @@
         font-size: 18px;
         width: 20px;
     }
-    
+
     .info-item-content {
         flex: 1;
     }
-    
+
     .info-item-label {
         font-size: 0.75rem;
         color: #6c757d;
@@ -139,7 +139,7 @@
         letter-spacing: 0.5px;
         margin-bottom: 3px;
     }
-    
+
     .info-item-value {
         font-size: 0.95rem;
         color: #212529;
@@ -273,37 +273,42 @@
                             <a class="list-group-item active" data-target="#section-teachers">
                                 <i class="bi bi-people-fill"></i> Teachers List
                             </a>
-                            <a class="list-group-item" data-target="#section-add-teacher" data-permission="register_teacher">
+                            <a class="list-group-item" data-target="#section-add-teacher" data-permission="teacher_create">
                     <i class="bi bi-person-plus"></i> Add New Teacher
                             </a>
-                            <a class="list-group-item" data-target="#section-assign-role" data-permission="assign_role_teacher">
+                            <a class="list-group-item" data-target="#section-assign-role" data-permission="teacher_update">
                                 <i class="bi bi-person-badge"></i> Assign Roles
                             </a>
-                            <a class="list-group-item" data-target="#section-view-roles" data-permission="view_teachers_roles">
+                            <a class="list-group-item" data-target="#section-view-roles" data-permission="teacher_read_only">
                                 <i class="bi bi-eye"></i> View Teachers Roles
                             </a>
-                            <a class="list-group-item" data-target="#section-manage-roles" data-permission="manage_roles_permissions">
+                            <a class="list-group-item" data-target="#section-manage-roles" data-permission="teacher_update">
                                 <i class="bi bi-shield-check"></i> Manage Roles & Permissions
                             </a>
                         </div>
 
                         <div class="section-title mt-4 mb-2">Staff Management</div>
                         <div class="list-group staff-menu">
-                            <a class="list-group-item" data-target="#section-staff">
+                            <a class="list-group-item" data-target="#section-staff" data-permission="staff_read_only">
                                 <i class="bi bi-people-fill"></i> Staff List
                             </a>
-                            <a class="list-group-item" data-target="#section-add-staff">
+                            <a class="list-group-item" data-target="#section-add-staff" data-permission="staff_create">
                                 <i class="bi bi-person-plus"></i> Add New Staff
                             </a>
-                            <a class="list-group-item" data-target="#section-assign-position">
+                            <a class="list-group-item" data-target="#section-assign-position" data-permission="staff_update">
                                 <i class="bi bi-person-badge"></i> Assign Position to Staff
                             </a>
-                            <a class="list-group-item" data-target="#section-view-positions">
+                            <a class="list-group-item" data-target="#section-view-positions" data-permission="staff_read_only">
                                 <i class="bi bi-eye"></i> View Staff Positions
                             </a>
-                            <a class="list-group-item" data-target="#section-manage-positions">
+                            <a class="list-group-item" data-target="#section-manage-positions" data-permission="staff_update">
                                 <i class="bi bi-shield-check"></i> Manage Positions and Permission
                             </a>
+                        </div>
+                        <div class="mt-4">
+                            <button class="btn btn-success w-100" id="exportUserRolesBtn">
+                                <i class="bi bi-file-earmark-excel"></i> Export User Roles to Excel
+                            </button>
                         </div>
                         <div class="card border-primary-custom mt-3">
                             <div class="card-body">
@@ -422,7 +427,7 @@
                                                         <div class="info-item-value">{{ $teacher->gender }}</div>
                                                     </div>
                                                 </div>
-                                                
+
                                                 @if($teacher->position)
                                                 <div class="info-item">
                                                     <i class="bi bi-briefcase"></i>
@@ -432,7 +437,7 @@
                                                     </div>
                                                 </div>
                                                 @endif
-                                                
+
                                                 <div class="info-item">
                                                     <i class="bi bi-card-text"></i>
                                                     <div class="info-item-content">
@@ -440,7 +445,7 @@
                                                         <div class="info-item-value">{{ $teacher->national_id }}</div>
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="info-item">
                                                     <i class="bi bi-person-badge"></i>
                                                     <div class="info-item-content">
@@ -448,7 +453,7 @@
                                                         <div class="info-item-value">{{ $teacher->employee_number }}</div>
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="info-item">
                                                     <i class="bi bi-envelope"></i>
                                                     <div class="info-item-content">
@@ -456,7 +461,7 @@
                                                         <div class="info-item-value">{{ $teacher->email }}</div>
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="info-item">
                                                     <i class="bi bi-telephone"></i>
                                                     <div class="info-item-content">
@@ -472,7 +477,7 @@
                                                                             <div class="info-item-value">{{ $teacher->fingerprint_id ?? 'Not assigned' }}</div>
                                                                         </div>
                                                                     </div>
-                                                
+
                                                 @if($teacher->qualification)
                                                 <div class="info-item">
                                                     <i class="bi bi-mortarboard"></i>
@@ -482,7 +487,7 @@
                                                     </div>
                                                 </div>
                                                 @endif
-                                                
+
                                                 @if($teacher->specialization)
                                                 <div class="info-item">
                                                     <i class="bi bi-book"></i>
@@ -492,7 +497,7 @@
                                                     </div>
                                                 </div>
                                                 @endif
-                                                
+
                                                 @if($teacher->experience)
                                                 <div class="info-item">
                                                     <i class="bi bi-clock-history"></i>
@@ -502,7 +507,7 @@
                                                     </div>
                                                 </div>
                                                 @endif
-                                                
+
                                                 @if($teacher->date_of_birth)
                                                 <div class="info-item">
                                                     <i class="bi bi-calendar-event"></i>
@@ -512,7 +517,7 @@
                                                     </div>
                                                 </div>
                                                 @endif
-                                                
+
                                                 @if($teacher->date_hired)
                                                 <div class="info-item">
                                                     <i class="bi bi-calendar-check"></i>
@@ -522,7 +527,7 @@
                                                     </div>
                                                 </div>
                                                 @endif
-                                                
+
                                                 @if($teacher->address)
                                                 <div class="info-item">
                                                     <i class="bi bi-geo-alt"></i>
@@ -1296,25 +1301,41 @@
                                         <div class="border rounded p-3" style="max-height: 320px; overflow-y: auto;">
                                             @php
                                                 $staffPermissionCategories = [
-                                                    'Examination Management' => 'examination',
-                                                    'Classes Management' => 'classes',
-                                                    'Subject Management' => 'subject',
-                                                    'Result Management' => 'result',
-                                                    'Attendance Management' => 'attendance',
-                                                    'Student Management' => 'student',
-                                                    'Parent Management' => 'parent',
-                                                    'Timetable Management' => 'timetable',
-                                                    'Teacher Management' => 'teacher',
-                                                    'Fees Management' => 'fees',
-                                                    'Accommodation Management' => 'accommodation',
-                                                    'Library Management' => 'library',
-                                                    'Calendar Management' => 'calendar',
-                                                    'Fingerprint Settings' => 'fingerprint',
-                                                    'Task Management' => 'task',
-                                                    'SMS Information' => 'sms',
-                                                    'Revenue Management' => 'revenue',
-                                                    'Expenses Management' => 'expenses',
-                                                    'Resources Management' => 'resources',
+                                                    '1. Examination Management' => 'examination',
+                                                    '2. Classes Management' => 'classes',
+                                                    '3. Subject Management' => 'subject',
+                                                    '4. Result Management' => 'result',
+                                                    '5. Attendance Management' => 'attendance',
+                                                    '6. Student Management' => 'student',
+                                                    '7. Parent Management' => 'parent',
+                                                    '8. Timetable Management' => 'timetable',
+                                                    '9. Fees Management' => 'fees',
+                                                    '10. Accommodation Management' => 'accommodation',
+                                                    '11. Library Management' => 'library',
+                                                    '12. Calendar Management' => 'calendar',
+                                                    '13. Fingerprint Settings' => 'fingerprint',
+                                                    '14. Task Management' => 'task',
+                                                    '15. SMS Information' => 'sms',
+                                                    '16. Subject Analysis' => 'subject_analysis',
+                                                    '17. Teacher Management' => 'teacher',
+                                                    '18. Printing Unit' => 'printing_unit',
+                                                    '19. Watchman' => 'watchman',
+                                                    '20. School Visitors' => 'school_visitors',
+                                                    '21. Scheme of Work' => 'scheme_of_work',
+                                                    '22. Lesson Plans' => 'lesson_plans',
+                                                    '23. Academic Years' => 'academic_years',
+                                                    '24. School Management' => 'school',
+                                                    '25. Sponsor Management' => 'sponsor',
+                                                    '26. Student ID Card' => 'student_id_card',
+                                                    '27. HR Operations' => 'hr',
+                                                    '28. Teacher Duty' => 'teacher_duty',
+                                                    '29. Feedback Management' => 'feedback',
+                                                    '30. Staff Feedback' => 'staff_feedback',
+                                                    '31. Performance Management' => 'performance',
+                                                    '32. Accountant Module' => 'accountant',
+                                                    '33. Goal Management' => 'goal',
+                                                    '34. Departments Management' => 'department',
+                                                    '35. Staff Management' => 'staff',
                                                 ];
                                                 $staffPermissionActions = ['create', 'update', 'delete', 'read_only'];
                                             @endphp
@@ -1328,7 +1349,7 @@
                                                                 <div class="form-check">
                                                                     <input class="form-check-input staff-permission-checkbox" type="checkbox" name="permissions[]" value="{{ $permissionName }}" id="staff_perm_{{ md5($permissionName) }}">
                                                                     <label class="form-check-label" for="staff_perm_{{ md5($permissionName) }}">
-                                                                        {{ ucfirst(str_replace('_', ' ', $action)) }}
+                                                                        {{ $action == 'read_only' ? 'Read Only' : ucfirst($action) }}
                                                                     </label>
                                                                 </div>
                                                             </div>
@@ -1596,7 +1617,7 @@
                                             <div class="form-check">
                                                 <input class="form-check-input staff-edit-permission-checkbox" type="checkbox" name="permissions[]" value="{{ $permissionName }}" id="edit_staff_perm_{{ md5($permissionName) }}">
                                                 <label class="form-check-label" for="edit_staff_perm_{{ md5($permissionName) }}">
-                                                    {{ ucfirst(str_replace('_', ' ', $action)) }}
+                                                    {{ $action == 'read_only' ? 'Read Only' : ucfirst($action) }}
                                                 </label>
                                             </div>
                                         </div>
@@ -1884,7 +1905,7 @@
                             scrollbar-width: none; /* Firefox - hide scrollbar */
                             -ms-overflow-style: none; /* IE and Edge - hide scrollbar */
                         }
-                        
+
                         /* Hide scrollbar for Chrome, Safari, Opera */
                         #editTeacherModalBody::-webkit-scrollbar {
                             display: none;
@@ -2061,28 +2082,48 @@
                                    id="searchPermissionCategory"
                                    placeholder="Search by category name (e.g., Examination, Class, Timetable...)">
                             <small class="text-muted">
-                                <i class="bi bi-info-circle"></i> Type to filter categories. Categories: Examination, Classes, Subject, Result, Attendance, Student, Parent, Timetable, Fees, Accommodation, Library, Calendar, Fingerprint, Task, SMS
+                                <i class="bi bi-info-circle"></i> Type to filter categories. Categories: Examination, Classes, Subject, Result, Attendance, Student, Parent, Timetable, Fees, Accommodation, Library, Calendar, Fingerprint, Task, SMS, Subject Analysis, Printing Unit, Watchman, School Visitors, Scheme of Work, Lesson Plans, Academic Years, School, Sponsor, Student ID Card, HR, Teacher Duty, Feedback, Staff Feedback, Performance, Accountant, Goal, Department, Staff
                             </small>
                         </div>
                         <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;" id="permissionsContainer">
                             @php
                                 // New permission structure: Each category has 4 actions: create, update, delete, read_only
                                 $permissionCategories = [
-                                    'Examination Management' => 'examination',
-                                    'Classes Management' => 'classes',
-                                    'Subject Management' => 'subject',
-                                    'Result Management' => 'result',
-                                    'Attendance Management' => 'attendance',
-                                    'Student Management' => 'student',
-                                    'Parent Management' => 'parent',
-                                    'Timetable Management' => 'timetable',
-                                    'Fees Management' => 'fees',
-                                    'Accommodation Management' => 'accommodation',
-                                    'Library Management' => 'library',
-                                    'Calendar Management' => 'calendar',
-                                    'Fingerprint Settings' => 'fingerprint',
-                                    'Task Management' => 'task',
-                                    'SMS Information' => 'sms',
+                                    '1. Examination Management' => 'examination',
+                                    '2. Classes Management' => 'classes',
+                                    '3. Subject Management' => 'subject',
+                                    '4. Result Management' => 'result',
+                                    '5. Attendance Management' => 'attendance',
+                                    '6. Student Management' => 'student',
+                                    '7. Parent Management' => 'parent',
+                                    '8. Timetable Management' => 'timetable',
+                                    '9. Fees Management' => 'fees',
+                                    '10. Accommodation Management' => 'accommodation',
+                                    '11. Library Management' => 'library',
+                                    '12. Calendar Management' => 'calendar',
+                                    '13. Fingerprint Settings' => 'fingerprint',
+                                    '14. Task Management' => 'task',
+                                    '15. SMS Information' => 'sms',
+                                    '16. Subject Analysis' => 'subject_analysis',
+                                    '17. Teacher Management' => 'teacher',
+                                    '18. Printing Unit' => 'printing_unit',
+                                    '19. Watchman' => 'watchman',
+                                    '20. School Visitors' => 'school_visitors',
+                                    '21. Scheme of Work' => 'scheme_of_work',
+                                    '22. Lesson Plans' => 'lesson_plans',
+                                    '23. Academic Years' => 'academic_years',
+                                    '24. School Management' => 'school',
+                                    '25. Sponsor Management' => 'sponsor',
+                                    '26. Student ID Card' => 'student_id_card',
+                                    '27. HR Operations' => 'hr',
+                                    '28. Teacher Duty' => 'teacher_duty',
+                                    '29. Feedback Management' => 'feedback',
+                                    '30. Staff Feedback' => 'staff_feedback',
+                                    '31. Performance Management' => 'performance',
+                                    '32. Accountant Module' => 'accountant',
+                                    '33. Goal Management' => 'goal',
+                                    '34. Departments Management' => 'department',
+                                    '35. Staff Management' => 'staff',
                                 ];
                                 $permissionActions = ['create', 'update', 'delete', 'read_only'];
                             @endphp
@@ -2092,7 +2133,7 @@
                                     <div class="mb-4 permission-category-group" data-category-name="{{ strtolower($categoryKey) }}">
                                         <div class="d-flex justify-content-between align-items-center mb-3">
                                             <h6 class="text-primary-custom fw-bold mb-0">
-                                                <i class="bi bi-folder-fill"></i> {{ $loop->iteration }}. {{ $categoryName }}
+                                                <i class="bi bi-folder-fill"></i> {{ $categoryName }}
                                             </h6>
                                             <button type="button" class="btn btn-sm btn-outline-primary category-select-all" data-category="{{ $loop->iteration }}">
                                                 <i class="bi bi-check-square"></i> Select All
@@ -2102,7 +2143,7 @@
                                             @foreach($permissionActions as $action)
                                                 @php
                                                     $permissionName = $categoryKey . '_' . $action;
-                                                    $actionLabel = ucfirst(str_replace('_', ' ', $action));
+                                                    $actionLabel = $action == 'read_only' ? 'Read Only' : ucfirst($action);
                                                 @endphp
                                                 <div class="col-md-6 col-lg-3 mb-2">
                                                     <div class="form-check">
@@ -2286,7 +2327,7 @@
                                    id="searchEditPermissionCategory"
                                    placeholder="Search by category name (e.g., Examination, Class, Timetable...)">
                             <small class="text-muted">
-                                <i class="bi bi-info-circle"></i> Type to filter categories. Categories: Examination, Classes, Subject, Result, Attendance, Student, Parent, Timetable, Fees, Accommodation, Library, Calendar, Fingerprint, Task, SMS
+                                <i class="bi bi-info-circle"></i> Type to filter categories. Categories: Examination, Classes, Subject, Result, Attendance, Student, Parent, Timetable, Fees, Accommodation, Library, Calendar, Fingerprint, Task, SMS, Subject Analysis, Printing Unit, Watchman, School Visitors, Scheme of Work, Lesson Plans, Academic Years, School, Sponsor, Student ID Card, HR, Teacher Duty, Feedback, Staff Feedback, Performance, Accountant, Goal, Department, Staff
                             </small>
                         </div>
                         <div class="border rounded p-3" style="max-height: 400px; overflow-y: auto;" id="editPermissionsContainer">
@@ -2527,6 +2568,7 @@
         var changeRoleModal = null;
         var addRoleModal = null;
         var addPermissionModal = null;
+        var editRoleNameModal = null;
         var editRolePermissionsModal = null;
         var rolesTable = null;
         var rolesTableInitialized = false;
@@ -3493,11 +3535,11 @@
         // Handle Edit Teacher Button Click
         $(document).on('click', '.edit-teacher-btn', function(e) {
             e.preventDefault();
-            if (!hasPermission('edit_teacher')) {
+            if (!hasPermission('teacher_update')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Access Denied',
-                    text: 'You are not allowed to perform this action. You need the edit_teacher permission.'
+                    text: 'You are not allowed to perform this action. You need the teacher_update permission.'
                 });
                 return false;
             }
@@ -3576,7 +3618,7 @@
                 showLoaderOnConfirm: true,
                 preConfirm: () => {
                     $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Sending...');
-                    
+
                     return $.ajax({
                         url: "{{ route('send_teacher_to_fingerprint') }}",
                         type: "POST",
@@ -3741,11 +3783,11 @@
         // Handle Change Role Button Click
         $(document).on('click', '.change-role-btn', function(e) {
             e.preventDefault();
-            if (!hasPermission('assign_role_teacher')) {
+            if (!hasPermission('teacher_update')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Access Denied',
-                    text: 'You are not allowed to perform this action. You need the assign_role_teacher permission.'
+                    text: 'You are not allowed to perform this action. You need the teacher_update permission.'
                 });
                 return false;
             }
@@ -3851,11 +3893,11 @@
         // Handle Remove Role Button Click
         $(document).on('click', '.remove-role-btn', function(e) {
             e.preventDefault();
-            if (!hasPermission('assign_role_teacher')) {
+            if (!hasPermission('teacher_update')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Access Denied',
-                    text: 'You are not allowed to perform this action. You need the assign_role_teacher permission.'
+                    text: 'You are not allowed to perform this action. You need the teacher_update permission.'
                 });
                 return false;
             }
@@ -3924,11 +3966,11 @@
         // Handle Assign Role Form Submission
         $(document).on('submit', '#assignRoleForm', function(e) {
             e.preventDefault();
-            if (!hasPermission('assign_role_teacher')) {
+            if (!hasPermission('teacher_update')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Access Denied',
-                    text: 'You are not allowed to perform this action. You need the assign_role_teacher permission.'
+                    text: 'You are not allowed to perform this action. You need the teacher_update permission.'
                 });
                 return false;
             }
@@ -4000,11 +4042,11 @@
         // Handle Teacher Form Submission
         $(document).on('submit', '#teacherForm', function(e) {
             e.preventDefault();
-            if (!hasPermission('register_teacher')) {
+            if (!hasPermission('teacher_create')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Access Denied',
-                    text: 'You are not allowed to perform this action. You need the register_teacher permission.'
+                    text: 'You are not allowed to perform this action. You need the teacher_create permission.'
                 });
                 return false;
             }
@@ -4026,11 +4068,21 @@
                     $('#teacherForm')[0].reset();
                     $submitBtn.prop('disabled', false).html(originalText);
 
+                    var smsInfoHtml = '';
+                    if (typeof response.sms_success !== 'undefined') {
+                        if (response.sms_success) {
+                            smsInfoHtml = '<p class="mb-0 text-success"><small>Credentials SMS: Sent</small></p>';
+                        } else {
+                            smsInfoHtml = '<p class="mb-0 text-danger"><small>Credentials SMS: Failed' + (response.sms_message ? (': ' + response.sms_message) : '') + '</small></p>';
+                        }
+                    }
+
                     Swal.fire({
                         title: 'Teacher Registered Successfully!',
                         html: '<div class="text-center">' +
                               '<p class="mb-3">Teacher registered successfully</p>' +
                               '<p class="mb-0">Please continue register user in fingerprint device ID <strong style="font-size: 1.2rem; color: #940000;">' + (response.fingerprint_id || 'N/A') + '</strong></p>' +
+                              smsInfoHtml +
                               '</div>',
                         icon: 'success',
                         confirmButtonText: 'OK',
@@ -4096,11 +4148,11 @@
         // Handle Edit Teacher Form Submission
         $(document).on('submit', '#editTeacherForm', function(e) {
             e.preventDefault();
-            if (!hasPermission('edit_teacher')) {
+            if (!hasPermission('teacher_update')) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Access Denied',
-                    text: 'You are not allowed to perform this action. You need the edit_teacher permission.'
+                    text: 'You are not allowed to perform this action. You need the teacher_update permission.'
                 });
                 return false;
             }
@@ -4410,17 +4462,20 @@
                 'delete_subject',
                 'approve_created_subject',
                 // Manage Teachers
-                'register_teacher',
-                'delete_teacher',
-                'edit_teacher',
-                'assign_role_teacher',
-                'approve_registered_teacher',
-                'create_roles',
-                'assign_permission',
+                'teacher_create',
+                'teacher_delete',
+                'teacher_update',
+                'teacher_read_only',
                 // Other
                 'register_parents',
-                'register_teachers',
-                'register_students'
+                'register_students',
+                // New Categories
+                'printing_unit_create', 'printing_unit_update', 'printing_unit_delete', 'printing_unit_read_only',
+                'watchman_create', 'watchman_update', 'watchman_delete', 'watchman_read_only',
+                'school_visitors_create', 'school_visitors_update', 'school_visitors_delete', 'school_visitors_read_only',
+                'scheme_of_work_create', 'scheme_of_work_update', 'scheme_of_work_delete', 'scheme_of_work_read_only',
+                'lesson_plans_create', 'lesson_plans_update', 'lesson_plans_delete', 'lesson_plans_read_only',
+                'academic_years_create', 'academic_years_update', 'academic_years_delete', 'academic_years_read_only'
             ];
             $('#bulkPermissionsText').val(defaultPermissions.join('\n'));
         });
@@ -4784,6 +4839,26 @@
                             'Fingerprint Settings': 'fingerprint',
                             'Task Management': 'task',
                             'SMS Information': 'sms',
+                            'Subject Analysis': 'subject_analysis',
+                            'Teacher Management': 'teacher',
+                            'Printing Unit': 'printing_unit',
+                            'Watchman': 'watchman',
+                            'School Visitors': 'school_visitors',
+                            'Scheme of Work': 'scheme_of_work',
+                            'Lesson Plans': 'lesson_plans',
+                            'Academic Years': 'academic_years',
+                            'School Management': 'school',
+                            'Sponsor Management': 'sponsor',
+                            'Student ID Card': 'student_id_card',
+                            'HR Operations': 'hr',
+                            'Teacher Duty': 'teacher_duty',
+                            'Feedback Management': 'feedback',
+                            'Staff Feedback': 'staff_feedback',
+                            'Performance Management': 'performance',
+                            'Accountant Module': 'accountant',
+                            'Goal Management': 'goal',
+                            'Departments Management': 'department',
+                            'Staff Management': 'staff',
                         };
                         var permissionActions = ['create', 'update', 'delete', 'read_only'];
                         var actionLabels = {
@@ -4875,7 +4950,8 @@
                 title = title.charAt(0).toUpperCase() + title.slice(1);
                 var actions = grouped[categoryKey]
                     .map(function(action) {
-                        return action.replace(/_/g, ' ');
+                        if (action === 'read_only') return 'Read Only';
+                        return action.charAt(0).toUpperCase() + action.slice(1).replace(/_/g, ' ');
                     })
                     .sort();
                 html += '<div class="mb-3">';
@@ -5360,17 +5436,17 @@
         $(document).on('click', '#teacherAttendanceTabs a.nav-link', function(e) {
             var $target = $(this);
             var targetId = $target.attr('href');
-            
+
             // Remove active from all tabs
             $('#teacherAttendanceTabs a.nav-link').removeClass('active').attr('aria-selected', 'false');
             // Add active to clicked tab
             $target.addClass('active').attr('aria-selected', 'true');
-            
+
             // Hide all tab panes
             $('#teacherAttendanceTabContent .tab-pane').removeClass('show active');
             // Show target tab pane
             $(targetId).addClass('show active');
-            
+
             // If it's the first tab, load data
             if (targetId === '#teacher-fingerprint-attendance') {
                 loadTeacherFingerprintAttendance();
@@ -5405,7 +5481,7 @@
             $.ajax({
                 url: '{{ url("api/attendance/all-teachers") }}',
                 type: 'GET',
-                data: { 
+                data: {
                     page: page
                 },
                 dataType: 'json',
@@ -5438,7 +5514,7 @@
             $.ajax({
                 url: '{{ url("api/attendance/teachers-fingerprint") }}',
                 type: 'GET',
-                data: { 
+                data: {
                     page: page,
                     date: dateFilter
                 },
@@ -5549,7 +5625,7 @@
                         const employeeNumber = teacherInfo.employee_number || 'N/A';
                         const fingerprintId = userData.enroll_id || 'N/A';
                         const attendanceDate = rec.attendance_date || '';
-                        
+
                         // Format times to HH:mm:ss only
                         const checkInTime = formatTimeOnly(rec.check_in_time || '');
                         const checkOutTime = formatTimeOnly(rec.check_out_time || '');
@@ -5580,7 +5656,7 @@
                     if ($.fn.DataTable.isDataTable('#teacherFingerprintAttendanceTable')) {
                         $('#teacherFingerprintAttendanceTable').DataTable().destroy();
                     }
-                    
+
                     $('#teacherFingerprintAttendanceTable').DataTable({
                         order: [[5, 'desc']], // Sort by attendance date descending
                         pageLength: 25,
@@ -5628,7 +5704,7 @@
             $.ajax({
                 url: '{{ url("api/attendance/teachers-fingerprint") }}',
                 type: 'GET',
-                data: { 
+                data: {
                     page: page,
                     date: dateFilter
                 },
@@ -5736,7 +5812,7 @@
                         const position = teacherInfo.position || 'N/A';
                         const fingerprintId = (rec.user && rec.user.enroll_id) || teacherInfo.teacherID || 'N/A';
                         const attendanceDate = rec.attendance_date || '';
-                        
+
                         // Format times to HH:mm:ss only
                         const checkInTime = formatTimeOnly(rec.check_in_time || '');
                         const checkOutTime = formatTimeOnly(rec.check_out_time || '');
@@ -5832,7 +5908,7 @@
             $.ajax({
                 url: '{{ url("api/attendance/all-teachers") }}',
                 type: 'GET',
-                data: { 
+                data: {
                     page: page
                 },
                 dataType: 'json',
@@ -5898,7 +5974,7 @@
                         const employeeNumber = teacherInfo.employee_number || 'N/A';
                         const enrollId = userData.enroll_id || 'N/A';
                         const attendanceDate = rec.attendance_date || '';
-                        
+
                         // Format times to HH:mm:ss only
                         const checkInTime = formatTimeOnly(rec.check_in_time || '');
                         const checkOutTime = formatTimeOnly(rec.check_out_time || '');
@@ -5976,10 +6052,10 @@
         // Show/hide pickers based on search type
         function toggleSearchPickers() {
             var searchType = $('#teacherFingerprintOverviewSearchType').val();
-            
+
             // Hide all pickers first
             $('#monthPickerContainer, #yearPickerContainer, #dayPickerContainer').hide();
-            
+
             // Show relevant picker
             if (searchType === 'month') {
                 $('#monthPickerContainer').show();
@@ -6038,6 +6114,72 @@
             loadTeacherFingerprintAttendanceOverview(searchType, searchDate, searchMonth, searchYear);
         });
 
+        // Export User Roles to Excel
+        $('#exportUserRolesBtn').on('click', function() {
+            if (typeof XLSX === 'undefined') {
+                Swal.fire('Error', 'Excel library not loaded', 'error');
+                return;
+            }
+
+            @php
+                $exportList = [];
+                // Process Teachers
+                foreach($teachers as $t) {
+                    $tRoles = $teachersWithRoles->where('teacher_id', $t->id)->pluck('role_name')->unique()->toArray();
+                    $rolesString = empty($tRoles) ? 'Teacher' : implode(', ', $tRoles);
+                    $fullName = implode(' ', array_filter([$t->first_name, $t->middle_name, $t->last_name]));
+                    $exportList[] = [
+                        'NAME' => strtoupper($fullName),
+                        'ROLE' => strtoupper($rolesString)
+                    ];
+                }
+                // Process Staff
+                foreach($otherStaff as $os) {
+                    $roleName = $os->profession->name ?? 'Staff';
+                    $fullName = implode(' ', array_filter([$os->first_name, $os->last_name]));
+                    $exportList[] = [
+                        'NAME' => strtoupper($fullName),
+                        'ROLE' => strtoupper($roleName)
+                    ];
+                }
+            @endphp
+
+            var exportData = @json($exportList);
+
+            if (exportData.length === 0) {
+                Swal.fire('Info', 'No users found to export.', 'info');
+                return;
+            }
+
+            // Create workbook and worksheet
+            var wb = XLSX.utils.book_new();
+            var ws = XLSX.utils.json_to_sheet(exportData);
+
+            // Set column widths
+            var wscols = [
+                {wch: 40}, // Name
+                {wch: 30}  // Role
+            ];
+            ws['!cols'] = wscols;
+
+            XLSX.utils.book_append_sheet(wb, ws, "User Roles");
+
+            // Write and download
+            var schoolName = '{{ $school->school_name ?? "School" }}';
+            var safeSchoolName = schoolName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            var filename = safeSchoolName + "_user_roles_" + new Date().toISOString().slice(0, 10) + ".xlsx";
+
+            XLSX.writeFile(wb, filename);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Exported!',
+                text: 'User roles list has been downloaded.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        });
+
         // Export to Excel (JavaScript only)
         $('#exportTeacherAttendanceExcelBtn').on('click', function() {
             if (!currentFilteredRecords || currentFilteredRecords.length === 0) {
@@ -6077,7 +6219,7 @@
                 $.ajax({
                     url: '{{ url("api/attendance/all-teachers") }}',
                     type: 'GET',
-                    data: { 
+                    data: {
                         page: page
                     },
                     dataType: 'json',
@@ -6085,7 +6227,7 @@
                     success: function(data) {
                         if (data.success && data.data) {
                             allRecords = allRecords.concat(data.data);
-                            
+
                             if (data.pagination && data.pagination.current_page < data.pagination.last_page) {
                                 fetchPage(page + 1);
                             } else {
@@ -6133,7 +6275,7 @@
                 $.ajax({
                     url: '{{ url("api/attendance/teachers-fingerprint") }}',
                     type: 'GET',
-                    data: { 
+                    data: {
                         page: page,
                         date: searchDate
                     },
@@ -6141,7 +6283,7 @@
                     success: function(data) {
                         if (data.success && data.data) {
                             allRecords = allRecords.concat(data.data);
-                            
+
                             if (data.pagination && data.pagination.current_page < data.pagination.last_page) {
                                 fetchPage(page + 1);
                             } else {
@@ -6149,7 +6291,7 @@
                                 processTeacherFingerprintOverview(allRecords, searchType, searchDate, totalTeachers, apiFailed, null, null);
                             }
                         } else {
-                            const message = apiFailed 
+                            const message = apiFailed
                                 ? 'No attendance data found in local database.'
                                 : 'Failed to load attendance data';
                             $('#teacherFingerprintAttendanceOverviewContent').html(`<div class="alert ${apiFailed ? 'alert-warning' : 'alert-danger'}">${message}</div>`);
@@ -6204,10 +6346,10 @@
                         var monthParts = searchMonth.split('-');
                         var monthYear = parseInt(monthParts[0]);
                         var monthMonth = parseInt(monthParts[1]) - 1; // JavaScript months are 0-indexed
-                        match = recordDate.getMonth() === monthMonth && 
+                        match = recordDate.getMonth() === monthMonth &&
                                 recordDate.getFullYear() === monthYear;
                     } else {
-                        match = recordDate.getMonth() === searchDateObj.getMonth() && 
+                        match = recordDate.getMonth() === searchDateObj.getMonth() &&
                                 recordDate.getFullYear() === searchDateObj.getFullYear();
                     }
                 } else if (searchType === 'year') {
@@ -6261,7 +6403,7 @@
                 if (rec.attendance_date) {
                     var dateLabel = rec.attendance_date;
                     var dateIndex = stats.chart_data.labels.indexOf(dateLabel);
-                    
+
                     if (dateIndex === -1) {
                         dateIndex = stats.chart_data.labels.length;
                         stats.chart_data.labels.push(dateLabel);
@@ -6278,7 +6420,7 @@
             stats.unique_teachers_count = stats.unique_teachers.size;
             stats.teachers_with_attendance = stats.unique_teachers_count;
             stats.teachers_without_attendance = Math.max(0, stats.total_teachers - stats.teachers_with_attendance);
-            stats.attendance_rate = stats.total_teachers > 0 ? 
+            stats.attendance_rate = stats.total_teachers > 0 ?
                 ((stats.teachers_with_attendance / stats.total_teachers) * 100).toFixed(1) : 0;
             stats.present_rate = stats.total_teachers > 0 ?
                 (((stats.checked_in + stats.both) / stats.total_teachers) * 100).toFixed(1) : 0;
@@ -6289,7 +6431,7 @@
         // Display Teacher Fingerprint Attendance Overview
         function displayTeacherFingerprintAttendanceOverview(stats, searchType, apiFailed = false, filteredRecords = [], totalTeachers = 0, searchMonth = null, searchYear = null) {
             var html = '';
-            
+
             if (apiFailed) {
                 html += `
                     <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
@@ -6298,7 +6440,7 @@
                     </div>
                 `;
             }
-            
+
             // Check if no attendance was collected
             if (stats.total_records === 0 || stats.teachers_with_attendance === 0) {
                 html += '<div class="alert alert-info text-center" role="alert">';
@@ -6316,7 +6458,7 @@
             } else {
                 $('#exportTeacherAttendanceExcelBtn, #exportTeacherAttendancePdfBtn').hide();
             }
-            
+
             // Only show summary cards for day view
             if (searchType === 'day') {
                 html += '<div class="row mb-3">';
@@ -6590,21 +6732,21 @@
 
             // Get all teachers from blade (passed from controller)
             var allTeachers = @json($teachers ?? []);
-            
+
             // Build complete teacher list
             var completeTeacherList = [];
             allTeachers.forEach(function(teacher) {
                 var teacherId = teacher.id || teacher.fingerprint_id || '';
                 var fullName = (teacher.first_name || '') + ' ' + (teacher.middle_name ? teacher.middle_name + ' ' : '') + (teacher.last_name || '');
                 fullName = fullName.trim() || 'N/A';
-                
+
                 var teacherData = teacherMap[teacherId] || {
                     id: teacherId,
                     name: fullName,
                     position: teacher.position || 'N/A',
                     presentDates: new Set()
                 };
-                
+
                 completeTeacherList.push(teacherData);
             });
 
@@ -6757,20 +6899,20 @@
 
             // Get all teachers from blade
             var allTeachers = @json($teachers ?? []);
-            
+
             // Build complete teacher list
             var completeTeacherList = [];
             allTeachers.forEach(function(teacher) {
                 var teacherId = teacher.id || teacher.fingerprint_id || '';
                 var fullName = (teacher.first_name || '') + ' ' + (teacher.middle_name ? teacher.middle_name + ' ' : '') + (teacher.last_name || '');
                 fullName = fullName.trim() || 'N/A';
-                
+
                 var teacherData = teacherMap[teacherId] || {
                     name: fullName,
                     position: teacher.position || 'N/A',
                     presentDates: new Set()
                 };
-                
+
                 completeTeacherList.push(teacherData);
             });
 
@@ -6797,7 +6939,7 @@
             });
 
             var ws = XLSX.utils.aoa_to_sheet(wsData);
-            
+
             // Merge header cells
             if (!ws['!merges']) ws['!merges'] = [];
             ws['!merges'].push({s: {r: 0, c: 0}, e: {r: 0, c: 4}});
@@ -6873,20 +7015,20 @@
 
             // Get all teachers from blade
             var allTeachers = @json($teachers ?? []);
-            
+
             // Build complete teacher list
             var completeTeacherList = [];
             allTeachers.forEach(function(teacher) {
                 var teacherId = teacher.id || teacher.fingerprint_id || '';
                 var fullName = (teacher.first_name || '') + ' ' + (teacher.middle_name ? teacher.middle_name + ' ' : '') + (teacher.last_name || '');
                 fullName = fullName.trim() || 'N/A';
-                
+
                 var teacherData = teacherMap[teacherId] || {
                     name: fullName,
                     position: teacher.position || 'N/A',
                     presentDates: new Set()
                 };
-                
+
                 completeTeacherList.push(teacherData);
             });
 

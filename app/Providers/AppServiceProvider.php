@@ -270,9 +270,20 @@ class AppServiceProvider extends ServiceProvider
         return $notification['date'] ?? now();
     })->values()->take(10);
             } elseif ($user_type == 'Staff') {
-                // Initialize staff notifications if needed
+                // Initialize staff notifications and permissions
                 $teacherNotifications = collect();
+                $staffPermissionsByCategory = collect();
                 try {
+                    $staffID = Session::get('staffID');
+                    if ($staffID) {
+                        $staff = \App\Models\OtherStaff::find($staffID);
+                        if ($staff && $staff->profession_id) {
+                            $staffPermissionsByCategory = \App\Models\StaffPermission::where('profession_id', $staff->profession_id)
+                                ->get()
+                                ->groupBy('permission_category');
+                        }
+                    }
+
                     $sgpmTasks = DB::table('sgpm_tasks')
                         ->where('assigned_to', Session::get('userID'))
                         ->where('status', 'Pending')
@@ -293,7 +304,6 @@ class AppServiceProvider extends ServiceProvider
                     }
 
                     // HOD Assignment Notification for Staff
-                    $staffID = Session::get('staffID');
                     $hodDepts = Department::where('schoolID', $schoolID)
                         ->where('head_staffID', $staffID)
                         ->get();
@@ -309,7 +319,7 @@ class AppServiceProvider extends ServiceProvider
                             'link' => route('sgpm.departments.index')
                         ]);
                     }
-                    $isHOD = $isHOD || $hodDepts->isNotEmpty();
+                    $isHOD = ($isHOD ?? false) || $hodDepts->isNotEmpty();
                 } catch (\Exception $e) {}
                 
                 $teacherNotifications = $teacherNotifications->sortByDesc(function($notification) {
@@ -328,6 +338,7 @@ class AppServiceProvider extends ServiceProvider
     'role'   => $role,
     'teacherPermissions' => $teacherPermissions ?? collect(),
     'teacherPermissionsByCategory' => $teacherPermissionsByCategory ?? collect(),
+    'staffPermissionsByCategory' => $staffPermissionsByCategory ?? collect(),
     'schoolID'   => $schoolID,
     'school_details'   => $school_details,
     'class_teacher'   => $class_teacher,

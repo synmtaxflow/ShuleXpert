@@ -39,6 +39,7 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\IncomeCategoryController;
 use App\Http\Controllers\SponsorController;
 use App\Http\Controllers\GoalManagementController;
+use App\Http\Controllers\SuperAdminController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 
@@ -78,11 +79,11 @@ Route::prefix('goals')->group(function () {
     Route::post('/member/subtask-store', [GoalManagementController::class, 'subtaskStore'])->name('member.goals.subtaskStore');
     Route::post('/member/update-subtask/{id}', [GoalManagementController::class, 'updateSubtask']);
     Route::delete('/member/delete-subtask/{id}', [GoalManagementController::class, 'deleteSubtask']);
-    
+
     Route::post('/member/save-step', [GoalManagementController::class, 'saveSubtaskStep']);
     Route::post('/member/update-step/{id}', [GoalManagementController::class, 'updateSubtaskStep']);
     Route::delete('/member/delete-step/{id}', [GoalManagementController::class, 'deleteSubtaskStep']);
-    
+
     Route::post('/member/submit-subtask/{id}', [GoalManagementController::class, 'submitSubtask']);
 
     // Review Actions
@@ -123,12 +124,45 @@ Route::get('get_school_details', [SchoolController::class, 'get_school_details']
 Route::get('3345', [ConfigurationController::class, 'index'])->name('configuration.index');
 Route::post('schools', [ConfigurationController::class, 'storeSchool'])->name('save_school');
 
+// Super Admin Routes
+Route::get('super-admin/dashboard', [SuperAdminController::class, 'dashboard'])->name('superAdminDashboard');
+Route::get('super-admin/schools/register', [ConfigurationController::class, 'index'])->name('superadmin.schools.register');
+Route::get('super-admin/schools', [SuperAdminController::class, 'schools'])->name('superadmin.schools.index');
+Route::post('super-admin/schools/update-settings', [SuperAdminController::class, 'updateSchoolSettings'])->name('superadmin.schools.update_settings');
+Route::post('super-admin/schools/update-logo', [SuperAdminController::class, 'updateSchoolLogo'])->name('superadmin.schools.update_logo');
+Route::get('super-admin/change-password', [SuperAdminController::class, 'changePasswordForm'])->name('superadmin.change_password');
+Route::post('super-admin/change-password', [SuperAdminController::class, 'changePassword'])->name('superadmin.change_password.store');
+
+// Super Admin: User Password (Send Credentials)
+Route::get('super-admin/user-password', [SuperAdminController::class, 'userPassword'])->name('superadmin.user_password');
+Route::get('super-admin/user-password/users', [SuperAdminController::class, 'getSchoolUsers'])->name('superadmin.user_password.users');
+Route::post('super-admin/user-password/send-sms', [SuperAdminController::class, 'sendUserCredentialsSms'])->name('superadmin.user_password.send_sms');
+
+// Super Admin: Customer Care (Bulk SMS)
+Route::get('super-admin/customer-care', [SuperAdminController::class, 'customerCare'])->name('superadmin.customer_care');
+Route::get('super-admin/customer-care/users', [SuperAdminController::class, 'getSchoolUsers'])->name('superadmin.customer_care.users');
+Route::post('super-admin/customer-care/send-sms', [SuperAdminController::class, 'sendCustomerCareSms'])->name('superadmin.customer_care.send_sms');
+
+// Super Admin: System Alert (Header Alerts)
+Route::get('super-admin/system-alerts', [SuperAdminController::class, 'systemAlerts'])->name('superadmin.system_alerts');
+Route::get('super-admin/system-alerts/options', [SuperAdminController::class, 'getSystemAlertOptions'])->name('superadmin.system_alerts.options');
+Route::get('super-admin/system-alerts/list', [SuperAdminController::class, 'listSystemAlerts'])->name('superadmin.system_alerts.list');
+Route::post('super-admin/system-alerts/store', [SuperAdminController::class, 'storeSystemAlert'])->name('superadmin.system_alerts.store');
+Route::post('super-admin/system-alerts/update', [SuperAdminController::class, 'updateSystemAlert'])->name('superadmin.system_alerts.update');
+Route::delete('super-admin/system-alerts/delete/{id}', [SuperAdminController::class, 'deleteSystemAlert'])->name('superadmin.system_alerts.delete');
+
 // login Routes
 Route::get('login', [Auth::class, 'login'])->name('login');
 Route::post('auth', [Auth::class, 'auth'])->name('auth');
+Route::post('auth/otp/verify', [Auth::class, 'verifyOtp'])->name('auth.otp.verify');
+Route::post('auth/otp/resend', [Auth::class, 'resendOtp'])->name('auth.otp.resend');
 
 // logut route
 Route::get('logout', [Auth::class, 'logout'])->name('logout');
+
+// Admin: Change Password
+Route::get('admin/change-password', [AdminController::class, 'changePasswordForm'])->name('admin.change_password');
+Route::post('admin/change-password', [AdminController::class, 'changePassword'])->name('admin.change_password.store');
 
 // Admin Routes
 Route::get('AdminDashboard', [AdminController::class, 'AdminDashboard'])->name('AdminDashboard');
@@ -179,6 +213,9 @@ Route::post('api/parent/attendance', [ParentsContoller::class, 'apiGetParentAtte
 Route::get('manageTeachers', [ManageTeachersController::class, 'manageTeachers'])->name('manageTeachers');
 Route::get('manage_watchman', [WatchmanController::class, 'manage'])->name('manage_watchman');
 Route::post('save_watchman', [WatchmanController::class, 'store'])->name('save_watchman');
+Route::get('get_watchman/{id}', [WatchmanController::class, 'get'])->name('get_watchman');
+Route::post('update_watchman', [WatchmanController::class, 'update'])->name('update_watchman');
+Route::delete('delete_watchman/{id}', [WatchmanController::class, 'destroy'])->name('delete_watchman');
 Route::get('watchmanDashboard', [WatchmanController::class, 'dashboard'])->name('watchmanDashboard');
 Route::get('watchman/visitors', [WatchmanController::class, 'visitors'])->name('watchman.visitors');
 Route::get('watchman/school-visitors/today', [WatchmanController::class, 'todayVisitors'])->name('watchman.school_visitors.today');
@@ -321,7 +358,7 @@ Route::prefix('accountant')->name('accountant.')->group(function () {
     Route::get('expenses', [ExpenseController::class, 'index'])->name('expenses.index');
     Route::get('expenses/create', [ExpenseController::class, 'create'])->name('expenses.create');
     Route::post('expenses', [ExpenseController::class, 'store'])->name('expenses.store');
-    
+
     Route::get('income', [IncomeController::class, 'index'])->name('income.index');
     Route::get('budget', [BudgetController::class, 'index'])->name('budget.index');
 });
@@ -369,6 +406,8 @@ Route::get('get_students_list', [ManageStudentController::class, 'get_students']
 Route::get('get_student_statistics', [ManageStudentController::class, 'get_student_statistics'])->name('get_student_statistics');
 Route::get('export_students_pdf', [ManageStudentController::class, 'export_students_pdf'])->name('export_students_pdf');
 Route::get('export_students_excel', [ManageStudentController::class, 'export_students_excel'])->name('export_students_excel');
+Route::get('download_student_template', [ManageStudentController::class, 'downloadTemplate'])->name('download_student_template');
+Route::post('upload_students', [ManageStudentController::class, 'uploadStudents'])->name('upload_students');
 Route::get('get_subclasses_with_stats', [ManageStudentController::class, 'getSubclassesWithStats'])->name('get_subclasses_with_stats');
 // Student Registration Routes
 Route::get('student/registration/step1', [StudentRegistrationController::class, 'showStep1'])->name('student.registration.step1');
@@ -476,7 +515,7 @@ Route::prefix('accountant')->name('accountant.')->group(function () {
     Route::delete('expenses/{id}', [ExpenseController::class, 'destroy'])->name('expenses.destroy');
     Route::post('expenses/{id}/approve', [ExpenseController::class, 'approve'])->name('expenses.approve');
     Route::post('expenses/{id}/reject', [ExpenseController::class, 'reject'])->name('expenses.reject');
-    
+
     // Income Categories Management
     Route::get('income-categories', [IncomeCategoryController::class, 'index'])->name('income_categories.index');
     Route::post('income-categories', [IncomeCategoryController::class, 'store'])->name('income_categories.store');
@@ -490,7 +529,7 @@ Route::prefix('accountant')->name('accountant.')->group(function () {
     Route::get('income/{id}/edit', [IncomeController::class, 'edit'])->name('income.edit');
     Route::put('income/{id}', [IncomeController::class, 'update'])->name('income.update');
     Route::delete('income/{id}', [IncomeController::class, 'destroy'])->name('income.destroy');
-    
+
     Route::get('budget', [BudgetController::class, 'index'])->name('budget.index');
     Route::get('budget/create', [BudgetController::class, 'create'])->name('budget.create');
     Route::post('budget', [BudgetController::class, 'store'])->name('budget.store');
@@ -601,7 +640,7 @@ Route::post('approve_exam/{examID}', [ManageExaminationController::class, 'appro
 Route::delete('delete_examination/{examID}', [ManageExaminationController::class, 'destroy'])->name('delete_examination');
 Route::get('get_subclasses_for_exam', [ManageExaminationController::class, 'getSubclasses'])->name('get_subclasses_for_exam');
 Route::get('get_class_subjects_for_exam', [ManageExaminationController::class, 'getClassSubjects'])->name('get_class_subjects_for_exam');
-Route::post('get_class_subjects_by_subclass', [ManageExaminationController::class, 'getClassSubjects'])->name('get_class_subjects_by_subclass');
+Route::post('get_class_subjects_by_subclass', [ManageExaminationController::class, 'getClassSubjects'])->name('get_class_subjects_by_subclass_post');
 Route::post('update_results_status/{examID}', [ManageExaminationController::class, 'updateResultsStatus'])->name('update_results_status');
 Route::post('toggle_enter_result/{examID}', [ManageExaminationController::class, 'toggleEnterResult'])->name('toggle_enter_result');
 Route::post('toggle_publish_result/{examID}', [ManageExaminationController::class, 'togglePublishResult'])->name('toggle_publish_result');
@@ -629,6 +668,7 @@ Route::post('admin/send-result-sms', [ResultManagementController::class, 'sendRe
 Route::post('store_exam_paper', [ManageExaminationController::class, 'storeExamPaper'])->name('store_exam_paper');
 Route::post('update_exam_paper/{examPaperID}', [ManageExaminationController::class, 'updateExamPaper'])->name('update_exam_paper');
 Route::get('get_exam_paper_questions/{examPaperID}', [ManageExaminationController::class, 'getExamPaperQuestions'])->name('get_exam_paper_questions');
+Route::get('get_admin_exam_paper_review/{examPaperID}', [ManageExaminationController::class, 'getAdminExamPaperReview'])->name('admin.get_exam_paper_review');
 Route::post('update_exam_paper_questions/{examPaperID}', [ManageExaminationController::class, 'updateExamPaperQuestions'])->name('update_exam_paper_questions');
 Route::post('mark_exam_paper_notifications_read', [ManageExaminationController::class, 'markExamPaperNotificationsRead'])->name('mark_exam_paper_notifications_read');
 Route::get('admin/exam-paper-notifications-count', [ManageExaminationController::class, 'getExamPaperNotificationCount'])->name('admin.exam_paper_notifications_count');
@@ -636,6 +676,10 @@ Route::get('admin/get-recent-exam-paper-notifications', [ManageExaminationContro
 Route::get('admin/exam-paper-notifications-by-exam', [ManageExaminationController::class, 'getExamPaperNotificationCountsByExam'])->name('admin.exam_paper_notifications_by_exam');
 
 Route::post('admin/mark-exam-paper-notifications-read/{examID}', [ManageExaminationController::class, 'markExamPaperNotificationsReadForExam'])->name('admin.mark_exam_paper_notifications_read_exam');
+Route::get('admin/exam-paper-approval', [ManageExaminationController::class, 'examPaperApproval'])->name('admin.exam_paper_approval');
+Route::get('get_examinations_for_filter', [ManageExaminationController::class, 'getExaminationsForFilter'])->name('get_examinations_for_filter');
+Route::get('view_paper_approval_chain/{examID}', [ManageExaminationController::class, 'viewApprovalChain'])->name('view_paper_approval_chain');
+Route::get('get_exam_available_weeks/{examID}', [ManageExaminationController::class, 'getAvailableWeeksForExam'])->name('get_exam_available_weeks');
 Route::get('get_exam_papers/{examID}', [ManageExaminationController::class, 'getExamPapers'])->name('get_exam_papers');
 Route::get('teacher/get-exam-paper-summary/{examID}', [ManageExaminationController::class, 'getTeacherExamPaperSummary'])->name('teacher.get_exam_paper_summary');
 Route::post('approve_reject_exam_paper/{examPaperID}', [ManageExaminationController::class, 'approveRejectExamPaper'])->name('approve_reject_exam_paper');
@@ -967,28 +1011,28 @@ Route::prefix('sgpm')->name('sgpm.')->group(function () {
     Route::delete('departments/members/{memberId}', [\App\Http\Controllers\DepartmentController::class, 'removeMember'])->name('departments.members.remove');
     Route::post('departments/{id}/send-sms', [\App\Http\Controllers\DepartmentController::class, 'sendSmsToMembers'])->name('departments.members.sms');
     Route::post('departments/hods/send-sms', [\App\Http\Controllers\DepartmentController::class, 'sendSmsToHODs'])->name('departments.hods.sms');
-    
+
     // Strategic Goals
     Route::resource('goals', \App\Http\Controllers\StrategicGoalController::class);
     Route::post('goals/{id}/publish', [\App\Http\Controllers\StrategicGoalController::class, 'publish'])->name('goals.publish');
-    
+
     // Departmental Objectives
     Route::resource('objectives', \App\Http\Controllers\DepartmentalObjectiveController::class);
-    
+
     // Action Plans
     Route::post('action-plans', [\App\Http\Controllers\DepartmentalObjectiveController::class, 'storeActionPlan'])->name('objectives.storeActionPlan');
-    
+
     // Tasks
     Route::resource('tasks', \App\Http\Controllers\SgpmTaskController::class);
     Route::post('tasks/{id}/submit', [\App\Http\Controllers\SgpmTaskController::class, 'submitProgress'])->name('tasks.submit');
     Route::post('tasks/{id}/evaluate', [\App\Http\Controllers\SgpmTaskController::class, 'evaluate'])->name('tasks.evaluate');
-    
+
     // Subtasks
     Route::post('subtasks', [\App\Http\Controllers\SgpmTaskController::class, 'storeSubtask'])->name('subtasks.store');
     Route::post('subtasks/{id}/submit', [\App\Http\Controllers\SgpmTaskController::class, 'submitSubtask'])->name('subtasks.submit');
     Route::post('subtasks/{id}/approve', [\App\Http\Controllers\SgpmTaskController::class, 'approveSubtask'])->name('subtasks.approve');
     Route::post('subtasks/{id}/reject', [\App\Http\Controllers\SgpmTaskController::class, 'rejectSubtask'])->name('subtasks.reject');
-    
+
     // Performance Dashboard
     Route::get('performance', [\App\Http\Controllers\SgpmPerformanceController::class, 'index'])->name('performance.index');
     Route::get('performance/hod', [\App\Http\Controllers\SgpmPerformanceController::class, 'hodDashboard'])->name('performance.hod');

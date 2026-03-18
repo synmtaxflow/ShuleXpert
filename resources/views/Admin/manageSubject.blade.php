@@ -133,23 +133,23 @@
             <!-- Page Header -->
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body bg-primary-custom text-white rounded">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h4 class="mb-0">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                        <h4 class="mb-0 w-100 text-center text-md-start">
                             <i class="bi bi-book"></i> Manage Subjects
                         </h4>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-end w-100">
                             @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('view_class_subjects'))
-                            <button class="btn btn-light text-primary-custom fw-bold" id="viewClassSubjectsBtn" type="button">
+                            <button class="btn btn-light text-primary-custom fw-bold flex-fill" id="viewClassSubjectsBtn" type="button">
                                 <i class="bi bi-eye"></i> View Class Subjects
                             </button>
                             @endif
                             @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('create_class_subject'))
-                            <button class="btn btn-light text-primary-custom fw-bold" id="addClassSubjectBtn" type="button" data-toggle="modal" data-target="#addClassSubjectModal">
+                            <button class="btn btn-light text-primary-custom fw-bold flex-fill" id="addClassSubjectBtn" type="button" data-toggle="modal" data-target="#addClassSubjectModal">
                                 <i class="bi bi-plus-circle"></i> Add Class Subject
                             </button>
                             @endif
                             @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('create_subject'))
-                            <button class="btn btn-light text-primary-custom fw-bold" id="addSchoolSubjectBtn" type="button" data-toggle="modal" data-target="#addSchoolSubjectModal">
+                            <button class="btn btn-light text-primary-custom fw-bold flex-fill" id="addSchoolSubjectBtn" type="button" data-toggle="modal" data-target="#addSchoolSubjectModal">
                                 <i class="bi bi-plus-square"></i> Add School Subject
                             </button>
                             @endif
@@ -199,9 +199,9 @@
                                                 </div>
                                             </div>
                                             @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('activate_subject'))
-                                            <div class="mt-3 d-flex gap-2">
+                                            <div class="mt-3 d-flex flex-column flex-sm-row gap-2">
                                                 @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('edit_subject'))
-                                                <button class="btn btn-sm btn-warning text-dark edit-school-subject-btn flex-fill"
+                                                <button class="btn btn-sm btn-warning text-dark edit-school-subject-btn flex-fill w-100"
                                                         data-subject-id="{{ $subject->subjectID }}"
                                                         data-subject-name="{{ $subject->subject_name }}"
                                                         data-subject-code="{{ $subject->subject_code }}"
@@ -210,7 +210,7 @@
                                                 </button>
                                                 @endif
                                                 @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('delete_subject'))
-                                                <button class="btn btn-sm btn-danger delete-school-subject-btn flex-fill"
+                                                <button class="btn btn-sm btn-danger delete-school-subject-btn flex-fill w-100"
                                                         data-subject-id="{{ $subject->subjectID }}"
                                                         data-subject-name="{{ $subject->subject_name }}"
                                                         title="Delete Subject">
@@ -1633,11 +1633,14 @@
                                 html += '<div class="list-group">';
                                 subclass.subjects.forEach(function(subject) {
                                     html += '<div class="list-group-item">';
-                                    html += '<div class="d-flex align-items-start justify-content-between">';
-                                    html += '<div class="d-flex align-items-start flex-grow-1">';
+                                    html += '<div class="row g-2 align-items-center">';
+                                    
+                                    // Subject Info Column
+                                    html += '<div class="col-12 col-md-8">';
+                                    html += '<div class="d-flex align-items-start">';
                                     html += '<i class="bi bi-book-fill text-primary-custom me-2 mt-1"></i>';
                                     html += '<div class="flex-grow-1">';
-                                    html += '<div class="d-flex align-items-center justify-content-between mb-1">';
+                                    html += '<div class="d-flex flex-wrap align-items-center mb-1">';
                                     html += '<div class="fw-bold">' + subject.subject_name + '</div>';
                                     // Student Status Badge
                                     if (subject.student_status) {
@@ -1672,13 +1675,16 @@
                                         html += '</small>';
                                         html += '</div>';
                                     }
-                                    html += '</div>';
-                                    html += '</div>';
-                                    // Action buttons
-                                    html += '<div class="d-flex gap-1 ms-2 flex-column">';
+                                    html += '</div>'; // End flex-grow-1
+                                    html += '</div>'; // End d-flex
+                                    html += '</div>'; // End col-md-8
+
+                                    // Action Buttons Column
+                                    html += '<div class="col-12 col-md-4">';
+                                    html += '<div class="d-flex flex-row flex-wrap gap-2 justify-content-md-end w-100">';
                                     // Election button for optional subjects
                                     if (subject.student_status === 'Optional') {
-                                        html += '<button class="btn btn-sm btn-primary text-white election-subject-btn mb-1" ';
+                                        html += '<button class="btn btn-sm btn-primary text-white election-subject-btn flex-fill" ';
                                         html += 'data-class-subject-id="' + subject.class_subjectID + '" ';
                                         html += 'data-subject-name="' + subject.subject_name + '" ';
                                         html += 'data-subclass-id="' + (subclass.subclassID || subclass.id) + '" ';
@@ -1686,7 +1692,7 @@
                                         html += '<i class="bi bi-person-check"></i> Election';
                                         html += '</button>';
                                     }
-                                    html += '<div class="d-flex gap-1">';
+                                    html += '<div class="d-flex flex-wrap gap-1 flex-fill">';
                                     var canEdit = hasPermission('update_class_subject');
                                     var canDelete = hasPermission('delete_class_subject');
                                     var canActivate = hasPermission('activate_class_subject');
@@ -1695,7 +1701,7 @@
                                         var activateBtnClass = subjectStatus === 'Active' ? 'btn-secondary' : 'btn-success';
                                         var activateIcon = subjectStatus === 'Active' ? 'x-circle' : 'check-circle';
                                         var activateTitle = subjectStatus === 'Active' ? 'Deactivate' : 'Activate';
-                                        html += '<button class="btn btn-sm ' + activateBtnClass + ' text-white activate-class-subject-btn" ';
+                                        html += '<button class="btn btn-sm ' + activateBtnClass + ' text-white activate-class-subject-btn flex-fill" ';
                                         html += 'data-class-subject-id="' + subject.class_subjectID + '" ';
                                         html += 'data-subject-name="' + subject.subject_name + '" ';
                                         html += 'data-current-status="' + subjectStatus + '" ';
@@ -1704,7 +1710,7 @@
                                         html += '</button>';
                                     }
                                     if (canEdit) {
-                                        html += '<button class="btn btn-sm btn-warning text-dark edit-class-subject-btn" ';
+                                        html += '<button class="btn btn-sm btn-warning text-dark edit-class-subject-btn flex-fill" ';
                                         html += 'data-class-subject-id="' + subject.class_subjectID + '" ';
                                         html += 'data-subject-name="' + subject.subject_name + '" ';
                                         html += 'data-teacher-id="' + (subject.teacher_id || '') + '" ';
@@ -1714,17 +1720,18 @@
                                         html += '</button>';
                                     }
                                     if (canDelete) {
-                                        html += '<button class="btn btn-sm btn-danger text-white delete-class-subject-btn" ';
+                                        html += '<button class="btn btn-sm btn-danger text-white delete-class-subject-btn flex-fill" ';
                                         html += 'data-class-subject-id="' + subject.class_subjectID + '" ';
                                         html += 'data-subject-name="' + subject.subject_name + '" ';
                                         html += 'title="Delete Subject">';
                                         html += '<i class="bi bi-trash-fill"></i>';
                                         html += '</button>';
                                     }
-                                    html += '</div>'; // End action buttons flex
-                                    html += '</div>'; // End main flex column
-                                    html += '</div>';
-                                    html += '</div>';
+                                    html += '</div>'; // End flex-wrap gap-1
+                                    html += '</div>'; // End action d-flex
+                                    html += '</div>'; // End action buttons column
+                                    html += '</div>'; // End row
+                                    html += '</div>'; // End list-group-item
                                 });
                                 html += '</div>';
                                 html += '</div>';

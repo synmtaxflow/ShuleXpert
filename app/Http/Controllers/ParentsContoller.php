@@ -3511,7 +3511,7 @@ class ParentsContoller extends Controller
                 return;
             }
 
-            $schoolName = Session::get('school_name') ?? 'ShuleLink';
+            $schoolName = Session::get('school_name') ?? 'ShuleXpert';
             $studentName = $student->first_name . ' ' . $student->last_name;
             $subjectName = $classSubject->subject->subject_name ?? 'N/A';
             $className = $classSubject->subclass->class->class_name ?? 'N/A';

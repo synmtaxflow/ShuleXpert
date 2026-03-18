@@ -10,6 +10,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\OtherStaff;
 use App\Models\StaffProfession;
+use App\Services\SmsService;
 use App\Services\ZKTecoService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
@@ -26,14 +27,50 @@ class ManageTeachersController extends Controller
     private function getPermissionCategory($permissionName)
     {
         $permissionName = strtolower($permissionName);
-        
+
+        // Specific checks for multi-word categories
+        if (strpos($permissionName, 'subject_analysis') !== false) {
+            return 'subject_analysis';
+        }
+        if (strpos($permissionName, 'printing_unit') !== false) {
+            return 'printing_unit';
+        }
+        if (strpos($permissionName, 'school_visitors') !== false) {
+            return 'school_visitors';
+        }
+        if (strpos($permissionName, 'scheme_of_work') !== false) {
+            return 'scheme_of_work';
+        }
+        if (strpos($permissionName, 'lesson_plans') !== false) {
+            return 'lesson_plans';
+        }
+        if (strpos($permissionName, 'academic_years') !== false) {
+            return 'academic_years';
+        }
+        if (strpos($permissionName, 'student_id_card') !== false) {
+            return 'student_id_card';
+        }
+        if (strpos($permissionName, 'teacher_duty') !== false) {
+            return 'teacher_duty';
+        }
+        if (strpos($permissionName, 'staff_feedback') !== false) {
+            return 'staff_feedback';
+        }
+
         // Check if it's already in new format (category_action)
         if (strpos($permissionName, '_') !== false) {
             $parts = explode('_', $permissionName);
             $category = $parts[0];
-            
+
             // Validate category
-            $validCategories = ['examination', 'classes', 'subject', 'result', 'attendance', 'student', 'parent', 'timetable', 'teacher', 'fees', 'accommodation', 'library', 'calendar', 'fingerprint', 'task', 'sms'];
+            $validCategories = [
+                'examination', 'classes', 'subject', 'result', 'attendance', 'student', 'parent',
+                'timetable', 'teacher', 'fees', 'accommodation', 'library', 'calendar', 'fingerprint',
+                'task', 'sms', 'subject_analysis', 'printing_unit', 'watchman', 'school_visitors',
+                'scheme_of_work', 'lesson_plans', 'academic_years', 'school', 'sponsor',
+                'student_id_card', 'hr', 'teacher_duty', 'feedback', 'staff_feedback',
+                'performance', 'accountant', 'goal', 'department', 'staff'
+            ];
             if (in_array($category, $validCategories)) {
                 return $category;
             }
@@ -123,12 +160,43 @@ class ManageTeachersController extends Controller
         // Default to null if no match
         return null;
     }
+    /**
+     * Helper to check teacher permissions on backend
+     */
+    private function checkPermission($permissionName)
+    {
+        $userType = Session::get('user_type');
+        if ($userType === 'Admin') {
+            return true;
+        }
+
+        $teacherID = Session::get('teacherID');
+        if (!$teacherID) {
+            return false;
+        }
+
+        $roleIds = DB::table('role_user')->where('teacher_id', $teacherID)->pluck('role_id')->toArray();
+        if (empty($roleIds)) {
+            return false;
+        }
+
+        return DB::table('permissions')
+            ->whereIn('role_id', $roleIds)
+            ->where('name', $permissionName)
+            ->exists();
+    }
+
     public function manageTeachers()
     {
         $user = Session::get('user_type');
 
         if (!$user) {
             return redirect()->route('login')->with('error', 'Unauthorized access');
+        }
+
+        // Check if teacher has access to this module
+        if ($user === 'Teacher' && !$this->checkPermission('teacher_read_only') && !$this->checkPermission('teacher_create') && !$this->checkPermission('teacher_update')) {
+             return redirect()->route('teachersDashboard')->with('error', 'You are not allowed to access Teacher Management.');
         }
 
         // If session exists, continue to page
@@ -215,11 +283,48 @@ class ManageTeachersController extends Controller
             'update_class_subject',
             'delete_class_subject',
             'activate_class_subject',
+            'view_subject_analysis',
+            'printing_unit',
+            'watchman',
+            'school_visitors',
+            'scheme_of_work',
+            'lesson_plans',
+            'academic_years',
 
             // Other
             'register_parents',
             'register_teachers',
             'register_students',
+
+            // Management Links (New)
+            'school_read_only',
+            'parent_read_only',
+            'sponsor_read_only',
+            'student_id_card_read_only',
+            'hr_permission_read_only',
+            'teacher_duty_read_only',
+            'teacher_duty_report',
+            'feedback_read_only',
+            'feedback_update',
+            'staff_feedback_read_only',
+            'staff_feedback_update',
+            'performance_read_only',
+            'accountant_read_only',
+            'accountant_income',
+            'accountant_budget',
+            'accountant_expense_category',
+            'accountant_income_category',
+            'accountant_report',
+            'goal_create',
+            'goal_read_only',
+            'goal_report',
+            'department_read_only',
+
+            // Staff Management (New)
+            'staff_create',
+            'staff_update',
+            'staff_delete',
+            'staff_read_only',
         ];
 
         // Get permissions that are already assigned to roles (for display)
@@ -299,6 +404,10 @@ class ManageTeachersController extends Controller
 
     public function save_teacher_role(Request $request)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to assign teacher roles.'], 403);
+        }
+
         try {
             // Validation
             $validator = Validator::make($request->all(), [
@@ -378,6 +487,10 @@ class ManageTeachersController extends Controller
 
     public function change_teacher_role(Request $request)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to change teacher roles.'], 403);
+        }
+
         try {
             // Validation
             $validator = Validator::make($request->all(), [
@@ -502,6 +615,11 @@ class ManageTeachersController extends Controller
 
   public function save_teachers(Request $request)
 {
+    // Permission check
+    if (!$this->checkPermission('teacher_create')) {
+        return response()->json(['error' => 'Unauthorized. You do not have permission to register teachers.'], 403);
+    }
+
     try {
         // Validation rules
         $validator = Validator::make($request->all(), [
@@ -601,16 +719,16 @@ class ManageTeachersController extends Controller
         // Send teacher to biometric device directly (not via API)
         try {
             Log::info("ZKTeco Direct: Attempting to register teacher - Fingerprint ID: {$fingerprintId}, Name: {$request->first_name}");
-            
+
             // Use first_name only for device (as per user requirement)
             $teacherName = strtoupper($request->first_name); // Convert to uppercase
-            
+
             $apiResult = $this->registerTeacherToBiometricDeviceDirect($fingerprintId, $teacherName);
-            
+
             if ($apiResult['success']) {
                 $enrollId = $apiResult['data']['enroll_id'] ?? $fingerprintId;
                 $deviceRegisteredAt = $apiResult['data']['device_registered_at'] ?? null;
-                
+
                 Log::info("ZKTeco Direct: Teacher registered successfully - Fingerprint ID: {$fingerprintId}, Enroll ID: {$enrollId}");
             } else {
                 Log::error("ZKTeco Direct: Teacher registration failed - Fingerprint ID: {$fingerprintId}, Error: " . ($apiResult['message'] ?? 'Unknown error'));
@@ -619,7 +737,7 @@ class ManageTeachersController extends Controller
             $errorMessage = $e->getMessage();
             Log::error('ZKTeco Direct Registration Error: ' . $errorMessage);
             Log::error('ZKTeco Direct Registration Stack Trace: ' . $e->getTraceAsString());
-            
+
             // Continue even if device registration fails - teacher is still registered
         }
 
@@ -632,9 +750,24 @@ class ManageTeachersController extends Controller
             'fingerprint_id' => $fingerprintId  // Same fingerprint_id as teacher (id)
         ]);
 
+        $smsResult = null;
+        try {
+            $schoolName = School::where('schoolID', $schoolID)->value('school_name') ?? 'ShuleXpert';
+            $username = (string) $request->employee_number;
+            $plainPassword = (string) $request->last_name;
+            $smsMessage = "{$schoolName}. Username: {$username}. Password: {$plainPassword}";
+
+            $smsService = new SmsService();
+            $smsResult = $smsService->sendSms($request->phone_number, $smsMessage);
+        } catch (\Exception $e) {
+            $smsResult = ['success' => false, 'message' => $e->getMessage()];
+        }
+
         return response()->json([
             'success' => 'Teacher added successfully!',
-            'fingerprint_id' => $fingerprintId
+            'fingerprint_id' => $fingerprintId,
+            'sms_success' => (bool)($smsResult['success'] ?? false),
+            'sms_message' => $smsResult['message'] ?? null,
         ]);
 
     } catch (\Illuminate\Database\QueryException $e) {
@@ -667,6 +800,10 @@ class ManageTeachersController extends Controller
 
     public function update_teacher(Request $request)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to edit teacher details.'], 403);
+        }
+
         try {
             $teacherId = $request->input('teacher_id');
             $teacher = Teacher::find($teacherId);
@@ -793,6 +930,10 @@ class ManageTeachersController extends Controller
      */
     public function create_role(Request $request)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to create roles.'], 403);
+        }
+
         try {
             // Get schoolID from session
             $schoolID = Session::get('schoolID');
@@ -874,6 +1015,10 @@ class ManageTeachersController extends Controller
      */
     public function update_role(Request $request)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to update roles.'], 403);
+        }
+
         try {
             // Get schoolID from session
             $schoolID = Session::get('schoolID');
@@ -937,6 +1082,10 @@ class ManageTeachersController extends Controller
      */
     public function create_permission(Request $request)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to create permissions.'], 403);
+        }
+
         try {
             // Check if permissions table exists
             if (!\Illuminate\Support\Facades\Schema::hasTable('permissions')) {
@@ -1094,6 +1243,10 @@ class ManageTeachersController extends Controller
      */
     public function update_role_permissions(Request $request)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to manage permissions.'], 403);
+        }
+
         try {
             $validator = Validator::make($request->all(), [
                 'role_id' => 'required|exists:roles,id',
@@ -1168,7 +1321,7 @@ class ManageTeachersController extends Controller
             // New permission structure: Each category has 4 actions: create, update, delete, read_only
             $categories = ['examination', 'classes', 'subject', 'result', 'attendance', 'student', 'parent', 'timetable', 'fees', 'accommodation', 'library', 'calendar', 'fingerprint', 'task', 'sms'];
             $actions = ['create', 'update', 'delete', 'read_only'];
-            
+
             $availablePermissions = [];
             foreach($categories as $category) {
                 foreach($actions as $action) {
@@ -1233,6 +1386,10 @@ class ManageTeachersController extends Controller
      */
     public function remove_teacher_role($id)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to remove teacher roles.'], 403);
+        }
+
         try {
             // Get schoolID from session
             $schoolID = Session::get('schoolID');
@@ -1292,6 +1449,10 @@ class ManageTeachersController extends Controller
      */
     public function delete_role($id)
     {
+        if (!$this->checkPermission('teacher_update')) {
+            return response()->json(['error' => 'Unauthorized. You do not have permission to delete roles.'], 403);
+        }
+
         try {
             // Get schoolID from session
             $schoolID = Session::get('schoolID');
@@ -1348,18 +1509,18 @@ class ManageTeachersController extends Controller
     {
         try {
             $apiUrl = 'http://192.168.100.100:8000/api/v1/users/register';
-            
+
             // Prepare request data
             $data = [
                 'id' => (string)$fingerprintId,
                 'name' => strtoupper($teacherName)
             ];
-            
+
             Log::info("Biometric API: Sending request to {$apiUrl}", $data);
-            
+
             // Initialize cURL
             $ch = curl_init();
-            
+
             curl_setopt_array($ch, [
                 CURLOPT_URL => $apiUrl,
                 CURLOPT_RETURNTRANSFER => true,
@@ -1372,12 +1533,12 @@ class ManageTeachersController extends Controller
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_CONNECTTIMEOUT => 10,
             ]);
-            
+
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $curlError = curl_error($ch);
             curl_close($ch);
-            
+
             if ($curlError) {
                 Log::error("Biometric API: cURL Error - {$curlError}");
                 return [
@@ -1385,7 +1546,7 @@ class ManageTeachersController extends Controller
                     'message' => 'Connection error: ' . $curlError
                 ];
             }
-            
+
             // Accept both 200 (OK) and 201 (Created) as success codes
             if ($httpCode !== 200 && $httpCode !== 201) {
                 Log::error("Biometric API: HTTP Error - Status Code: {$httpCode}, Response: {$response}");
@@ -1395,9 +1556,9 @@ class ManageTeachersController extends Controller
                     'http_code' => $httpCode
                 ];
             }
-            
+
             $responseData = json_decode($response, true);
-            
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 Log::error("Biometric API: JSON Decode Error - " . json_last_error_msg());
                 return [
@@ -1405,7 +1566,7 @@ class ManageTeachersController extends Controller
                     'message' => 'Invalid JSON response from API'
                 ];
             }
-            
+
             // If status code is 200 or 201, consider it success (even if response doesn't have success field)
             // This handles APIs that return 201 Created as success
             if ($httpCode === 200 || $httpCode === 201) {
@@ -1417,7 +1578,7 @@ class ManageTeachersController extends Controller
                     'http_code' => $httpCode
                 ];
             }
-            
+
             // Fallback: check if response has success field
             if (isset($responseData['success']) && $responseData['success']) {
                 Log::info("Biometric API: Success response", $responseData);
@@ -1434,7 +1595,7 @@ class ManageTeachersController extends Controller
                     'response' => $responseData
                 ];
             }
-            
+
         } catch (\Exception $e) {
             Log::error('Biometric API Registration Exception: ' . $e->getMessage(), [
                 'trace' => $e->getTraceAsString()
@@ -1472,7 +1633,7 @@ class ManageTeachersController extends Controller
             // Generate unique 4-digit fingerprint ID (must be unique in users table first)
             $fingerprintId = null;
             $oldTeacherId = $teacher->id;
-            
+
             // Generate 4-digit ID (1000-9999) - ensure it's unique in users table
             do {
                 $fingerprintId = (string)rand(1000, 9999);
@@ -1487,17 +1648,17 @@ class ManageTeachersController extends Controller
             $teacher->update([
                 'fingerprint_id' => $fingerprintId
             ]);
-            
+
             // Update id field to match fingerprintID (same as registration)
             // Temporarily disable foreign key checks to update primary key
             if ($oldTeacherId != (int)$fingerprintId) {
                 DB::statement('SET FOREIGN_KEY_CHECKS=0;');
                 DB::statement("UPDATE teachers SET id = ? WHERE id = ?", [(int)$fingerprintId, $oldTeacherId]);
                 DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-                
+
                 // Refresh teacher model to get new id
                 $teacher = Teacher::find((int)$fingerprintId);
-                
+
                 if (!$teacher) {
                     throw new \Exception('Failed to update teacher ID. Please try again.');
                 }
@@ -1510,9 +1671,9 @@ class ManageTeachersController extends Controller
             if ($apiResult['success']) {
                 $enrollId = $apiResult['data']['enroll_id'] ?? $fingerprintId;
                 $deviceRegisteredAt = $apiResult['data']['device_registered_at'] ?? null;
-                
+
                 Log::info("Biometric API: Teacher sent successfully - Fingerprint ID: {$fingerprintId}, Enroll ID: {$enrollId}");
-                
+
                 DB::commit();
 
                 return response()->json([
@@ -1525,7 +1686,7 @@ class ManageTeachersController extends Controller
             } else {
                 // Even if API fails, fingerprint_id is saved
                 Log::error("ZKTeco Direct: Teacher registration failed - Fingerprint ID: {$fingerprintId}, Error: " . ($apiResult['message'] ?? 'Unknown error'));
-                
+
                 DB::commit();
 
                 return response()->json([

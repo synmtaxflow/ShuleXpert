@@ -9,6 +9,8 @@ use App\Models\ExamPaper;
 use App\Models\ExamPaperNotification;
 use App\Models\ExamPaperQuestion;
 use App\Models\ExamPaperOptionalRange;
+use App\Models\PaperApprovalChain;
+use App\Models\PaperApprovalLog;
 use App\Models\Holiday;
 use App\Models\Result;
 use App\Models\ResultApproval;
@@ -101,12 +103,45 @@ class ManageExaminationController extends Controller
             ->orderBy('start_date', 'desc')
             ->get();
 
-        // Get teacher's uploaded exam papers (actual uploads/wait approval/rejected)
+        // Get teacher's uploaded exam papers (actual uploads/wait approval/rejected/pending in chain)
         $myExamPapers = ExamPaper::where('teacherID', $teacherID)
-            ->where('status', '!=', 'pending')
+            ->where(function($q) {
+                $q->where('status', '!=', 'pending')
+                  ->orWhere(function($sq) {
+                      $sq->where('status', 'pending')
+                         ->where(function($fq) {
+                             $fq->whereNotNull('file_path')
+                               ->orWhereNotNull('question_content');
+                         });
+                  });
+            })
             ->with(['examination', 'classSubject.subject', 'classSubject.class', 'classSubject.subclass'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function($paper) {
+                $currentStep = null;
+                $isDirect = $paper->examination && $paper->examination->no_approval_required;
+                
+                if ($isDirect) {
+                    $paper->current_step_name = 'Directly Approved';
+                    return $paper;
+                }
+
+                if ($paper->status === 'pending' && $paper->current_approval_order) {
+                    $chainStep = DB::table('paper_approval_chains')
+                        ->where('examID', $paper->examID)
+                        ->where('approval_order', $paper->current_approval_order)
+                        ->first();
+                    
+                    if ($chainStep) {
+                        $currentStep = $chainStep->special_role_type ? 
+                            ucwords(str_replace('_', ' ', $chainStep->special_role_type)) : 
+                            (DB::table('roles')->where('id', $chainStep->role_id)->value('name') ?? 'Unknown Role');
+                    }
+                }
+                $paper->current_step_name = $currentStep;
+                return $paper;
+            });
 
         // Get pending upload slots for this teacher (current week and next week only)
         $today = now()->startOfDay();
@@ -114,11 +149,12 @@ class ManageExaminationController extends Controller
         
         $pendingSlots = ExamPaper::where('teacherID', $teacherID)
             ->where('status', 'pending')
+            ->whereNull('file_path')
+            ->whereNull('question_content')
             ->whereHas('examination', function($q) use ($schoolID) {
                 $q->where('schoolID', $schoolID);
             })
             ->where(function($q) use ($today, $nextWeekEnd) {
-                // Include if test_date is today or in the future (up to next week)
                 $q->where('test_date', '>=', $today)
                   ->where('test_date', '<=', $nextWeekEnd);
             })
@@ -827,6 +863,27 @@ class ManageExaminationController extends Controller
                         }
                     },
                 ],
+                'use_paper_approval' => 'nullable|boolean',
+                'number_of_paper_approvals' => 'required_if:use_paper_approval,1|integer|min:1|max:'.$rolesCount,
+                'paper_approval_role_ids' => 'required_if:use_paper_approval,1|array',
+                'paper_approval_role_ids.*' => [
+                    'required',
+                    function ($attribute, $value, $fail) use ($schoolID) {
+                        if (in_array($value, ['class_teacher', 'coordinator'])) {
+                            return;
+                        }
+                        if (is_numeric($value)) {
+                            $roleExists = Role::where('id', $value)
+                                ->where('schoolID', $schoolID)
+                                ->exists();
+                            if (!$roleExists) {
+                                $fail('The selected role does not exist.');
+                            }
+                        } else {
+                            $fail('Invalid role selected.');
+                        }
+                    },
+                ],
                 // Halls
                 'hall_name' => 'required|array|min:1',
                 'hall_name.*' => 'required|string|max:150',
@@ -953,6 +1010,8 @@ class ManageExaminationController extends Controller
                 'student_shifting_status' => ($request->exam_category === 'school_exams' || $request->exam_category === 'test') ? ($request->student_shifting_status ?? 'none') : 'none',
                 'status' => $status,
                 'approval_status' => $approvalStatus,
+                'use_paper_approval' => $request->has('use_paper_approval') && $request->use_paper_approval == '1',
+                'no_approval_required' => $request->has('no_approval_required') && $request->no_approval_required == '1',
                 'created_by' => $userType === 'Teacher' ? $teacherID : null,
             ]);
 
@@ -1169,6 +1228,30 @@ class ManageExaminationController extends Controller
             // Bulk insert results
             if (! empty($results)) {
                 Result::insert($results);
+            }
+
+            // Create paper approval chain if enabled
+            if ($request->has('use_paper_approval') && $request->use_paper_approval == '1' && $request->has('paper_approval_role_ids')) {
+                foreach ($request->paper_approval_role_ids as $index => $roleId) {
+                    if (!empty($roleId)) {
+                        $chainData = [
+                            'examID' => $examination->examID,
+                            'approval_order' => $index + 1,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+
+                        if (in_array($roleId, ['class_teacher', 'coordinator'])) {
+                            $chainData['special_role_type'] = $roleId;
+                            $chainData['role_id'] = null;
+                        } else {
+                            $chainData['role_id'] = $roleId;
+                            $chainData['special_role_type'] = null;
+                        }
+
+                        DB::table('paper_approval_chains')->insert($chainData);
+                    }
+                }
             }
 
             // Create result approval chain if enabled
@@ -1555,6 +1638,7 @@ class ManageExaminationController extends Controller
                         'subclass_name' => $classSubject->subclass ? $classSubject->subclass->subclass_name : 'N/A',
                         'subclassID' => $classSubject->subclassID,
                         'classID' => $classSubject->classID,
+                        'subjectID' => $classSubject->subjectID,
                     ];
                 });
 
@@ -1567,6 +1651,37 @@ class ManageExaminationController extends Controller
             return response()->json([
                 'error' => 'An error occurred: '.$e->getMessage(),
             ], 500);
+        }
+    }
+
+    public function getExaminationsForFilter(Request $request)
+    {
+        try {
+            $schoolID = Session::get('schoolID');
+            if (!$schoolID) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            $year = $request->get('year');
+            $term = $request->get('term');
+
+            $query = Examination::where('schoolID', $schoolID);
+            if ($year) $query->where('year', $year);
+            if ($term) {
+                $query->where(function($q) use ($term) {
+                    $q->where('term', $term)->orWhere('term', 'all_terms');
+                });
+            }
+
+            $examinations = $query->orderBy('year', 'desc')->orderBy('term', 'asc')->get(['examID', 'exam_name', 'year', 'term', 'exam_category']);
+
+            return response()->json([
+                'success' => true,
+                'examinations' => $examinations
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
@@ -1810,6 +1925,27 @@ class ManageExaminationController extends Controller
                         }
                     },
                 ],
+                'use_paper_approval' => 'nullable|boolean',
+                'number_of_paper_approvals' => 'required_if:use_paper_approval,1|integer|min:1|max:'.$rolesCount,
+                'paper_approval_role_ids' => 'required_if:use_paper_approval,1|array',
+                'paper_approval_role_ids.*' => [
+                    'required',
+                    function ($attribute, $value, $fail) use ($schoolID) {
+                        if (in_array($value, ['class_teacher', 'coordinator'])) {
+                            return;
+                        }
+                        if (is_numeric($value)) {
+                            $roleExists = Role::where('id', $value)
+                                ->where('schoolID', $schoolID)
+                                ->exists();
+                            if (!$roleExists) {
+                                $fail('The selected role does not exist.');
+                            }
+                        } else {
+                            $fail('Invalid role selected.');
+                        }
+                    },
+                ],
                 // Halls (edit prefix)
                 'edit_hall_name' => 'required|array|min:1',
                 'edit_hall_name.*' => 'required|string|max:150',
@@ -1911,6 +2047,7 @@ class ManageExaminationController extends Controller
                 'details' => $request->details,
                 'student_shifting_status' => ($examCategory === 'school_exams' || $examCategory === 'test') ? ($request->student_shifting_status ?? 'none') : 'none',
                 'status' => $status,
+                'use_paper_approval' => $request->has('use_paper_approval') && $request->use_paper_approval == '1',
             ]);
 
             // Rebuild halls: clear old, insert new, then allocate students
@@ -2079,6 +2216,31 @@ class ManageExaminationController extends Controller
 
                 if (! empty($rowsToInsert)) {
                     Result::insert($rowsToInsert);
+                }
+            }
+
+            // Rebuild paper approval chain
+            DB::table('paper_approval_chains')->where('examID', $examID)->delete();
+            if ($request->has('use_paper_approval') && $request->use_paper_approval == '1' && $request->has('paper_approval_role_ids')) {
+                foreach ($request->paper_approval_role_ids as $index => $roleId) {
+                    if (!empty($roleId)) {
+                        $chainData = [
+                            'examID' => $examID,
+                            'approval_order' => $index + 1,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ];
+
+                        if (in_array($roleId, ['class_teacher', 'coordinator'])) {
+                            $chainData['special_role_type'] = $roleId;
+                            $chainData['role_id'] = null;
+                        } else {
+                            $chainData['role_id'] = $roleId;
+                            $chainData['special_role_type'] = null;
+                        }
+
+                        DB::table('paper_approval_chains')->insert($chainData);
+                    }
                 }
             }
 
@@ -2546,7 +2708,7 @@ class ManageExaminationController extends Controller
                                     try {
                                         $smsService = new SmsService();
                                         $school = \App\Models\School::find($schoolID);
-                                        $schoolName = $school ? $school->school_name : 'ShuleLink';
+                                        $schoolName = $school ? $school->school_name : 'ShuleXpert';
                                         
                                         $smsMessage = "{$schoolName}. Mwalimu {$creatorName}, mtihani wako '{$examName}' umekataliwa na kufutwa. Sababu: {$rejectionReason}. Asante";
                                         
@@ -3730,7 +3892,7 @@ class ManageExaminationController extends Controller
                     } else {
                         $message .= ", wastani grade {$gradeOrDivision}";
                     }
-                    $message .= " na kushika nafasi ya {$position} kati ya wanafunzi {$totalStudents} katika mtihani wa {$examName}. Kuona zaidi tembelea ingia kwenye application ya ShuleLink";
+                    $message .= " na kushika nafasi ya {$position} kati ya wanafunzi {$totalStudents} katika mtihani wa {$examName}. Kuona zaidi tembelea ingia kwenye application ya ShuleXpert";
 
                     // Send SMS
                     $phoneNo = $student->parent->phone;
@@ -4003,7 +4165,7 @@ class ManageExaminationController extends Controller
             $curl = curl_init();
 
             curl_setopt_array($curl, [
-                CURLOPT_URL => 'https://messaging-service.co.tz/link/sms/v1/text/single?username=emcatechn&password=Emca@%2312&from=ShuleLink&to='.$phoneNo.'&text='.$text,
+                CURLOPT_URL => 'https://messaging-service.co.tz/link/sms/v1/text/single?username=emcatechn&password=Emca@%2312&from=ShuleXpert&to='.$phoneNo.'&text='.$text,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_ENCODING => '',
                 CURLOPT_MAXREDIRS => 10,
@@ -4301,7 +4463,30 @@ class ManageExaminationController extends Controller
             $examPaper->upload_type = 'upload';
             $examPaper->test_week = $request->test_week;
             $examPaper->test_date = $request->test_date;
-            $examPaper->status = 'wait_approval';
+            
+            // Handle paper approval chain initialization
+            if ($examination->no_approval_required) {
+                $examPaper->status = 'approved';
+                $examPaper->current_approval_order = 0;
+            } elseif ($examination->use_paper_approval) {
+                $examPaper->status = 'pending';
+                $examPaper->current_approval_order = 1;
+                
+                // Get first role in the chain
+                $firstChainRole = DB::table('paper_approval_chains')
+                    ->where('examID', $examination->examID)
+                    ->where('approval_order', 1)
+                    ->first();
+
+                if (!$firstChainRole) {
+                    // Fallback if no chain is configured despite being enabled
+                    $examPaper->status = 'wait_approval';
+                    $examPaper->current_approval_order = 0;
+                }
+            } else {
+                $examPaper->status = 'wait_approval';
+                $examPaper->current_approval_order = 0;
+            }
 
             if ($request->hasFile('file')) {
                 $file = $request->file('file');
@@ -4315,6 +4500,41 @@ class ManageExaminationController extends Controller
             $examPaper->optional_question_total = null;
 
             $examPaper->save();
+
+            // Create initial log entry if approval chain is enabled AND no_approval_required is FALSE
+            if ($examination->use_paper_approval && !$examination->no_approval_required) {
+                // Clear existing logs for THIS paper to restart the chain
+                DB::table('paper_approval_logs')->where('exam_paperID', $examPaper->exam_paperID)->delete();
+
+                if (isset($firstChainRole) && $firstChainRole) {
+                    DB::table('paper_approval_logs')->insert([
+                        'exam_paperID' => $examPaper->exam_paperID,
+                        'role_id' => $firstChainRole->role_id,
+                        'special_role_type' => $firstChainRole->special_role_type,
+                        'approval_order' => 1,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    // Notify FIRST approvers
+                    $this->notifyNextApprovers($examPaper, $firstChainRole);
+                } else {
+                    // Default to Admin if no chain defined but approval is enabled
+                    DB::table('paper_approval_logs')->insert([
+                        'exam_paperID' => $examPaper->exam_paperID,
+                        'role_id' => null,
+                        'special_role_type' => 'admin',
+                        'approval_order' => 1,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    
+                    // Notify Admin
+                    $this->notifyAdminApprover($examPaper);
+                }
+            }
 
             if ($requiresQuestionFormat) {
                 $descriptions = $request->input('question_descriptions', []);
@@ -4432,9 +4652,34 @@ class ManageExaminationController extends Controller
                         $subPaper->upload_type = 'upload';
                         $subPaper->test_week = $request->test_week;
                         $subPaper->test_date = $request->test_date;
-                        $subPaper->status = 'wait_approval';
                         $subPaper->file_path = $examPaper->file_path;
+                        
+                        // Respect approval chain settings
+                        if ($examination->use_paper_approval) {
+                            $subPaper->status = 'pending';
+                            $subPaper->current_approval_order = 1;
+                        } else {
+                            $subPaper->status = 'wait_approval';
+                            $subPaper->current_approval_order = 0;
+                        }
+                        
                         $subPaper->save();
+
+                        // Create initial log entry for other subjects if approval chain is enabled
+                        if ($examination->use_paper_approval && isset($firstChainRole) && $firstChainRole) {
+                            // First, clear any existing logs for this paper to avoid duplicates if re-uploading
+                            DB::table('paper_approval_logs')->where('exam_paperID', $subPaper->exam_paperID)->delete();
+                            
+                            DB::table('paper_approval_logs')->insert([
+                                'exam_paperID' => $subPaper->exam_paperID,
+                                'role_id' => $firstChainRole->role_id,
+                                'special_role_type' => $firstChainRole->special_role_type,
+                                'approval_order' => 1,
+                                'status' => 'pending',
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ]);
+                        }
 
                         // Copy questions
                         if ($requiresQuestionFormat) {
@@ -4612,6 +4857,156 @@ class ManageExaminationController extends Controller
             ->with(['questions', 'optionalRanges'])
             ->get();
 
+        $currentUserType = Session::get('user_type');
+        $currentTeacherID = Session::get('teacherID');
+        $currentRoleIds = DB::table('role_user')->where('teacher_id', $currentTeacherID)->pluck('role_id')->toArray();
+
+        $examPapersData = $examPapers->map(function($paper) use ($currentUserType, $currentTeacherID, $currentRoleIds) {
+            $pendingLog = DB::table('paper_approval_logs')
+                ->where('exam_paperID', $paper->exam_paperID)
+                ->where('status', 'pending')
+                ->orderBy('approval_order', 'asc')
+                ->first();
+            
+            $chainData = [];
+            $allLogs = DB::table('paper_approval_logs')
+                ->where('exam_paperID', $paper->exam_paperID)
+                ->orderBy('approval_order', 'asc')
+                ->get();
+            
+            $totalSteps = DB::table('paper_approval_chains')->where('examID', $paper->examID)->count() + 1; // Chain + Admin
+            $maxApprovedOrder = DB::table('paper_approval_logs')
+                ->where('exam_paperID', $paper->exam_paperID)
+                ->where('status', 'approved')
+                ->max('approval_order') ?? 0;
+            
+            // If it's fully approved, set approved steps to total
+            if ($paper->status === 'approved') {
+                $approvedSteps = $totalSteps;
+            } else {
+                $approvedSteps = $maxApprovedOrder;
+            }
+            
+            $currentStepName = 'Complete';
+            if ($pendingLog) {
+                if ($pendingLog->role_id) {
+                    $roleName = DB::table('roles')->where('id', $pendingLog->role_id)->value('role_name');
+                    $currentStepName = $roleName ?? 'Approver';
+                } elseif ($pendingLog->special_role_type) {
+                    $currentStepName = ucfirst(str_replace('_', ' ', $pendingLog->special_role_type));
+                    if ($currentStepName == 'Admin') $currentStepName = 'Final Admin Review';
+                }
+            }
+
+            // Determine if current user can approve
+            $canUserApprove = false;
+            if ($pendingLog) {
+                if ($currentUserType === 'Admin') {
+                    // Mkuu (Admin) can only approve once it reaches the final 'admin' step
+                    if ($pendingLog->special_role_type === 'admin') {
+                        $canUserApprove = true;
+                    }
+                } elseif ($currentUserType === 'Teacher' || $currentUserType === 'Staff') {
+                    if ($pendingLog->role_id && in_array($pendingLog->role_id, $currentRoleIds)) {
+                        $canUserApprove = true;
+                    } elseif ($pendingLog->special_role_type === 'class_teacher') {
+                        $isClassTeacher = DB::table('subclasses')
+                            ->where('subclassID', $paper->classSubject->subclassID ?? 0)
+                            ->where('teacherID', $currentTeacherID)
+                            ->exists();
+                        if ($isClassTeacher) $canUserApprove = true;
+                    } elseif ($pendingLog->special_role_type === 'coordinator') {
+                        $isCoordinator = DB::table('classes')
+                            ->where('classID', $paper->classSubject->classID ?? 0)
+                            ->where('teacherID', $currentTeacherID)
+                            ->exists();
+                        if ($isCoordinator) $canUserApprove = true;
+                    }
+                }
+            }
+
+            // Determine if content (file/questions) is visible
+            $canViewContent = true;
+            if ($currentUserType === 'Admin') {
+                // Admin only sees paper content if fully approved or it's the final admin step
+                if ($paper->status !== 'approved' && (!$pendingLog || $pendingLog->special_role_type !== 'admin')) {
+                    $canViewContent = false;
+                }
+            }
+
+            // Construct full chain map for UI
+            $fullSteps = [];
+            if ($paper->examination && $paper->examination->no_approval_required) {
+                $fullSteps[] = [
+                    'name' => 'Direct Approval',
+                    'status' => 'approved',
+                    'order' => 1
+                ];
+            } else {
+                $chainDefinition = DB::table('paper_approval_chains')
+                    ->where('examID', $paper->examID)
+                    ->orderBy('approval_order', 'asc')
+                    ->get();
+
+                foreach ($chainDefinition as $step) {
+                    $roleName = 'Approver';
+                    if ($step->role_id) {
+                        $roleName = DB::table('roles')->where('id', $step->role_id)->value('role_name') ?? 'Role';
+                    } elseif ($step->special_role_type) {
+                        $roleName = ucfirst(str_replace('_', ' ', $step->special_role_type));
+                    }
+                    
+                    $stepLog = $allLogs->where('approval_order', $step->approval_order)->first();
+                    
+                    $fullSteps[] = [
+                        'name' => $roleName,
+                        'status' => $stepLog ? $stepLog->status : 'waiting',
+                        'order' => $step->approval_order
+                    ];
+                }
+                
+                // Add Admin step
+                $adminOrder = ($chainDefinition->max('approval_order') ?? 0) + 1;
+                $adminLog = $allLogs->where('approval_order', $adminOrder)->first();
+                
+                $fullSteps[] = [
+                    'name' => 'Mkuu Approval',
+                    'status' => $adminLog ? $adminLog->status : ($paper->status === 'approved' ? 'approved' : 'waiting'),
+                    'order' => $adminOrder
+                ];
+            }
+
+            $paperArr = $paper->toArray();
+            $paperArr['pending_log_id'] = $pendingLog ? $pendingLog->paper_approval_logID : null;
+            
+            // Handle no_approval_required display
+            if ($paper->examination && $paper->examination->no_approval_required) {
+                $paperArr['chain_progress'] = "Direct";
+                $paperArr['detailed_status'] = 'Directly Approved (No Approval Chain Required)';
+            } else {
+                $paperArr['chain_progress'] = $totalSteps > 0 ? "{$approvedSteps}/{$totalSteps}" : "N/A";
+                // Add detailed status label
+                if ($paper->status === 'approved') {
+                    $paperArr['detailed_status'] = 'Approved, Ready for Printing';
+                } elseif ($paper->status === 'rejected') {
+                    $paperArr['detailed_status'] = 'Final Rejection (Returned to Teacher)';
+                } else {
+                    if ($paper->rejection_reason && $pendingLog) {
+                        $paperArr['detailed_status'] = "Sent Back for Correction, Pending {$currentStepName}";
+                    } else {
+                        $paperArr['detailed_status'] = "In Progress, Pending {$currentStepName}";
+                    }
+                }
+            }
+            
+            $paperArr['current_approver_role'] = $currentStepName;
+            $paperArr['can_approve'] = $canUserApprove;
+            $paperArr['can_view_content'] = $canViewContent;
+            $paperArr['full_chain'] = $fullSteps;
+
+            return $paperArr;
+        });
+
         // Get available weeks for weekly/monthly tests
         $availableWeeks = [];
         if ($isWeeklyTest || $isMonthlyTest || $hasWeekData) {
@@ -4669,117 +5064,637 @@ class ManageExaminationController extends Controller
 
         return response()->json([
             'success' => true,
-            'exam_papers' => $examPapers,
-            'is_weekly_test' => $isWeeklyTest || $hasWeekData,
+            'exam_papers' => $examPapersData,
+            'is_weekly_test' => $isWeeklyTest,
             'is_monthly_test' => $isMonthlyTest,
-            'available_weeks' => $availableWeeks,
+            'available_weeks' => $availableWeeks
         ]);
     }
 
     /**
      * Approve or reject exam paper
      */
+    public function examPaperApproval(Request $request)
+    {
+        $userType = Session::get('user_type');
+        $schoolID = Session::get('schoolID');
+        $teacherID = Session::get('teacherID');
+        
+        // Filters from request
+        $examID = $request->input('examID');
+        $classID = $request->input('classID');
+        $subclassID = $request->input('subclassID');
+        $subjectID = $request->input('subjectID');
+        $weekFilter = $request->input('week');
+        if (!$weekFilter && $examID) {
+            $checkExam = DB::table('examinations')->where('examID', $examID)->first();
+            if ($checkExam && in_array($checkExam->category, ['Weekly Test', 'Monthly Test'])) {
+                $weekFilter = "Week " . date('W');
+            }
+        }
+        $yearFilter = $request->input('year', date('Y'));
+        $termFilter = $request->input('term');
+        
+        // Fetch filter options for the UI
+        $availableYears = Examination::where('schoolID', $schoolID)->distinct()->pluck('year')->sortDesc()->toArray();
+        if (empty($availableYears)) $availableYears = [date('Y')];
+
+        $examQuery = Examination::where('schoolID', $schoolID);
+        if ($yearFilter) $examQuery->where('year', $yearFilter);
+        if ($termFilter) {
+            $examQuery->where(function($q) use ($termFilter) {
+                $q->where('term', $termFilter)->orWhere('term', 'all_terms');
+            });
+        }
+        $filter_examinations = $examQuery->orderBy('year', 'desc')->orderBy('term', 'asc')->get();
+
+        $available_weeks = [];
+        $selected_exam = null;
+        if ($examID) {
+            $selected_exam = Examination::find($examID);
+            if ($selected_exam && in_array(strtolower(trim($selected_exam->exam_name)), ['weekly test', 'monthly test'])) {
+                $available_weeks = DB::table('exam_papers')
+                    ->where('examID', $examID)
+                    ->whereNotNull('test_week')
+                    ->distinct()
+                    ->pluck('test_week')
+                    ->toArray();
+                // Add current week to available weeks if it's not already there
+                $current_week = "Week " . date('W');
+                if (!in_array($current_week, $available_weeks)) {
+                    $available_weeks[] = $current_week;
+                }
+                sort($available_weeks);
+            }
+        }
+
+        $filter_classes = ClassModel::where('schoolID', $schoolID)->orderBy('class_name', 'asc')->get();
+        
+        // Filter subclasses based on selected classID
+        $subclassesQuery = Subclass::whereHas('class', function($q) use ($schoolID) {
+            $q->where('schoolID', $schoolID);
+        });
+        if ($classID) {
+            $subclassesQuery->where('classID', $classID);
+        }
+        $filter_subclasses = $subclassesQuery->orderBy('subclass_name', 'asc')->get();
+
+        // Filter subjects based on selected subclassID (ClassSubject)
+        if ($subclassID) {
+            $filter_subjects = DB::table('class_subjects')
+                ->join('school_subjects', 'class_subjects.subjectID', '=', 'school_subjects.subjectID')
+                ->where('class_subjects.subclassID', $subclassID)
+                ->where('school_subjects.schoolID', $schoolID)
+                ->where('school_subjects.status', 'Active')
+                ->select('school_subjects.*')
+                ->distinct()
+                ->orderBy('subject_name', 'asc')
+                ->get();
+        } else {
+            $filter_subjects = DB::table('school_subjects')
+                ->where('schoolID', $schoolID)
+                ->where('status', 'Active')
+                ->orderBy('subject_name', 'asc')
+                ->get();
+        }
+
+        $query = PaperApprovalLog::with(['examPaper.teacher', 'examPaper.classSubject.subject', 'examPaper.classSubject.class', 'examPaper.classSubject.subclass', 'examPaper.examination', 'role'])
+            ->where('status', 'pending')
+            ->whereHas('examPaper.examination', function ($q) use ($schoolID, $yearFilter, $termFilter) {
+                $q->where('schoolID', $schoolID);
+                if ($yearFilter) $q->where('year', $yearFilter);
+                if ($termFilter) $q->where('term', $termFilter);
+            });
+
+        // Apply remaining filters
+        if ($examID) {
+            $query->whereHas('examPaper', function($q) use ($examID) {
+                $q->where('examID', $examID);
+            });
+        }
+        if ($classID) {
+            $query->whereHas('examPaper.classSubject', function($q) use ($classID) {
+                $q->where('classID', $classID);
+            });
+        }
+        if ($subclassID) {
+            $query->whereHas('examPaper.classSubject', function($q) use ($subclassID) {
+                $q->where('subclassID', $subclassID);
+            });
+        }
+        if ($subjectID) {
+            $query->whereHas('examPaper.classSubject', function($q) use ($subjectID) {
+                $q->where('subjectID', $subjectID);
+            });
+        }
+        if ($weekFilter) {
+            $query->whereHas('examPaper', function($q) use ($weekFilter) {
+                $q->where('test_week', $weekFilter);
+            });
+        }
+
+        if ($userType === 'Admin') {
+            // Admin sees all pending approvals matching filters
+            $pendingLogs = $query->get();
+        } elseif ($userType === 'Teacher') {
+            // Get teacher's regular roles
+            $roleIds = DB::table('role_user')->where('teacher_id', $teacherID)->pluck('role_id')->toArray();
+            
+            // Get teacher's special roles (classes/subclasses)
+            $classTeacherSubclassIds = Subclass::where('teacherID', $teacherID)->pluck('subclassID')->toArray();
+            $coordinatorClassIds = ClassModel::where('teacherID', $teacherID)->pluck('classID')->toArray();
+
+            // Find logs matching roles or special roles, then filter by teacher's specific assignments
+            $pendingLogs = $query->get()->filter(function($log) use ($roleIds, $classTeacherSubclassIds, $coordinatorClassIds) {
+                if ($log->role_id) {
+                    return in_array($log->role_id, $roleIds);
+                }
+                
+                if ($log->special_role_type === 'class_teacher') {
+                    return in_array($log->examPaper->classSubject->subclassID ?? 0, $classTeacherSubclassIds);
+                } elseif ($log->special_role_type === 'coordinator') {
+                    return in_array($log->examPaper->classSubject->classID ?? 0, $coordinatorClassIds);
+                }
+                
+                return false;
+            });
+        } elseif ($userType === 'Staff') {
+            if ($this->hasPermission('view_exam_papers')) {
+                $pendingLogs = $query->get();
+            } else {
+                $pendingLogs = collect();
+            }
+        } else {
+            $pendingLogs = collect();
+        }
+
+        return view('Admin.exam_paper_approval', compact(
+            'pendingLogs', 
+            'filter_examinations', 
+            'filter_classes', 
+            'filter_subclasses', 
+            'filter_subjects',
+            'availableYears',
+            'examID', 
+            'classID', 
+            'subclassID', 
+            'subjectID',
+            'yearFilter',
+            'termFilter',
+            'userType',
+            'weekFilter',
+            'available_weeks',
+            'selected_exam'
+        ));
+    }
+
+    public function getAvailableWeeksForExam($examID)
+    {
+        $schoolID = Session::get('schoolID');
+        $available_weeks = DB::table('exam_papers')
+            ->where('examID', $examID)
+            ->whereNotNull('test_week')
+            ->distinct()
+            ->pluck('test_week')
+            ->toArray();
+        
+        $exam = DB::table('examinations')->where('examID', $examID)->where('schoolID', $schoolID)->first();
+        if ($exam && in_array(strtolower(trim($exam->exam_name)), ['weekly test', 'monthly test'])) {
+            $current_week = "Week " . date('W');
+            if (!in_array($current_week, $available_weeks)) {
+                $available_weeks[] = $current_week;
+            }
+        }
+        sort($available_weeks);
+
+        return response()->json([
+            'success' => true,
+            'available_weeks' => $available_weeks,
+            'category' => $exam->exam_name ?? 'N/A'
+        ]);
+    }
+
+    public function getAdminExamPaperReview($examPaperID)
+    {
+        $schoolID = Session::get('schoolID');
+        if (!$schoolID) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        try {
+            $examPaper = ExamPaper::with([
+                'teacher', 
+                'classSubject.subject', 
+                'classSubject.class', 
+                'classSubject.subclass', 
+                'examination',
+                'questions' => function($q) { $q->orderBy('question_number'); }
+            ])->whereHas('examination', function($q) use ($schoolID) {
+                $q->where('schoolID', $schoolID);
+            })->findOrFail($examPaperID);
+
+            return response()->json([
+                'success' => true,
+                'paper' => [
+                    'exam_paperID' => $examPaper->exam_paperID,
+                    'description' => $examPaper->description,
+                    'file_path' => $examPaper->file_path ? route('download_exam_paper', ['examPaperID' => $examPaper->exam_paperID, 'inline' => 1]) : null,
+                    'is_file' => !empty($examPaper->file_path),
+                    'teacher_name' => ($examPaper->teacher->first_name ?? '') . ' ' . ($examPaper->teacher->last_name ?? ''),
+                    'subject' => $examPaper->classSubject->subject->subject_name ?? 'N/A',
+                    'class' => ($examPaper->classSubject->class->class_name ?? '') . ' ' . ($examPaper->classSubject->subclass->subclass_name ?? ''),
+                    'questions' => $examPaper->questions->map(function($q) {
+                        return [
+                            'number' => $q->question_number,
+                            'description' => $q->question_description,
+                            'marks' => $q->marks
+                        ];
+                    })
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error fetching exam paper review: ' . $e->getMessage());
+            return response()->json(['error' => 'Failed to load paper details'], 500);
+        }
+    }
+
+    public function viewApprovalChain(Request $request, $examID)
+    {
+        $paper_id = $request->paper_id;
+        
+        $chain = PaperApprovalChain::with('role')
+            ->where('examID', $examID)
+            ->orderBy('approval_order')
+            ->get();
+            
+        $logs = PaperApprovalLog::with('approver')
+            ->where('exam_paperID', $paper_id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+            
+        $paper = ExamPaper::with('examination')->find($paper_id);
+        
+        // Handle no_approval_required case
+        if ($paper && $paper->examination && $paper->examination->no_approval_required) {
+            return response()->json([
+                'chain' => [
+                    [
+                        'approval_order' => 1,
+                        'role_name' => 'Direct Approval (System)',
+                        'status' => 'approved',
+                        'special_role_type' => 'system'
+                    ]
+                ],
+                'logs' => [
+                    [
+                        'approval_order' => 1,
+                        'status' => 'approved',
+                        'comment' => 'Automatically approved as per examination settings.',
+                        'updated_at' => $paper->created_at,
+                        'approver' => ['first_name' => 'System', 'last_name' => '']
+                    ]
+                ],
+                'current_order' => null
+            ]);
+        }
+
+        // Convert to array or collection to allow appending
+        $chainData = $chain->toArray();
+        foreach($chainData as &$c) {
+            $c['role_name'] = $c['special_role_type'] ? 
+                ucwords(str_replace('_', ' ', $c['special_role_type'])) : 
+                ($c['role']['role_name'] ?? 'Approver');
+        }
+        
+        // Check if there's an admin_final log or if we're moving towards it
+        $adminLog = $logs->where('special_role_type', 'admin')->first();
+        if ($adminLog) {
+            $chainData[] = [
+                'approval_order' => $adminLog->approval_order,
+                'special_role_type' => 'admin',
+                'role' => null,
+                'role_id' => null
+            ];
+        } elseif ($paper && $paper->status === 'pending' && $paper->current_approval_order > ($chain->max('approval_order') ?? 0)) {
+            // In case current order is pointing to admin but we want to show it as the next step in the timeline
+             $chainData[] = [
+                'approval_order' => $paper->current_approval_order,
+                'special_role_type' => 'admin',
+                'role' => null,
+                'role_id' => null
+            ];
+        }
+        
+        return response()->json([
+            'chain' => $chainData,
+            'logs' => $logs,
+            'current_order' => $paper ? $paper->current_approval_order : null
+        ]);
+    }
+
     public function approveRejectExamPaper(Request $request, $examPaperID)
     {
         $validator = Validator::make($request->all(), [
             'action' => 'required|in:approve,reject',
             'rejection_reason' => 'required_if:action,reject|string|max:500',
             'approval_comment' => 'nullable|string|max:500',
+            'paper_approval_log_id' => 'required|exists:paper_approval_logs,paper_approval_logID',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Check permission based on action
-        $action = $request->action;
-        if ($action === 'approve') {
-            if (! $this->hasPermission('approve_exam_paper')) {
-                return response()->json(['error' => 'You are not allowed to perform this action. You need the approve_exam_paper permission to approve exam papers.'], 403);
-            }
-        } else {
-            if (! $this->hasPermission('reject_exam_paper')) {
-                return response()->json(['error' => 'You are not allowed to perform this action. You need the reject_exam_paper permission to reject exam papers.'], 403);
-            }
-        }
-
         try {
+            DB::beginTransaction();
+
             $examPaper = ExamPaper::with(['teacher', 'classSubject.subject', 'examination'])->findOrFail($examPaperID);
-            $teacher = $examPaper->teacher;
-            $subject = $examPaper->classSubject->subject ?? null;
-            $examination = $examPaper->examination ?? null;
+            $log = PaperApprovalLog::findOrFail($request->paper_approval_log_id);
+            $userType = Session::get('user_type');
+            $teacherID = Session::get('teacherID');
+            $staffID = Session::get('staffID');
+            $adminID = Session::get('adminID') ?? Session::get('userID');
             $schoolID = Session::get('schoolID');
-            $school = \App\Models\School::find($schoolID);
-            $schoolName = $school ? $school->school_name : 'ShuleLink';
+            
+            $approverID = $teacherID ?? $staffID ?? $adminID;
+
+            // Verify if the user can approve this specific log entry
+            $canApprove = false;
+            if ($userType === 'Admin') {
+                $canApprove = true;
+            } elseif ($userType === 'Teacher') {
+                if ($log->role_id) {
+                    $hasRole = DB::table('role_user')
+                        ->where('teacher_id', $teacherID)
+                        ->where('role_id', $log->role_id)
+                        ->exists();
+                    if ($hasRole) $canApprove = true;
+                } elseif ($log->special_role_type) {
+                    if ($log->special_role_type === 'class_teacher') {
+                        $isClassTeacher = Subclass::where('subclassID', $examPaper->classSubject->subclassID)
+                            ->where('teacherID', $teacherID)
+                            ->exists();
+                        if ($isClassTeacher) $canApprove = true;
+                    } elseif ($log->special_role_type === 'coordinator') {
+                        $isCoordinator = ClassModel::where('classID', $examPaper->classSubject->classID)
+                            ->where('teacherID', $teacherID)
+                            ->exists();
+                        if ($isCoordinator) $canApprove = true;
+                    }
+                }
+            }
+
+            if (!$canApprove) {
+                return response()->json(['error' => 'You are not authorized to approve/reject this step in the chain.'], 403);
+            }
 
             if ($request->action === 'approve') {
-                $examPaper->status = 'approved';
-                $examPaper->approval_comment = $request->approval_comment;
-                $examPaper->rejection_reason = null;
-                $message = 'Exam paper approved successfully';
-                
-                // Send SMS to teacher
-                if ($teacher && $teacher->phone_number) {
-                    try {
-                        $smsService = new SmsService();
-                        $teacherName = trim(($teacher->first_name ?? '') . ' ' . ($teacher->last_name ?? ''));
-                        $subjectName = $subject ? $subject->subject_name : 'somo';
-                        $examName = $examination ? $examination->exam_name : 'mtihani';
-                        $comment = $request->approval_comment ? " Maoni: {$request->approval_comment}" : '';
+                // Update current log
+                $log->update([
+                    'status' => 'approved',
+                    'approved_by' => $approverID,
+                    'comment' => $request->approval_comment,
+                    'updated_at' => now(),
+                ]);
+
+                // Check for next step in chain
+                $nextChainRole = PaperApprovalChain::where('examID', $examPaper->examID)
+                    ->where('approval_order', $log->approval_order + 1)
+                    ->first();
+
+                if ($nextChainRole) {
+                    // Create next log entry
+                    PaperApprovalLog::create([
+                        'exam_paperID' => $examPaper->exam_paperID,
+                        'role_id' => $nextChainRole->role_id,
+                        'special_role_type' => $nextChainRole->special_role_type,
+                        'approval_order' => $nextChainRole->approval_order,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    $examPaper->current_approval_order = $nextChainRole->approval_order;
+                    $examPaper->status = 'pending'; // Still pending next person
+                    $examPaper->rejection_reason = null; // Clear rejection reason as it's moving forward
+                    $message = 'Exam paper approved and moved to the next stage.';
+                    
+                    // Notify next approvers
+                    $this->notifyNextApprovers($examPaper, $nextChainRole);
+                } else {
+                    // Chain defined by user is finished.
+                    // Now, is the current approver an Admin?
+                    // Or if they approved via a final admin step?
+                    if ($userType === 'Admin' || $log->special_role_type === 'admin') {
+                        // Fully approved
+                        $examPaper->status = 'approved';
+                        $examPaper->current_approval_order = 0;
+                        $examPaper->approval_comment = $request->approval_comment;
+                        $examPaper->rejection_reason = null;
+                        $message = 'Exam paper fully approved successfully';
+
+                        // Send SMS to teacher
+                        $this->sendPaperApprovalSms($examPaper, 'approve', $request->approval_comment);
+                    } else {
+                        // Move to Admin as final step
+                        $nextOrder = $log->approval_order + 1;
+                        PaperApprovalLog::create([
+                            'exam_paperID' => $examPaper->exam_paperID,
+                            'role_id' => null,
+                            'special_role_type' => 'admin',
+                            'approval_order' => $nextOrder,
+                            'status' => 'pending',
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+
+                        $examPaper->current_approval_order = $nextOrder;
+                        $examPaper->status = 'pending';
+                        $examPaper->rejection_reason = null; // Clear rejection reason
+                        $message = 'Exam paper approved and moved to Admin for final review.';
                         
-                        $smsMessage = "{$schoolName}. Mwalimu {$teacherName}, karatasi ya mtihani ya {$subjectName} kwa {$examName} imekubaliwa.{$comment} Asante";
-                        
-                        $smsResult = $smsService->sendSms($teacher->phone_number, $smsMessage);
-                        
-                        if (!$smsResult['success']) {
-                            Log::warning("Failed to send approval SMS to teacher {$teacher->id}: " . ($smsResult['message'] ?? 'Unknown error'));
-                        }
-                    } catch (\Exception $smsException) {
-                        Log::error('Error sending approval SMS to teacher: '.$smsException->getMessage());
+                        // Notify Admin
+                        $this->notifyAdminApprover($examPaper);
                     }
                 }
             } else {
-                $examPaper->status = 'rejected';
-                $examPaper->rejection_reason = $request->rejection_reason;
-                $examPaper->approval_comment = null;
-                $message = 'Exam paper rejected successfully';
-                
-                // Send SMS to teacher
-                if ($teacher && $teacher->phone_number) {
-                    try {
-                        $smsService = new SmsService();
-                        $teacherName = trim(($teacher->first_name ?? '') . ' ' . ($teacher->last_name ?? ''));
-                        $subjectName = $subject ? $subject->subject_name : 'somo';
-                        $examName = $examination ? $examination->exam_name : 'mtihani';
-                        $reason = $request->rejection_reason ?? 'Hakuna sababu iliyotolewa';
+                // Reject: Move back one step or return to teacher
+                $log->update([
+                    'status' => 'rejected',
+                    'approved_by' => $approverID,
+                    'comment' => $request->rejection_reason,
+                    'updated_at' => now(),
+                ]);
+
+                if ($log->approval_order > 1) {
+                    // Find the previous log entry to reset it to pending
+                    $previousLog = PaperApprovalLog::where('exam_paperID', $examPaperID)
+                        ->where('approval_order', $log->approval_order - 1)
+                        ->orderBy('paper_approval_logID', 'desc')
+                        ->first();
+                    
+                    if ($previousLog) {
+                        // Mark previous as pending again so they can fix/re-approve
+                        $previousLog->update([
+                            'status' => 'pending',
+                            'updated_at' => now()
+                        ]);
                         
-                        $smsMessage = "{$schoolName}. Mwalimu {$teacherName}, karatasi ya mtihani ya {$subjectName} kwa {$examName} imekataliwa. Sababu: {$reason}";
+                        $examPaper->current_approval_order = $previousLog->approval_order;
+                        $examPaper->status = 'pending';
+                        $examPaper->rejection_reason = $request->rejection_reason;
+                        $message = 'Exam paper rejected and automatically returned to the previous approver in the chain.';
                         
-                        $smsResult = $smsService->sendSms($teacher->phone_number, $smsMessage);
-                        
-                        if (!$smsResult['success']) {
-                            Log::warning("Failed to send rejection SMS to teacher {$teacher->id}: " . ($smsResult['message'] ?? 'Unknown error'));
-                        }
-                    } catch (\Exception $smsException) {
-                        Log::error('Error sending rejection SMS to teacher: '.$smsException->getMessage());
+                        // Notify previous approver
+                        $this->notifyPreviousApprovers($examPaper, $previousLog, $request->rejection_reason);
+                    } else {
+                        // Fallback to teacher
+                        $examPaper->status = 'rejected';
+                        $examPaper->rejection_reason = $request->rejection_reason;
+                        $examPaper->current_approval_order = 0;
+                        $message = 'Exam paper rejected and returned to teacher.';
+                        $this->sendPaperApprovalSms($examPaper, 'reject', $request->rejection_reason);
                     }
+                } else {
+                    // First step rejection - return to teacher
+                    $examPaper->status = 'rejected';
+                    $examPaper->rejection_reason = $request->rejection_reason;
+                    $examPaper->approval_comment = null;
+                    $examPaper->current_approval_order = 0;
+                    $message = 'Exam paper rejected successfully and returned to teacher.';
+
+                    // Send SMS to teacher
+                    $this->sendPaperApprovalSms($examPaper, 'reject', $request->rejection_reason);
                 }
             }
 
             $examPaper->save();
+
+            DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => $message,
                 'exam_paper' => $examPaper,
             ]);
-
         } catch (\Exception $e) {
-            Log::error('Error approving/rejecting exam paper: '.$e->getMessage());
-
-            return response()->json(['error' => 'Failed to process request'], 500);
+            DB::rollBack();
+            return response()->json(['error' => 'An error occurred: '.$e->getMessage()], 500);
         }
     }
+
+    private function notifyNextApprovers($examPaper, $chainRole)
+    {
+        $phones = $this->getApproverPhones($examPaper, $chainRole);
+        $subjectName = $examPaper->classSubject->subject->subject_name ?? 'Subject';
+        $examName = $examPaper->examination->exam_name ?? 'Exam';
+        $school = \App\Models\School::find(Session::get('schoolID'));
+        $schoolName = $school ? $school->school_name : 'ShuleXpert';
+        
+        $message = "{$schoolName}. Karatasi ya mtihani ya {$subjectName} ({$examName}) imewasilishwa kwako kwa hatua inayofuata ya ukaguzi. Tafadhali pitia ShuleXpert.";
+        
+        $smsService = new SmsService();
+        foreach ($phones as $phone) {
+            if ($phone) $smsService->sendSms($phone, $message);
+        }
+    }
+
+    private function notifyPreviousApprovers($examPaper, $chainRole, $reason)
+    {
+        $phones = $this->getApproverPhones($examPaper, $chainRole);
+        $subjectName = $examPaper->classSubject->subject->subject_name ?? 'Subject';
+        $examName = $examPaper->examination->exam_name ?? 'Exam';
+        $school = \App\Models\School::find(Session::get('schoolID'));
+        $schoolName = $school ? $school->school_name : 'ShuleXpert';
+        
+        $message = "{$schoolName}. Karatasi ya mtihani ya {$subjectName} ({$examName}) imekataliwa na hatua ya mbele yako na kurudishwa kwako. Sababu: {$reason}. Tafadhali kagua tena.";
+        
+        $smsService = new SmsService();
+        foreach ($phones as $phone) {
+            if ($phone) $smsService->sendSms($phone, $message);
+        }
+    }
+
+    private function notifyAdminApprover($examPaper)
+    {
+        $school = \App\Models\School::find(Session::get('schoolID'));
+        $schoolPhone = $school ? $school->phone : null;
+        $schoolName = $school ? $school->school_name : 'ShuleXpert';
+        
+        if ($schoolPhone) {
+            $subjectName = $examPaper->classSubject->subject->subject_name ?? 'Subject';
+            $examName = $examPaper->examination->exam_name ?? 'Exam';
+            $message = "{$schoolName}. Admnin, hatua za awali za ukaguzi wa karatasi ya mtihani ya {$subjectName} ({$examName}) zimekamilika. Inasubiri idhini yako ya mwisho.";
+            
+            $smsService = new SmsService();
+            $smsService->sendSms($schoolPhone, $message);
+        }
+    }
+
+    private function getApproverPhones($examPaper, $chainRole)
+    {
+        $phones = [];
+        $schoolID = Session::get('schoolID');
+        
+        if ($chainRole->role_id) {
+            $phones = DB::table('role_user')
+                ->join('teachers', 'role_user.teacher_id', '=', 'teachers.id')
+                ->where('role_user.role_id', $chainRole->role_id)
+                ->where('teachers.schoolID', $schoolID)
+                ->where('teachers.status', 'Active')
+                ->pluck('teachers.phone_number')
+                ->toArray();
+        } elseif ($chainRole->special_role_type === 'class_teacher') {
+            $subclass = Subclass::find($examPaper->classSubject->subclassID);
+            if ($subclass && $subclass->teacherID) {
+                $teacher = Teacher::find($subclass->teacherID);
+                if ($teacher) $phones[] = $teacher->phone_number;
+            }
+        } elseif ($chainRole->special_role_type === 'coordinator') {
+            $class = ClassModel::find($examPaper->classSubject->classID);
+            if ($class && $class->teacherID) {
+                $teacher = Teacher::find($class->teacherID);
+                if ($teacher) $phones[] = $teacher->phone_number;
+            }
+        }
+        
+        return array_unique(array_filter($phones));
+    }
+
+    private function sendPaperApprovalSms($examPaper, $action, $commentOrReason)
+    {
+        $teacher = $examPaper->teacher;
+        $subject = $examPaper->classSubject->subject ?? null;
+        $examination = $examPaper->examination ?? null;
+        $schoolID = Session::get('schoolID');
+        $school = \App\Models\School::find($schoolID);
+        $schoolName = $school ? $school->school_name : 'ShuleXpert';
+
+        if ($teacher && $teacher->phone_number) {
+            try {
+                $smsService = new SmsService();
+                $teacherName = trim(($teacher->first_name ?? '') . ' ' . ($teacher->last_name ?? ''));
+                $subjectName = $subject ? $subject->subject_name : 'somo';
+                $examName = $examination ? $examination->exam_name : 'mtihani';
+
+                if ($action === 'approve') {
+                    $comment = $commentOrReason ? " Maoni: {$commentOrReason}" : '';
+                    $smsMessage = "{$schoolName}. Mwalimu {$teacherName}, karatasi ya mtihani ya {$subjectName} kwa {$examName} imekubaliwa kabisa na ipo Printing Unit.{$comment}";
+                } else {
+                    $reason = $commentOrReason ?? 'Hakuna sababu iliyotolewa';
+                    $smsMessage = "{$schoolName}. Mwalimu {$teacherName}, karatasi ya mtihani ya {$subjectName} kwa {$examName} imekataliwa. Sababu: {$reason}";
+                }
+
+                $smsResult = $smsService->sendSms($teacher->phone_number, $smsMessage);
+                if (!$smsResult['success']) {
+                    Log::warning("Failed to send SMS to teacher {$teacher->id}: " . ($smsResult['message'] ?? 'Unknown error'));
+                }
+            } catch (\Exception $smsException) {
+                Log::error('Error sending paper approval SMS: '.$smsException->getMessage());
+            }
+        }
+    }
+
 
     /**
      * Update exam paper (Teacher - only if pending)
@@ -4807,11 +5722,14 @@ class ManageExaminationController extends Controller
                 ->where('teacherID', $teacherID)
                 ->firstOrFail();
 
-            if ($examPaper->status !== 'wait_approval') {
-                return response()->json(['error' => 'You can only edit exam papers that are pending approval'], 422);
+            if (!in_array($examPaper->status, ['wait_approval', 'pending', 'rejected'])) {
+                return response()->json(['error' => 'You can only edit exam papers that are pending approval or rejected'], 422);
             }
 
             DB::beginTransaction();
+            
+            $examination = $examPaper->examination;
+            $wasRejected = ($examPaper->status === 'rejected');
 
             $examPaper->upload_type = 'upload';
 
@@ -4826,12 +5744,58 @@ class ManageExaminationController extends Controller
             $examPaper->file_path = $filePath;
             $examPaper->question_content = null;
 
+            // If it was rejected or we want to restart the chain on update
+            if ($examination && $examination->use_paper_approval) {
+                $examPaper->status = 'pending';
+                $examPaper->current_approval_order = 1;
+
+                // Get first role in the chain
+                $firstChainRole = DB::table('paper_approval_chains')
+                    ->where('examID', $examination->examID)
+                    ->where('approval_order', 1)
+                    ->first();
+
+                // Clear existing logs to restart the chain
+                DB::table('paper_approval_logs')->where('exam_paperID', $examPaper->exam_paperID)->delete();
+
+                if ($firstChainRole) {
+                    DB::table('paper_approval_logs')->insert([
+                        'exam_paperID' => $examPaper->exam_paperID,
+                        'role_id' => $firstChainRole->role_id,
+                        'special_role_type' => $firstChainRole->special_role_type,
+                        'approval_order' => 1,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    // Notify FIRST approvers again
+                    $this->notifyNextApprovers($examPaper, $firstChainRole);
+                } else {
+                    // Default to Admin if no chain defined
+                    DB::table('paper_approval_logs')->insert([
+                        'exam_paperID' => $examPaper->exam_paperID,
+                        'role_id' => null,
+                        'special_role_type' => 'admin_final',
+                        'approval_order' => 1,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    
+                    // Notify Admin
+                    $this->notifyAdminApprover($examPaper);
+                }
+            }
+
             $examPaper->save();
 
             DB::commit();
 
+            $message = $wasRejected ? 'Exam paper re-uploaded and approval chain restarted.' : 'Exam paper updated successfully';
+
             return response()->json([
-                'success' => 'Exam paper updated successfully',
+                'success' => $message,
                 'exam_paper' => $examPaper,
             ], 200);
 
@@ -4953,9 +5917,12 @@ class ManageExaminationController extends Controller
                 ->where('teacherID', $teacherID)
                 ->firstOrFail();
 
-            if ($examPaper->status !== 'wait_approval') {
-                return response()->json(['error' => 'You can only edit questions for pending papers'], 422);
+            if (!in_array($examPaper->status, ['wait_approval', 'pending', 'rejected'])) {
+                return response()->json(['error' => 'You can only edit questions for pending or rejected papers'], 422);
             }
+
+            $examination = $examPaper->examination;
+            $wasRejected = ($examPaper->status === 'rejected');
 
             $descriptions = $request->input('question_descriptions', []);
             $marks = $request->input('question_marks', []);
@@ -5045,14 +6012,62 @@ class ManageExaminationController extends Controller
                 ]);
             }
 
+            // If it was rejected or we want to restart the chain on update
+            if ($examination && $examination->use_paper_approval) {
+                $examPaper->status = 'pending';
+                $examPaper->current_approval_order = 1;
+
+                // Get first role in the chain
+                $firstChainRole = DB::table('paper_approval_chains')
+                    ->where('examID', $examination->examID)
+                    ->where('approval_order', 1)
+                    ->first();
+
+                // Clear existing logs for THIS paper to restart the chain
+                DB::table('paper_approval_logs')->where('exam_paperID', $examPaper->exam_paperID)->delete();
+
+                if ($firstChainRole) {
+                    DB::table('paper_approval_logs')->insert([
+                        'exam_paperID' => $examPaper->exam_paperID,
+                        'role_id' => $firstChainRole->role_id,
+                        'special_role_type' => $firstChainRole->special_role_type,
+                        'approval_order' => 1,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    // Notify FIRST approvers
+                    $this->notifyNextApprovers($examPaper, $firstChainRole);
+                } else {
+                    // Default to Admin if no chain defined
+                    DB::table('paper_approval_logs')->insert([
+                        'exam_paperID' => $examPaper->exam_paperID,
+                        'role_id' => null,
+                        'special_role_type' => 'admin_final',
+                        'approval_order' => 1,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    
+                    // Notify Admin
+                    $this->notifyAdminApprover($examPaper);
+                }
+            }
+
+            $examPaper->save();
+
             DB::commit();
 
+            $message = $wasRejected ? 'Exam paper questions re-submitted and approval chain restarted.' : 'Exam paper questions updated successfully.';
+
             return response()->json([
-                'success' => 'Exam paper questions updated successfully.',
+                'success' => $message,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => 'Failed to update exam paper questions'], 500);
+            return response()->json(['error' => 'Failed to update exam paper questions: '.$e->getMessage()], 500);
         }
     }
 
@@ -5219,9 +6234,33 @@ class ManageExaminationController extends Controller
                 'classSubject.subject',
                 'classSubject.class',
                 'classSubject.subclass',
+                'approvalLogs.approver'
             ])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function($paper) {
+                $currentStep = null;
+                if ($paper->status === 'pending' && $paper->current_approval_order) {
+                    $chainStep = PaperApprovalChain::with('role')
+                        ->where('examID', $paper->examID)
+                        ->where('approval_order', $paper->current_approval_order)
+                        ->first();
+                    
+                    if ($chainStep) {
+                        $currentStep = $chainStep->special_role_type ? 
+                            ucwords(str_replace('_', ' ', $chainStep->special_role_type)) : 
+                            ($chainStep->role->name ?? 'Unknown Role');
+                    } else {
+                        // Check if it's currently at the Admin step
+                        $adminLog = $paper->approvalLogs->where('approval_order', $paper->current_approval_order)->where('special_role_type', 'admin')->first();
+                        if ($adminLog) {
+                            $currentStep = 'Admin';
+                        }
+                    }
+                }
+                $paper->current_step_name = $currentStep;
+                return $paper;
+            });
 
         return response()->json([
             'success' => true,
@@ -5239,18 +6278,71 @@ class ManageExaminationController extends Controller
             $userType = Session::get('user_type');
             $teacherID = Session::get('teacherID');
 
-            // Check access: Admin needs view_exam_papers permission, Teacher can only download their own
+            // Permissions check logic
+            $canAccess = false;
             if ($userType === 'Admin') {
-                if (! $this->hasPermission('view_exam_papers')) {
-                    abort(403, 'You are not allowed to perform this action. You need the view_exam_papers permission to view exam papers.');
+                if ($this->hasPermission('view_exam_papers')) {
+                    $canAccess = true;
                 }
             } elseif ($userType === 'Teacher') {
-                // Teacher can only download their own exam papers
-                if ($examPaper->teacherID != $teacherID) {
-                    abort(403, 'Unauthorized access');
+                // Own paper
+                if ($examPaper->teacherID == $teacherID) {
+                    $canAccess = true;
+                } else {
+                    // Check if they are an approver in the chain
+                    $isApprover = DB::table('paper_approval_logs')
+                        ->where('exam_paperID', $examPaperID)
+                        ->where('status', 'pending')
+                        ->where(function($q) use ($teacherID) {
+                            // Check regular roles
+                            $roleIds = DB::table('role_user')->where('teacher_id', $teacherID)->pluck('role_id')->toArray();
+                            if (!empty($roleIds)) {
+                                $q->whereIn('role_id', $roleIds);
+                            }
+                            
+                            // Check special roles (class teacher / coordinator)
+                            $subclassIds = Subclass::where('teacherID', $teacherID)->pluck('subclassID')->toArray();
+                            $classIds = ClassModel::where('teacherID', $teacherID)->pluck('classID')->toArray();
+                            
+                            $q->orWhere(function($sq) use ($subclassIds) {
+                                $sq->where('special_role_type', 'class_teacher')
+                                   ->whereExists(function($ssq) use ($subclassIds) {
+                                       $ssq->from('exam_papers')
+                                           ->join('class_subjects', 'exam_papers.class_subjectID', '=', 'class_subjects.class_subjectID')
+                                           ->whereColumn('exam_papers.exam_paperID', 'paper_approval_logs.exam_paperID')
+                                           ->whereIn('class_subjects.subclassID', $subclassIds);
+                                   });
+                            })->orWhere(function($sq) use ($classIds) {
+                                $sq->where('special_role_type', 'coordinator')
+                                   ->whereExists(function($ssq) use ($classIds) {
+                                       $ssq->from('exam_papers')
+                                           ->join('class_subjects', 'exam_papers.class_subjectID', '=', 'class_subjects.class_subjectID')
+                                           ->whereColumn('exam_papers.exam_paperID', 'paper_approval_logs.exam_paperID')
+                                           ->whereIn('class_subjects.classID', $classIds);
+                                   });
+                            });
+                        })->exists();
+                    
+                    if ($isApprover) {
+                        $canAccess = true;
+                    }
                 }
-            } else {
-                abort(403, 'Unauthorized access');
+            } elseif ($userType === 'Staff') {
+                if ($this->hasPermission('view_exam_papers')) {
+                    $canAccess = true;
+                } else {
+                    // Check if they are an approver in the chain via their role
+                    $professionId = DB::table('other_staff')->where('id', Session::get('staffID'))->value('profession_id');
+                    // We need to map profession/staff to roles if roles are used in the chain
+                    // For now, check if they have a role that matches any log role_id
+                    // (Assuming role_user might also contain staff if they share roles, 
+                    // or roles are profession-based. Adjusting for profession-based roles if needed)
+                    // But usually roles in chain are roles from the roles table.
+                }
+            }
+
+            if (!$canAccess) {
+                abort(403, 'You do not have permission to view this exam paper.');
             }
 
             if (! $examPaper->file_path || ! Storage::disk('public')->exists($examPaper->file_path)) {
@@ -5377,7 +6469,7 @@ class ManageExaminationController extends Controller
             try {
                 $smsService = new SmsService();
                 $school = \App\Models\School::find($schoolID);
-                $schoolName = $school ? $school->school_name : 'ShuleLink';
+                $schoolName = $school ? $school->school_name : 'ShuleXpert';
                 
                 // Get participating class IDs based on exam category
                 $participatingClassIds = [];
@@ -6956,7 +8048,7 @@ class ManageExaminationController extends Controller
             $schoolID = Session::get('schoolID');
             $userType = Session::get('user_type');
 
-            if (!$schoolID || $userType !== 'Admin') {
+            if (!$schoolID || !in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
                 return redirect()->route('login')->with('error', 'Access denied');
             }
 
@@ -7144,7 +8236,7 @@ class ManageExaminationController extends Controller
             $schoolID = Session::get('schoolID');
             $userType = Session::get('user_type');
 
-            if (!$schoolID || $userType !== 'Admin') {
+            if (!$schoolID || !in_array($userType, ['Admin', 'Staff', 'Teacher'])) {
                 return response()->json(['success' => false, 'error' => 'Access denied'], 403);
             }
 

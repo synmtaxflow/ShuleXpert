@@ -159,7 +159,7 @@ class SgpmPerformanceController extends Controller
             $profile = $user->teacher ?? $user->staff;
             if ($profile && $profile->phone_number) {
                 try {
-                    $smsMsg = "ShuleLink SGPM: Sub-task '{$subtask->title}' imekubaliwa na Admin. Alama: {$subtask->achieved_score}/{$subtask->weight_percentage}%.";
+                    $smsMsg = "ShuleXpert SGPM: Sub-task '{$subtask->title}' imekubaliwa na Admin. Alama: {$subtask->achieved_score}/{$subtask->weight_percentage}%.";
                     $this->smsService->sendSMS($profile->phone_number, $smsMsg);
                 } catch (\Exception $e) {
                     \Log::error("SMS error: " . $e->getMessage());

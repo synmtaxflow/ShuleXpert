@@ -190,7 +190,7 @@
                         <img src="{{ $logoFullPath }}" class="logo-img">
                     </td>
                     <td class="school-info">
-                        <div class="school-name">{{ Str::limit($student->school->school_name ?? 'SHULELINK ACADEMY', 35) }}</div>
+                        <div class="school-name">{{ Str::limit($student->school->school_name ?? 'ShuleXpert ACADEMY', 35) }}</div>
                         <div class="card-label">STUDENT IDENTITY CARD</div>
                     </td>
                 </tr>
@@ -257,7 +257,7 @@
             </table>
 
             <div class="disclaimer">
-                THIS CARD IS THE PROPERTY OF <strong>{{ $student->school->school_name ?? 'SHULELINK' }}</strong>. IF FOUND, PLEASE RETURN IT TO THE NEAREST SCHOOL OFFICE OR CALL <strong>{{ $student->school->phone ?? 'THE OFFICE' }}</strong>.
+                THIS CARD IS THE PROPERTY OF <strong>{{ $student->school->school_name ?? 'ShuleXpert' }}</strong>. IF FOUND, PLEASE RETURN IT TO THE NEAREST SCHOOL OFFICE OR CALL <strong>{{ $student->school->phone ?? 'THE OFFICE' }}</strong>.
             </div>
         </div>
         <div class="footer-stripe"></div>

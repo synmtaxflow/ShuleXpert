@@ -1,4 +1,10 @@
+@if(isset($user_type) && $user_type == 'Admin')
 @include('includes.Admin_nav')
+@elseif(isset($user_type) && $user_type == 'Staff')
+@include('includes.staff_nav')
+@else
+@include('includes.teacher_nav')
+@endif
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
 <style>
@@ -155,6 +161,20 @@
                             </div>
                         </div>
 
+                        @php
+                            $canSendComment = false;
+                            if (isset($user_type) && $user_type == 'Admin') {
+                                $canSendComment = true;
+                            } elseif (isset($teacherPermissionsByCategory) && $teacherPermissionsByCategory->has('subject_analysis')) {
+                                $subjectAnalysisPerms = $teacherPermissionsByCategory->get('subject_analysis');
+                                // Allow if they have create, update, or delete. If only read_only, then false.
+                                $canSendComment = $subjectAnalysisPerms->contains('subject_analysis_create') || 
+                                                 $subjectAnalysisPerms->contains('subject_analysis_update') || 
+                                                 $subjectAnalysisPerms->contains('subject_analysis_delete');
+                            }
+                        @endphp
+
+                        @if($canSendComment)
                         <div class="card mb-3">
                             <div class="card-body p-3">
                                 <label class="mb-2">Send Comment to Teacher</label>
@@ -175,6 +195,11 @@
                                 <small class="text-muted d-block mt-1 comment-status"></small>
                             </div>
                         </div>
+                        @else
+                        <div class="alert alert-light border mb-3 p-2">
+                            <small class="text-muted"><i class="fa fa-info-circle"></i> You have read-only access to this analysis. Sending comments is restricted.</small>
+                        </div>
+                        @endif
                         @if(!empty($subjectGroup['question_stats']))
                             @php
                                 $subjectKey = $subjectGroup['class_subjectID'].'-'.preg_replace('/[^a-zA-Z0-9]/', '', strtolower($subjectGroup['subject_name']));

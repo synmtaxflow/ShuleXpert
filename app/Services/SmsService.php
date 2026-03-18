@@ -6,7 +6,7 @@ class SmsService
 {
     private $username = 'emcatechn';
     private $password = 'Emca@#12';
-    private $senderID = 'ShuleLink';
+    private $senderID = 'ShuleXpert';
     private $baseUrl = 'https://messaging-service.co.tz/link/sms/v1/text/single';
 
     /**
@@ -21,17 +21,17 @@ class SmsService
         try {
             // Remove any spaces or special characters from phone number
             $phoneNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
-            
+
             // Ensure phone number starts with 255 (Tanzania country code)
             if (!str_starts_with($phoneNumber, '255')) {
                 $phoneNumber = '255' . ltrim($phoneNumber, '0');
             }
 
             $text = urlencode($message);
-            $url = $this->baseUrl . '?username=' . urlencode($this->username) . 
-                   '&password=' . urlencode($this->password) . 
-                   '&from=' . urlencode($this->senderID) . 
-                   '&to=' . $phoneNumber . 
+            $url = $this->baseUrl . '?username=' . urlencode($this->username) .
+                   '&password=' . urlencode($this->password) .
+                   '&from=' . urlencode($this->senderID) .
+                   '&to=' . $phoneNumber .
                    '&text=' . $text;
 
             $curl = curl_init();
@@ -45,6 +45,8 @@ class SmsService
                 CURLOPT_FOLLOWLOCATION => true,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                 CURLOPT_CUSTOMREQUEST => 'GET',
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
             ));
 
             $response = curl_exec($curl);
@@ -102,7 +104,7 @@ class SmsService
     public function sendParentCredentials($phoneNumber, $schoolName, $username, $password)
     {
         $message = "{$schoolName}. Usajili umekamilika. Username: {$username}. Password: {$password}. Asante";
-        
+
         return $this->sendSms($phoneNumber, $message);
     }
 
@@ -119,7 +121,7 @@ class SmsService
     public function sendStudentCredentials($phoneNumber, $schoolName, $studentName, $username, $password)
     {
         $message = "{$schoolName}. Mwanafunzi {$studentName} amesajiliwa kikamilifu. Username: {$username}. Password: {$password}. Asante";
-        
+
         return $this->sendSms($phoneNumber, $message);
     }
 
@@ -139,7 +141,7 @@ class SmsService
             ];
 
             foreach ($balanceUrls as $balanceUrl) {
-                $url = $balanceUrl . '?username=' . urlencode($this->username) . 
+                $url = $balanceUrl . '?username=' . urlencode($this->username) .
                        '&password=' . urlencode($this->password);
 
                 $curl = curl_init();
@@ -163,7 +165,7 @@ class SmsService
                 if (!$error && $httpCode == 200) {
                     // Try to parse response
                     $data = json_decode($response, true);
-                    
+
                     // If response is JSON
                     if (json_last_error() === JSON_ERROR_NONE) {
                         return [
@@ -173,7 +175,7 @@ class SmsService
                             'response' => $data
                         ];
                     }
-                    
+
                     // If response is plain text/number
                     $balance = trim($response);
                     if (is_numeric($balance)) {
