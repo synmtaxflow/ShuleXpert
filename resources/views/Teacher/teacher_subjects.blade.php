@@ -607,11 +607,11 @@ function resetQuestionData() {
         optionalRanges: []
     };
     if (isSecondarySchool) {
-        $('.question-details-row').addClass('d-none').removeClass('loaded');
-        $('.question-detail-container').html('<div class="text-muted small">Select examination to load question formats.</div>');
+        jQuery('.question-details-row').addClass('d-none').removeClass('loaded');
+        jQuery('.question-detail-container').html('<div class="text-muted small">Select examination to load question formats.</div>');
     }
-    $('#test_week_display_group').hide();
-    $('#selected_week_label').text('');
+    jQuery('#test_week_display_group').hide();
+    jQuery('#selected_week_label').text('');
 }
 
 function loadExamQuestionData(classSubjectID, examID) {
@@ -621,7 +621,7 @@ function loadExamQuestionData(classSubjectID, examID) {
         return;
     }
 
-    $.ajax({
+    jQuery.ajax({
         url: `/get_exam_paper_question_data/${classSubjectID}/${examID}`,
         method: 'GET',
         success: function(response) {
@@ -637,11 +637,11 @@ function loadExamQuestionData(classSubjectID, examID) {
 
             if (response.test_week) {
                 // Set the week value and hide the selection as it should be default from the paper
-                $('#test_week_group').hide();
-                $('#test_week_display_group').show();
-                $('#selected_week_label').text(response.test_week);
+                jQuery('#test_week_group').hide();
+                jQuery('#test_week_display_group').show();
+                jQuery('#selected_week_label').text(response.test_week);
 
-                const $tw = $('#test_week');
+                const $tw = jQuery('#test_week');
                 if ($tw.find(`option[value="${response.test_week}"]`).length === 0) {
                     $tw.append(`<option value="${response.test_week}">${response.test_week}</option>`);
                 }
@@ -649,11 +649,11 @@ function loadExamQuestionData(classSubjectID, examID) {
                 // Reload existing results for this specific week
                 loadExistingResults(classSubjectID, examID, response.test_week);
             } else {
-                $('#test_week_display_group').hide();
+                jQuery('#test_week_display_group').hide();
             }
 
             if (examQuestionData.questions.length === 0 && isSecondarySchool) {
-                $('.question-detail-container').html(
+                jQuery('.question-detail-container').html(
                     '<div class="alert alert-warning mb-0">' +
                     '<i class="bi bi-exclamation-triangle"></i> ' + (response.message || 'No approved exam paper question formats found for this subject.') +
                     '</div>'
@@ -664,7 +664,7 @@ function loadExamQuestionData(classSubjectID, examID) {
             updateTotalsFromCache();
         },
         error: function() {
-            $('.question-detail-container').html(
+            jQuery('.question-detail-container').html(
                 '<div class="alert alert-danger mb-0">' +
                 '<i class="bi bi-exclamation-triangle"></i> Failed to load question formats.' +
                 '</div>'
@@ -919,9 +919,9 @@ function viewStudents(classSubjectID) {
                     </div>
                 `;
 
-                $('#studentsModalBody').html(html);
+                jQuery('#studentsModalBody').html(html);
             } else {
-                $('#studentsModalBody').html('<div class="alert alert-info">No students found.</div>');
+                jQuery('#studentsModalBody').html('<div class="alert alert-info">No students found.</div>');
             }
         },
         error: function(xhr) {
@@ -931,7 +931,7 @@ function viewStudents(classSubjectID) {
                 icon: 'error',
                 confirmButtonColor: '#940000'
             });
-            $('#viewStudentsModal').modal('hide');
+            jQuery('#viewStudentsModal').modal('hide');
         }
     });
 }
@@ -1148,13 +1148,13 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
                     </div>
                 `;
 
-                $('#resultsContent').html(html);
+                jQuery('#resultsContent').html(html);
             } else {
-                $('#resultsContent').html('<div class="alert alert-info">No results found.</div>');
+                jQuery('#resultsContent').html('<div class="alert alert-info">No results found.</div>');
             }
         },
         error: function(xhr) {
-            $('#resultsContent').html('<div class="alert alert-danger">Error loading results.</div>');
+            jQuery('#resultsContent').html('<div class="alert alert-danger">Error loading results.</div>');
         }
     });
 }
@@ -1168,7 +1168,7 @@ function editResults(classSubjectID) {
     resetQuestionData();
 
     // First check if there are any examinations with enter_result = true
-    $.ajax({
+    jQuery.ajax({
         url: '/get_examinations_for_subject/' + classSubjectID,
         method: 'GET',
         success: function(examsResponse) {
@@ -1192,17 +1192,17 @@ function editResults(classSubjectID) {
 
             // If there are examinations with enter_result = true, proceed with opening modal
             const modalTitle = 'Edit Results';
-            $('#addEditResultsModalLabel').html(`<i class="bi bi-pencil"></i> ${modalTitle}`);
-            $('#addEditResultsModal').modal('show');
-            $('#addEditResultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+            jQuery('#addEditResultsModalLabel').html(`<i class="bi bi-pencil"></i> ${modalTitle}`);
+            jQuery('#addEditResultsModal').modal('show');
+            jQuery('#addEditResultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
 
             // Get students, examinations, and existing results
-            $.ajax({
+            jQuery.ajax({
                 url: '/get_subject_students/' + classSubjectID,
                 method: 'GET',
                 success: function(studentsResponse) {
                     // Get all results for this subject
-                    $.ajax({
+                    jQuery.ajax({
                         url: '/get_subject_results/' + classSubjectID,
                         method: 'GET',
                         success: function(resultsResponse) {
@@ -1343,7 +1343,7 @@ function editResults(classSubjectID) {
                                 </form>
                             `;
 
-                            $('#addEditResultsModalBody').html(html);
+                            jQuery('#addEditResultsModalBody').html(html);
                         },
                         error: function(xhr) {
                             Swal.fire({
@@ -1379,33 +1379,33 @@ function editResults(classSubjectID) {
 function loadExistingResults(classSubjectID, examID, testWeek = null) {
     if (!examID) {
         // Clear all inputs
-        $('.marks-input, .grade-input, .remark-input').val('');
+        jQuery('.marks-input, .grade-input, .remark-input').val('');
         return;
     }
 
     const data = {};
     if (testWeek) data.test_week = testWeek;
 
-    $.ajax({
+    jQuery.ajax({
         url: `/get_subject_results/${classSubjectID}/${examID}`,
         method: 'GET',
         data: data,
         success: function(response) {
             if (response.success && response.results) {
                 // Clear all inputs first
-                $('.marks-input, .grade-input, .remark-input').val('');
+                jQuery('.marks-input, .grade-input, .remark-input').val('');
 
                 // Populate with existing results
                 response.results.forEach(function(result) {
                     if (result.studentID) {
                         const marks = result.marks || '';
-                        $(`#marks_${result.studentID}`).val(marks);
+                        jQuery(`#marks_${result.studentID}`).val(marks);
                         // Auto-calculate grade and remark if marks exist
                         if (marks) {
                             autoCalculateGrade(result.studentID);
                         } else {
-                            $(`#grade_${result.studentID}`).val(result.grade || '');
-                            $(`#remark_${result.studentID}`).val(result.remark || '');
+                            jQuery(`#grade_${result.studentID}`).val(result.grade || '');
+                            jQuery(`#remark_${result.studentID}`).val(result.remark || '');
                         }
                     }
                 });
@@ -1419,9 +1419,9 @@ function loadExistingResults(classSubjectID, examID, testWeek = null) {
 
 // Auto-calculate grade and remark when marks are entered
 function autoCalculateGrade(studentID) {
-    const marksInput = $(`#marks_${studentID}`);
-    const gradeInput = $(`#grade_${studentID}`);
-    const remarkInput = $(`#remark_${studentID}`);
+    const marksInput = jQuery(`#marks_${studentID}`);
+    const gradeInput = jQuery(`#grade_${studentID}`);
+    const remarkInput = jQuery(`#remark_${studentID}`);
 
     const marks = marksInput.val();
 
@@ -1438,20 +1438,20 @@ function autoCalculateGrade(studentID) {
 // Add Results
 function addResults(classSubjectID, isEdit = false) {
     const modalTitle = isEdit ? 'Edit Results' : 'Add Results';
-    $('#addEditResultsModalLabel').html(`<i class="bi bi-${isEdit ? 'pencil' : 'plus-circle'}"></i> ${modalTitle}`);
-    $('#addEditResultsModal').modal('show');
-    $('#addEditResultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+    jQuery('#addEditResultsModalLabel').html(`<i class="bi bi-${isEdit ? 'pencil' : 'plus-circle'}"></i> ${modalTitle}`);
+    jQuery('#addEditResultsModal').modal('show');
+    jQuery('#addEditResultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
 
     // Clear exam data cache when opening modal
     window.examDataCache = {};
     resetQuestionData();
 
     // Get students and examinations for this subject
-    $.ajax({
+    jQuery.ajax({
         url: '/get_subject_students/' + classSubjectID,
         method: 'GET',
         success: function(studentsResponse) {
-            $.ajax({
+            jQuery.ajax({
                 url: '/get_examinations_for_subject/' + classSubjectID,
                 method: 'GET',
                 success: function(examsResponse) {
@@ -1608,7 +1608,7 @@ function addResults(classSubjectID, isEdit = false) {
                         </form>
                     `;
 
-                    $('#addEditResultsModalBody').html(html);
+                    jQuery('#addEditResultsModalBody').html(html);
                 },
                 error: function(xhr) {
                     Swal.fire({
@@ -1861,7 +1861,7 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
             }
         });
 
-        $.ajax({
+        jQuery.ajax({
             url: '/upload_excel_results',
             method: 'POST',
             data: formData,
@@ -1903,9 +1903,9 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
 
 // Handle exam selection - enable/disable Excel buttons
 function handleExamSelection(classSubjectID, examID) {
-    $('#downloadExcelBtn, #uploadExcelBtn').prop('disabled', true);
-    $('#test_week_group, #test_week_display_group').hide();
-    $('#test_week').prop('required', false).val('');
+    jQuery('#downloadExcelBtn, #uploadExcelBtn').prop('disabled', true);
+    jQuery('#test_week_group, #test_week_display_group').hide();
+    jQuery('#test_week').prop('required', false).val('');
 
     if (!examID) {
         disableResultsForm();
@@ -1923,8 +1923,8 @@ function handleExamSelection(classSubjectID, examID) {
         if (!enterResult) {
             // Disable form inputs
             disableResultsForm();
-            $('#downloadExcelBtn').prop('disabled', true);
-            $('#uploadExcelBtn').prop('disabled', true);
+            jQuery('#downloadExcelBtn').prop('disabled', true);
+            jQuery('#uploadExcelBtn').prop('disabled', true);
             showResultsStatusError('You are not allowed to enter results for this examination. Result entry has been disabled.');
             resetQuestionData();
             return;
@@ -1932,9 +1932,9 @@ function handleExamSelection(classSubjectID, examID) {
 
         // If enter_result is true, enable form - no other checks
         enableResultsForm();
-        $('#downloadExcelBtn').prop('disabled', false);
-        $('#uploadExcelBtn').prop('disabled', false);
-        $('.results-status-error').remove();
+        jQuery('#downloadExcelBtn').prop('disabled', false);
+        jQuery('#uploadExcelBtn').prop('disabled', false);
+        jQuery('.results-status-error').remove();
 
 
         // Load existing results after enabling form
@@ -1942,22 +1942,22 @@ function handleExamSelection(classSubjectID, examID) {
         loadExamQuestionData(classSubjectID, examID);
     } else {
         // Fallback: try to get exam data from option attributes
-        const selectedOption = $(`#exam_id option[value="${examID}"]`);
+        const selectedOption = jQuery(`#exam_id option[value="${examID}"]`);
         const enterResult = selectedOption.data('enter-result') === true || selectedOption.data('enter-result') === 1;
 
         if (!enterResult) {
             disableResultsForm();
-            $('#downloadExcelBtn').prop('disabled', true);
-            $('#uploadExcelBtn').prop('disabled', true);
+            jQuery('#downloadExcelBtn').prop('disabled', true);
+            jQuery('#uploadExcelBtn').prop('disabled', true);
             showResultsStatusError('You are not allowed to enter results for this examination. Result entry has been disabled.');
             resetQuestionData();
             return;
         }
 
         enableResultsForm();
-        $('#downloadExcelBtn').prop('disabled', false);
-        $('#uploadExcelBtn').prop('disabled', false);
-        $('.results-status-error').remove();
+        jQuery('#downloadExcelBtn').prop('disabled', false);
+        jQuery('#uploadExcelBtn').prop('disabled', false);
+        jQuery('.results-status-error').remove();
         loadExistingResults(classSubjectID, examID);
         loadExamQuestionData(classSubjectID, examID);
     }
@@ -1965,34 +1965,34 @@ function handleExamSelection(classSubjectID, examID) {
 
 // Helper function to disable form inputs
 function disableResultsForm() {
-    $('.marks-input, .grade-input, .remark-input').prop('disabled', true).css({
+    jQuery('.marks-input, .grade-input, .remark-input').prop('disabled', true).css({
         'background-color': '#e9ecef',
         'cursor': 'not-allowed',
         'color': '#dc3545'
     });
-    $('.question-mark-input, .toggle-question-btn').prop('disabled', true);
-    $('#resultsForm button[type="submit"]').prop('disabled', true);
+    jQuery('.question-mark-input, .toggle-question-btn').prop('disabled', true);
+    jQuery('#resultsForm button[type="submit"]').prop('disabled', true);
 }
 
 // Helper function to enable form inputs
 function enableResultsForm() {
-    $('.marks-input, .grade-input, .remark-input').prop('disabled', false).css({
+    jQuery('.marks-input, .grade-input, .remark-input').prop('disabled', false).css({
         'background-color': '',
         'cursor': '',
         'color': ''
     });
-    $('.grade-input, .remark-input').prop('readonly', true); // Keep readonly for grade and remark
+    jQuery('.grade-input, .remark-input').prop('readonly', true); // Keep readonly for grade and remark
     if (isSecondarySchool) {
-        $('.marks-input').prop('readonly', true);
+        jQuery('.marks-input').prop('readonly', true);
     }
-    $('.question-mark-input, .toggle-question-btn').prop('disabled', false);
-    $('#resultsForm button[type="submit"]').prop('disabled', false);
+    jQuery('.question-mark-input, .toggle-question-btn').prop('disabled', false);
+    jQuery('#resultsForm button[type="submit"]').prop('disabled', false);
 }
 
 // Helper function to show error message
 function showResultsStatusError(message) {
     // Remove existing error messages
-    $('.results-status-error').remove();
+    jQuery('.results-status-error').remove();
 
     // Add error message above the table
     const errorHtml = `
@@ -2000,11 +2000,11 @@ function showResultsStatusError(message) {
             <i class="bi bi-exclamation-triangle-fill"></i> <strong>Access Denied:</strong> ${message}
         </div>
     `;
-    $('#resultsTableBody').closest('.table-responsive').before(errorHtml);
+    jQuery('#resultsTableBody').closest('.table-responsive').before(errorHtml);
 }
 
 // Toggle question details per student
-$(document).on('click', '.toggle-question-btn', function() {
+jQuery(document).on('click', '.toggle-question-btn', function() {
     if (examQuestionData.questions.length === 0) {
         Swal.fire({
             title: 'No Question Formats',
@@ -2014,8 +2014,8 @@ $(document).on('click', '.toggle-question-btn', function() {
         });
         return;
     }
-    const studentID = $(this).data('student');
-    const $detailRow = $(`#question_details_${studentID}`);
+    const studentID = jQuery(this).data('student');
+    const $detailRow = jQuery(`#question_details_${studentID}`);
     if ($detailRow.length === 0) {
         return;
     }
@@ -2024,12 +2024,12 @@ $(document).on('click', '.toggle-question-btn', function() {
         $detailRow.find('.question-detail-container').html(buildQuestionDetails(studentID));
         $detailRow.addClass('loaded');
         $detailRow.find('.optional-select').each(function() {
-            const questionId = $(this).data('question-id');
+            const questionId = jQuery(this).data('question-id');
             const hasMark = examQuestionData.marksByStudent[studentID] &&
                 examQuestionData.marksByStudent[studentID][questionId] !== undefined &&
                 examQuestionData.marksByStudent[studentID][questionId] !== '';
             if (hasMark) {
-                $(this).prop('checked', true);
+                jQuery(this).prop('checked', true);
                 const $input = $detailRow.find(`.question-mark-input[data-question-id="${questionId}"]`);
                 $input.prop('disabled', false);
             }
@@ -2040,15 +2040,15 @@ $(document).on('click', '.toggle-question-btn', function() {
     $detailRow.toggleClass('d-none');
 });
 
-$(document).on('change', '.optional-select', function() {
-    const $checkbox = $(this);
+jQuery(document).on('change', '.optional-select', function() {
+    const $checkbox = jQuery(this);
     const studentID = $checkbox.data('student');
     const rangeNumber = parseInt($checkbox.data('optional-range'), 10);
     const questionId = $checkbox.data('question-id');
-    const $input = $(`.question-mark-input[data-student="${studentID}"][data-question-id="${questionId}"]`);
+    const $input = jQuery(`.question-mark-input[data-student="${studentID}"][data-question-id="${questionId}"]`);
     const rangeMeta = (examQuestionData.optionalRanges || []).find(r => r.range_number == rangeNumber);
     const requiredCount = rangeMeta ? parseInt(rangeMeta.required_questions || 0, 10) : 0;
-    const selectedCount = $(`.optional-select[data-student="${studentID}"][data-optional-range="${rangeNumber}"]:checked`).length;
+    const selectedCount = jQuery(`.optional-select[data-student="${studentID}"][data-optional-range="${rangeNumber}"]:checked`).length;
 
     if (requiredCount > 0 && selectedCount > requiredCount) {
         $checkbox.prop('checked', false);
@@ -2074,8 +2074,8 @@ $(document).on('change', '.optional-select', function() {
 });
 
 // Question marks input handler
-$(document).on('input', '.question-mark-input', function() {
-    const $input = $(this);
+jQuery(document).on('input', '.question-mark-input', function() {
+    const $input = jQuery(this);
     const max = parseFloat($input.data('max'));
     let value = parseFloat($input.val());
     const $warning = $input.siblings('.question-max-warning');
@@ -2099,9 +2099,9 @@ $(document).on('input', '.question-mark-input', function() {
 
     if (isOptional && rangeNumber > 0) {
         let optionalSum = 0;
-        $(`.question-mark-input[data-student="${studentID}"]`).each(function() {
-            if (parseInt($(this).data('optional-range'), 10) === rangeNumber) {
-                const val = parseFloat($(this).val());
+        jQuery(`.question-mark-input[data-student="${studentID}"]`).each(function() {
+            if (parseInt(jQuery(this).data('optional-range'), 10) === rangeNumber) {
+                const val = parseFloat(jQuery(this).val());
                 if (!isNaN(val)) {
                     optionalSum += val;
                 }
