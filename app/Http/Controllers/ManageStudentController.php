@@ -596,10 +596,35 @@ class ManageStudentController extends Controller
     {
         // Check update permission - New format: student_update
         if (!$this->hasPermission('student_update')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You do not have permission to update students. You need student_update permission.',
-            ], 403);
+            $userType = Session::get('user_type');
+            if ($userType === 'Teacher') {
+                $teacherID = Session::get('teacherID');
+                $studentID = $request->input('studentID');
+                if ($teacherID && $studentID) {
+                    $isClassTeacher = Student::where('studentID', $studentID)
+                        ->whereHas('subclass', function ($q) use ($teacherID) {
+                            $q->where('teacherID', $teacherID);
+                        })
+                        ->exists();
+
+                    if (!$isClassTeacher) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'You do not have permission to update this student.',
+                        ], 403);
+                    }
+                } else {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You do not have permission to update students.',
+                    ], 403);
+                }
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You do not have permission to update students. You need student_update permission.',
+                ], 403);
+            }
         }
 
         $schoolID = Session::get('schoolID');

@@ -143,7 +143,7 @@
                             $subjectCode = strtolower($classSubject->subject->subject_code ?? '');
                             $className = $classSubject->subclass ? strtolower($classSubject->subclass->subclass_name ?? '') : 'all subclasses';
                         @endphp
-                        <div class="col-md-6 col-lg-4 mb-4 subject-item" 
+                        <div class="col-md-6 col-lg-4 mb-4 subject-item"
                              data-subject-name="{{ $subjectName }}"
                              data-subject-code="{{ $subjectCode }}"
                              data-class-name="{{ $className }}">
@@ -466,6 +466,11 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+// Ensure jQuery is available
+if (typeof $ === 'undefined') {
+    var $ = jQuery;
+}
+
 const isSecondarySchool = @json(strtolower($schoolType ?? 'Secondary')) === 'secondary';
 const questionColspan = isSecondarySchool ? 7 : 6;
 let examQuestionData = {
@@ -482,45 +487,45 @@ jQuery(document).ready(function($) {
             'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
         }
     });
-    
+
     // Initialize search functionality
     initializeSubjectSearch();
 });
 
 // Initialize Subject Search
 function initializeSubjectSearch() {
-    $('#subjectSearchInput').on('keyup', function() {
-        var searchTerm = $(this).val().toLowerCase().trim();
-        
+    jQuery('#subjectSearchInput').on('keyup', function() {
+        var searchTerm = jQuery(this).val().toLowerCase().trim();
+
         if (searchTerm.length > 0) {
-            $('#clearSearchBtn').show();
+            jQuery('#clearSearchBtn').show();
         } else {
-            $('#clearSearchBtn').hide();
+            jQuery('#clearSearchBtn').hide();
         }
-        
+
         // Filter subject cards
-        $('.subject-item').each(function() {
-            var subjectName = $(this).data('subject-name') || '';
-            var subjectCode = $(this).data('subject-code') || '';
-            var className = $(this).data('class-name') || '';
-            
-            var matches = subjectName.includes(searchTerm) || 
-                         subjectCode.includes(searchTerm) || 
+        jQuery('.subject-item').each(function() {
+            var subjectName = jQuery(this).data('subject-name') || '';
+            var subjectCode = jQuery(this).data('subject-code') || '';
+            var className = jQuery(this).data('class-name') || '';
+
+            var matches = subjectName.includes(searchTerm) ||
+                         subjectCode.includes(searchTerm) ||
                          className.includes(searchTerm);
-            
+
             if (matches) {
-                $(this).show();
+                jQuery(this).show();
             } else {
-                $(this).hide();
+                jQuery(this).hide();
             }
         });
-        
+
         // Show message if no results
-        var visibleCount = $('.subject-item:visible').length;
-        
+        var visibleCount = jQuery('.subject-item:visible').length;
+
         if (searchTerm.length > 0 && visibleCount === 0) {
-            if ($('#noResultsMessage').length === 0) {
-                $('#subjectsGrid').append(
+            if (jQuery('#noResultsMessage').length === 0) {
+                jQuery('#subjectsGrid').append(
                     '<div class="col-12" id="noResultsMessage">' +
                     '<div class="alert alert-info text-center">' +
                     '<i class="bi bi-info-circle"></i> No subjects or classes found matching "' + searchTerm + '".' +
@@ -529,16 +534,16 @@ function initializeSubjectSearch() {
                 );
             }
         } else {
-            $('#noResultsMessage').remove();
+            jQuery('#noResultsMessage').remove();
         }
     });
-    
+
     // Clear search button
-    $('#clearSearchBtn').on('click', function() {
-        $('#subjectSearchInput').val('');
-        $('#clearSearchBtn').hide();
-        $('.subject-item').show();
-        $('#noResultsMessage').remove();
+    jQuery('#clearSearchBtn').on('click', function() {
+        jQuery('#subjectSearchInput').val('');
+        jQuery('#clearSearchBtn').hide();
+        jQuery('.subject-item').show();
+        jQuery('#noResultsMessage').remove();
     });
 }
 
@@ -635,7 +640,7 @@ function loadExamQuestionData(classSubjectID, examID) {
                 $('#test_week_group').hide();
                 $('#test_week_display_group').show();
                 $('#selected_week_label').text(response.test_week);
-                
+
                 const $tw = $('#test_week');
                 if ($tw.find(`option[value="${response.test_week}"]`).length === 0) {
                     $tw.append(`<option value="${response.test_week}">${response.test_week}</option>`);
@@ -763,7 +768,7 @@ function updateTotalsFromCache() {
 
         if (hasMarks) {
             const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
-            $(`#marks_${studentID}`).val(displayTotal);
+            jQuery(`#marks_${studentID}`).val(displayTotal);
             autoCalculateGrade(studentID);
         }
     });
@@ -776,10 +781,10 @@ function updateStudentTotal(studentID) {
     let optionalTotalsByRange = {};
     let hasMarks = false;
     const optionalSelectedByRange = {};
-    $(`.question-mark-input[data-student="${studentID}"]`).each(function() {
-        const value = parseFloat($(this).val());
-        const isOptional = $(this).data('optional') == 1;
-        const rangeNumber = parseInt($(this).data('optional-range'), 10);
+    jQuery(`.question-mark-input[data-student="${studentID}"]`).each(function() {
+        const value = parseFloat(jQuery(this).val());
+        const isOptional = jQuery(this).data('optional') == 1;
+        const rangeNumber = parseInt(jQuery(this).data('optional-range'), 10);
         if (!isNaN(value)) {
             total += value;
             if (isOptional) {
@@ -794,14 +799,14 @@ function updateStudentTotal(studentID) {
         }
     });
 
-    $(`.optional-select[data-student="${studentID}"]`).each(function() {
-        const rangeNumber = parseInt($(this).data('optional-range'), 10);
-        if (rangeNumber > 0 && $(this).is(':checked')) {
+    jQuery(`.optional-select[data-student="${studentID}"]`).each(function() {
+        const rangeNumber = parseInt(jQuery(this).data('optional-range'), 10);
+        if (rangeNumber > 0 && jQuery(this).is(':checked')) {
             optionalSelectedByRange[rangeNumber] = (optionalSelectedByRange[rangeNumber] || 0) + 1;
         }
     });
 
-    const $optionalWarning = $(`.optional-total-warning[data-student="${studentID}"]`);
+    const $optionalWarning = jQuery(`.optional-total-warning[data-student="${studentID}"]`);
     const rangeExceeded = Object.keys(optionalTotalsByRange).some(function(range) {
         const sum = optionalTotalsByRange[range];
         const rangeTotal = (examQuestionData.optionalRanges || []).find(r => r.range_number == range);
@@ -826,17 +831,17 @@ function updateStudentTotal(studentID) {
     }
 
     const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
-    $(`.student-question-total[data-student="${studentID}"]`).text(hasMarks ? displayTotal : 0);
-    $(`#marks_${studentID}`).val(hasMarks ? displayTotal : '');
+    jQuery(`.student-question-total[data-student="${studentID}"]`).text(hasMarks ? displayTotal : 0);
+    jQuery(`#marks_${studentID}`).val(hasMarks ? displayTotal : '');
     autoCalculateGrade(studentID);
 }
 
 // View Students
 function viewStudents(classSubjectID) {
-    $('#viewStudentsModal').modal('show');
-    $('#studentsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+    jQuery('#viewStudentsModal').modal('show');
+    jQuery('#studentsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
 
-    $.ajax({
+    jQuery.ajax({
         url: '/get_subject_students/' + classSubjectID,
         method: 'GET',
         success: function(response) {
@@ -879,11 +884,11 @@ function viewStudents(classSubjectID) {
                     const dob = student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : 'N/A';
                     const studentName = (student.first_name || '') + ' ' + (student.middle_name || '') + ' ' + (student.last_name || '');
                     const fallbackPhoto = student.gender === 'Female' ? baseUrl + 'images/female.png' : baseUrl + 'images/male.png';
-                    
+
                     // Add red alarm icon if student has health conditions
                     let healthAlarmIcon = '';
-                    if ((student.is_disabled && student.is_disabled == 1) || 
-                        (student.has_epilepsy && student.has_epilepsy == 1) || 
+                    if ((student.is_disabled && student.is_disabled == 1) ||
+                        (student.has_epilepsy && student.has_epilepsy == 1) ||
                         (student.has_allergies && student.has_allergies == 1)) {
                         healthAlarmIcon = ' <i class="bi bi-exclamation-triangle-fill text-danger" title="Health Condition Alert"></i>';
                     }
@@ -933,11 +938,11 @@ function viewStudents(classSubjectID) {
 
 // View Results
 function viewResults(classSubjectID) {
-    $('#viewResultsModal').modal('show');
-    $('#resultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+    jQuery('#viewResultsModal').modal('show');
+    jQuery('#resultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
 
     // First get examinations for this subject
-    $.ajax({
+    jQuery.ajax({
         url: '/get_examinations_for_subject/' + classSubjectID,
         method: 'GET',
         success: function(examResponse) {
@@ -963,17 +968,17 @@ function viewResults(classSubjectID) {
                     <!-- Week selection for Weekly Tests in View Modal -->
                     <div class="mb-3" id="view_test_week_group" style="display: none;">
                         <label>Select Week:</label>
-                        <select class="form-control" id="view_test_week" onchange="loadResultsForExam(${classSubjectID}, $('#examSelector').val(), this.value)">
+                        <select class="form-control" id="view_test_week" onchange="loadResultsForExam(${classSubjectID}, jQuery('#examSelector').val(), this.value)">
                             <option value="">All Weeks</option>
                         </select>
                     </div>
                     <div id="resultsContent"></div>
                 `;
 
-                $('#resultsModalBody').html(html);
+                jQuery('#resultsModalBody').html(html);
                 loadResultsForExam(classSubjectID, '');
             } else {
-                $('#resultsModalBody').html('<div class="alert alert-info">No examinations found for this subject.</div>');
+                jQuery('#resultsModalBody').html('<div class="alert alert-info">No examinations found for this subject.</div>');
             }
         },
         error: function(xhr) {
@@ -989,17 +994,17 @@ function viewResults(classSubjectID) {
 
 function handleViewResultsExamSelection(classSubjectID, examID) {
     if (!examID) {
-        $('#view_test_week_group').hide();
+        jQuery('#view_test_week_group').hide();
         loadResultsForExam(classSubjectID, '');
         return;
     }
 
     const examData = window.examDataCache && window.examDataCache[examID];
     if (examData && examData.exam_category === 'test') {
-        $('#view_test_week_group').show();
-        const $weekSelect = $('#view_test_week');
+        jQuery('#view_test_week_group').show();
+        const $weekSelect = jQuery('#view_test_week');
         $weekSelect.empty().append('<option value="">All Periods</option>');
-        
+
         const today = new Date();
         const currentYear = today.getFullYear();
 
@@ -1012,7 +1017,7 @@ function handleViewResultsExamSelection(classSubjectID, examID) {
         } else {
             const startDate = new Date(currentYear, 0, 1);
             while (startDate.getDay() !== 1) startDate.setDate(startDate.getDate() + 1);
-            
+
             const monthNamesShort = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             function fmtRange(start, end) {
                 const sM = monthNamesShort[start.getMonth()];
@@ -1038,9 +1043,9 @@ function handleViewResultsExamSelection(classSubjectID, examID) {
             }
         }
     } else {
-        $('#view_test_week_group').hide();
+        jQuery('#view_test_week_group').hide();
     }
-    
+
     loadResultsForExam(classSubjectID, examID);
 }
 
@@ -1049,9 +1054,9 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
     const data = {};
     if (testWeek) data.test_week = testWeek;
 
-    $('#resultsContent').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+    jQuery('#resultsContent').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
 
-    $.ajax({
+    jQuery.ajax({
         url: url,
         method: 'GET',
         data: data,
@@ -1079,11 +1084,11 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
                 response.results.forEach(function(result, index) {
                     const student = result.student || {};
                     const studentName = (student.first_name || '') + ' ' + (student.middle_name || '') + ' ' + (student.last_name || '');
-                    
+
                     // Add red alarm icon if student has health conditions
                     let healthAlarmIcon = '';
-                    if ((student.is_disabled && student.is_disabled == 1) || 
-                        (student.has_epilepsy && student.has_epilepsy == 1) || 
+                    if ((student.is_disabled && student.is_disabled == 1) ||
+                        (student.has_epilepsy && student.has_epilepsy == 1) ||
                         (student.has_allergies && student.has_allergies == 1)) {
                         healthAlarmIcon = ' <i class="bi bi-exclamation-triangle-fill text-danger" title="Health Condition Alert"></i>';
                     }
@@ -1161,7 +1166,7 @@ function editResults(classSubjectID) {
     // Clear exam data cache when opening modal
     window.examDataCache = {};
     resetQuestionData();
-    
+
     // First check if there are any examinations with enter_result = true
     $.ajax({
         url: '/get_examinations_for_subject/' + classSubjectID,
@@ -1212,14 +1217,14 @@ function editResults(classSubjectID) {
 
                             // Store exam data globally for use in handleExamSelection
                             window.examDataCache = window.examDataCache || {};
-                            
+
                             if (examsResponse.success && examsResponse.examinations) {
                                 examsResponse.examinations.forEach(function(exam) {
                                     // Only show examinations where enter_result is true
                                     if (exam.enter_result === true || exam.enter_result === 1) {
                                         // Store exam data in cache
                                         window.examDataCache[exam.examID] = exam;
-                                        
+
                                         const statusText = exam.status === 'awaiting_results' ? ' (Awaiting Results)' :
                                                           exam.status === 'ongoing' ? ' (Ongoing)' : ' (Results Available)';
                                         const termClosedText = exam.is_term_closed ? ' (Term Closed - Not Editable)' : '';
@@ -1461,14 +1466,14 @@ function addResults(classSubjectID, isEdit = false) {
 
                     // Store exam data globally for use in handleExamSelection
                     window.examDataCache = window.examDataCache || {};
-                    
+
                     if (examsResponse.success && examsResponse.examinations) {
                         examsResponse.examinations.forEach(function(exam) {
                             // Only show examinations where enter_result is true
                             if (exam.enter_result === true || exam.enter_result === 1) {
                                 // Store exam data in cache
                                 window.examDataCache[exam.examID] = exam;
-                                
+
                                 const statusText = exam.status === 'awaiting_results' ? ' (Awaiting Results)' :
                                                   exam.status === 'ongoing' ? ' (Ongoing)' : ' (Results Available)';
                                 const termClosedText = exam.is_term_closed ? ' (Term Closed - Not Editable)' : '';
@@ -1486,7 +1491,7 @@ function addResults(classSubjectID, isEdit = false) {
                             </div>
                             <!-- Auto-selected Week Display -->
                             <div id="test_week_display_group" style="display: none;" class="alert alert-info py-2 mb-3">
-                                <strong><i class="bi bi-calendar-event"></i> Recording Results for:</strong> 
+                                <strong><i class="bi bi-calendar-event"></i> Recording Results for:</strong>
                                 <span id="selected_week_label" class="ml-1"></span>
                             </div>
 
@@ -1627,14 +1632,14 @@ function addResults(classSubjectID, isEdit = false) {
 }
 
 // Form submission for results
-$(document).on('submit', '#resultsForm', function(e) {
+jQuery(document).on('submit', '#resultsForm', function(e) {
     e.preventDefault();
 
-    const classSubjectID = $('#class_subject_id').val();
-    const examID = $('#exam_id').val();
+    const classSubjectID = jQuery('#class_subject_id').val();
+    const examID = jQuery('#exam_id').val();
 
     // Check if selected exam is in a closed term
-    const selectedExam = $('#exam_id option:selected');
+    const selectedExam = jQuery('#exam_id option:selected');
     const isTermClosed = selectedExam.data('term-closed');
     if (isTermClosed) {
         Swal.fire({
@@ -1647,7 +1652,7 @@ $(document).on('submit', '#resultsForm', function(e) {
     }
 
     // Check only if form is disabled (which happens if enter_result is false)
-    const formDisabled = $('#resultsForm button[type="submit"]').prop('disabled');
+    const formDisabled = jQuery('#resultsForm button[type="submit"]').prop('disabled');
     if (formDisabled) {
         Swal.fire({
             title: 'Access Denied!',
@@ -1672,15 +1677,15 @@ $(document).on('submit', '#resultsForm', function(e) {
         }
 
         let hasValidationError = false;
-        $('.marks-input').each(function() {
-            const studentID = $(this).data('student');
+        jQuery('.marks-input').each(function() {
+            const studentID = jQuery(this).data('student');
             const questionMarks = examQuestionData.marksByStudent[studentID] || {};
             const optionalRanges = examQuestionData.optionalRanges || [];
             const hasAnyMarks = Object.keys(questionMarks).length > 0;
             const selectedOptionalCounts = {};
 
-            $(`.optional-select[data-student="${studentID}"]:checked`).each(function() {
-                const rangeNumber = parseInt($(this).data('optional-range'), 10);
+            jQuery(`.optional-select[data-student="${studentID}"]:checked`).each(function() {
+                const rangeNumber = parseInt(jQuery(this).data('optional-range'), 10);
                 if (rangeNumber > 0) {
                     selectedOptionalCounts[rangeNumber] = (selectedOptionalCounts[rangeNumber] || 0) + 1;
                 }
@@ -1694,8 +1699,8 @@ $(document).on('submit', '#resultsForm', function(e) {
             const questionPayload = [];
             const selectedOptionalIds = {};
 
-            $(`.optional-select[data-student="${studentID}"]:checked`).each(function() {
-                selectedOptionalIds[$(this).data('question-id')] = true;
+            jQuery(`.optional-select[data-student="${studentID}"]:checked`).each(function() {
+                selectedOptionalIds[jQuery(this).data('question-id')] = true;
             });
 
             for (let i = 0; i < examQuestionData.questions.length; i++) {
@@ -1739,14 +1744,14 @@ $(document).on('submit', '#resultsForm', function(e) {
             }
 
             const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
-            $(`#marks_${studentID}`).val(displayTotal);
+            jQuery(`#marks_${studentID}`).val(displayTotal);
             autoCalculateGrade(studentID);
 
             results.push({
                 studentID: studentID,
                 marks: total,
-                grade: $(`.grade-input[data-student="${studentID}"]`).val() || null,
-                remark: $(`.remark-input[data-student="${studentID}"]`).val() || null,
+                grade: jQuery(`.grade-input[data-student="${studentID}"]`).val() || null,
+                remark: jQuery(`.remark-input[data-student="${studentID}"]`).val() || null,
                 question_marks: questionPayload
             });
         });
@@ -1755,11 +1760,11 @@ $(document).on('submit', '#resultsForm', function(e) {
             return;
         }
     } else {
-        $('.marks-input').each(function() {
-            const studentID = $(this).data('student');
-            const marks = $(this).val();
-            const grade = $(`.grade-input[data-student="${studentID}"]`).val();
-            const remark = $(`.remark-input[data-student="${studentID}"]`).val();
+        jQuery('.marks-input').each(function() {
+            const studentID = jQuery(this).data('student');
+            const marks = jQuery(this).val();
+            const grade = jQuery(`.grade-input[data-student="${studentID}"]`).val();
+            const remark = jQuery(`.remark-input[data-student="${studentID}"]`).val();
 
             if (marks || grade || remark) {
                 results.push({
@@ -1791,13 +1796,13 @@ $(document).on('submit', '#resultsForm', function(e) {
         }
     });
 
-    $.ajax({
+    jQuery.ajax({
         url: '/save_subject_results',
         method: 'POST',
         data: {
             class_subjectID: classSubjectID,
             examID: examID,
-            test_week: $('#test_week').val(),
+            test_week: jQuery('#test_week').val(),
             results: results
         },
         success: function(response) {
@@ -1807,7 +1812,7 @@ $(document).on('submit', '#resultsForm', function(e) {
                 icon: 'success',
                 confirmButtonColor: '#940000'
             }).then(() => {
-                $('#addEditResultsModal').modal('hide');
+                jQuery('#addEditResultsModal').modal('hide');
             });
         },
         error: function(xhr) {
@@ -1830,12 +1835,12 @@ $(document).on('submit', '#resultsForm', function(e) {
     });
 
     // Upload Excel Form Handler
-    $('#uploadExcelForm').on('submit', function(e) {
+    jQuery('#uploadExcelForm').on('submit', function(e) {
         e.preventDefault();
 
         const formData = new FormData(this);
-        const classSubjectID = $('#upload_class_subject_id').val();
-        const examID = $('#upload_exam_id').val();
+        const classSubjectID = jQuery('#upload_class_subject_id').val();
+        const examID = jQuery('#upload_exam_id').val();
 
         if (!examID) {
             Swal.fire({
@@ -1869,10 +1874,10 @@ $(document).on('submit', '#resultsForm', function(e) {
                     icon: 'success',
                     confirmButtonColor: '#940000'
                 }).then(() => {
-                    $('#uploadExcelModal').modal('hide');
+                    jQuery('#uploadExcelModal').modal('hide');
                     // Reload the results form
-                    const currentClassSubjectID = $('#class_subject_id').val();
-                    const currentExamID = $('#exam_id').val();
+                    const currentClassSubjectID = jQuery('#class_subject_id').val();
+                    const currentExamID = jQuery('#exam_id').val();
                     if (currentClassSubjectID && currentExamID) {
                         loadExistingResults(currentClassSubjectID, currentExamID);
                     }
@@ -1901,7 +1906,7 @@ function handleExamSelection(classSubjectID, examID) {
     $('#downloadExcelBtn, #uploadExcelBtn').prop('disabled', true);
     $('#test_week_group, #test_week_display_group').hide();
     $('#test_week').prop('required', false).val('');
-    
+
     if (!examID) {
         disableResultsForm();
         resetQuestionData();
@@ -1910,11 +1915,11 @@ function handleExamSelection(classSubjectID, examID) {
 
     // Use cached exam data instead of making API call
     const examData = window.examDataCache && window.examDataCache[examID];
-    
+
     if (examData) {
         // Check ONLY enter_result status - no other logic
         const enterResult = examData.enter_result === true || examData.enter_result === 1;
-        
+
         if (!enterResult) {
             // Disable form inputs
             disableResultsForm();
@@ -1931,7 +1936,7 @@ function handleExamSelection(classSubjectID, examID) {
         $('#uploadExcelBtn').prop('disabled', false);
         $('.results-status-error').remove();
 
-        
+
         // Load existing results after enabling form
         loadExistingResults(classSubjectID, examID);
         loadExamQuestionData(classSubjectID, examID);
@@ -1939,7 +1944,7 @@ function handleExamSelection(classSubjectID, examID) {
         // Fallback: try to get exam data from option attributes
         const selectedOption = $(`#exam_id option[value="${examID}"]`);
         const enterResult = selectedOption.data('enter-result') === true || selectedOption.data('enter-result') === 1;
-        
+
         if (!enterResult) {
             disableResultsForm();
             $('#downloadExcelBtn').prop('disabled', true);
@@ -1988,7 +1993,7 @@ function enableResultsForm() {
 function showResultsStatusError(message) {
     // Remove existing error messages
     $('.results-status-error').remove();
-    
+
     // Add error message above the table
     const errorHtml = `
         <div class="alert alert-danger results-status-error mt-3" role="alert">
@@ -2127,8 +2132,8 @@ $(document).on('input', '.question-mark-input', function() {
 function checkIfEditMode(examID, classSubjectID) {
     // Check if any results exist for this exam and class subject
     let hasResults = false;
-    $('.marks-input').each(function() {
-        const marks = $(this).val();
+    jQuery('.marks-input').each(function() {
+        const marks = jQuery(this).val();
         if (marks && marks !== '') {
             hasResults = true;
             return false; // Break loop
@@ -2139,7 +2144,7 @@ function checkIfEditMode(examID, classSubjectID) {
 
 // Download Excel Template
 function downloadExcelTemplate(classSubjectID) {
-    const examID = $('#exam_id').val();
+    const examID = jQuery('#exam_id').val();
 
     if (!examID) {
         Swal.fire({
@@ -2156,7 +2161,7 @@ function downloadExcelTemplate(classSubjectID) {
 
 // Show Upload Excel Modal
 function showUploadExcelModal(classSubjectID) {
-    const examID = $('#exam_id').val();
+    const examID = jQuery('#exam_id').val();
 
     if (!examID) {
         Swal.fire({
@@ -2168,60 +2173,60 @@ function showUploadExcelModal(classSubjectID) {
         return;
     }
 
-    $('#upload_class_subject_id').val(classSubjectID);
-    $('#upload_exam_id').val(examID);
-    $('#excel_file').val('');
-    $('#excel_file_label').html('<i class="bi bi-file-earmark-excel"></i> Choose Excel file (.xlsx or .xls)');
-    $('#uploadExcelModal').modal('show');
-    
+    jQuery('#upload_class_subject_id').val(classSubjectID);
+    jQuery('#upload_exam_id').val(examID);
+    jQuery('#excel_file').val('');
+    jQuery('#excel_file_label').html('<i class="bi bi-file-earmark-excel"></i> Choose Excel file (.xlsx or .xls)');
+    jQuery('#uploadExcelModal').modal('show');
+
     // Update file label when file is selected
-    $('#excel_file').on('change', function() {
-        var fileName = $(this).val().split('\\').pop();
+    jQuery('#excel_file').on('change', function() {
+        var fileName = jQuery(this).val().split('\\').pop();
         if (fileName) {
-            $('#excel_file_label').html('<i class="bi bi-file-earmark-excel-fill"></i> ' + fileName);
+            jQuery('#excel_file_label').html('<i class="bi bi-file-earmark-excel-fill"></i> ' + fileName);
         } else {
-            $('#excel_file_label').html('<i class="bi bi-file-earmark-excel"></i> Choose Excel file (.xlsx or .xls)');
+            jQuery('#excel_file_label').html('<i class="bi bi-file-earmark-excel"></i> Choose Excel file (.xlsx or .xls)');
         }
     });
 }
 
 // View Session Attendance
 function viewSessionAttendance(classSubjectID) {
-    $('#sessionAttendanceModal').modal('show');
-    $('#sessionAttendanceModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"><span class="sr-only">Loading...</span></div></div>');
-    
+    jQuery('#sessionAttendanceModal').modal('show');
+    jQuery('#sessionAttendanceModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"><span class="sr-only">Loading...</span></div></div>');
+
     // Load session attendance view
-    $.get(`/teacher/session-attendance/${classSubjectID}`)
+    jQuery.get(`/teacher/session-attendance/${classSubjectID}`)
     .done(function(response) {
-        $('#sessionAttendanceModalBody').html(response);
+        jQuery('#sessionAttendanceModalBody').html(response);
     })
     .fail(function(xhr) {
-        $('#sessionAttendanceModalBody').html('<div class="alert alert-danger">Failed to load session attendance. Please try again.</div>');
+        jQuery('#sessionAttendanceModalBody').html('<div class="alert alert-danger">Failed to load session attendance. Please try again.</div>');
     });
 }
 
 // View Exam Attendance
 function viewExamAttendance(classSubjectID, subjectID) {
-    $('#examAttendanceModal').modal('show');
-    $('#examAttendanceModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"><span class="sr-only">Loading...</span></div></div>');
-    
+    jQuery('#examAttendanceModal').modal('show');
+    jQuery('#examAttendanceModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"><span class="sr-only">Loading...</span></div></div>');
+
     // Load exam attendance view
-    $.get(`/teacher/exam-attendance/${classSubjectID}`, {
+    jQuery.get(`/teacher/exam-attendance/${classSubjectID}`, {
         subjectID: subjectID
     })
     .done(function(response) {
-        $('#examAttendanceModalBody').html(response);
+        jQuery('#examAttendanceModalBody').html(response);
     })
     .fail(function(xhr) {
-        $('#examAttendanceModalBody').html('<div class="alert alert-danger">Failed to load exam attendance. Please try again.</div>');
+        jQuery('#examAttendanceModalBody').html('<div class="alert alert-danger">Failed to load exam attendance. Please try again.</div>');
     });
 }
 // Helper function to generate weeks for the current year
 // Helper function to generate periods (weeks/months) for the current year
 function generatePeriods(examID, classSubjectID, testType) {
-    const $weekSelect = $('#test_week');
+    const $weekSelect = jQuery('#test_week');
     $weekSelect.empty().append('<option value="">Select Period</option>');
-    
+
     const today = new Date();
     const currentYear = today.getFullYear();
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -2232,7 +2237,7 @@ function generatePeriods(examID, classSubjectID, testType) {
         const startDay = start.getDate();
         const endDay = end.getDate();
         const year = end.getFullYear();
-        
+
         return `${startMonth} ${startDay} to ${endMonth} ${endDay}, ${year}`;
     }
 
@@ -2250,7 +2255,7 @@ function generatePeriods(examID, classSubjectID, testType) {
         // Find current week Monday
         const curr = new Date(today);
         const day = curr.getDay(); // 0 is Sunday, 1 is Monday...
-        const diff = curr.getDate() - day + (day == 0 ? -6 : 1); 
+        const diff = curr.getDate() - day + (day == 0 ? -6 : 1);
         const monday = new Date(curr.setDate(diff));
         monday.setHours(0,0,0,0);
 
@@ -2261,12 +2266,12 @@ function generatePeriods(examID, classSubjectID, testType) {
             weekStart.setDate(monday.getDate() + (i * 7));
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 6);
-            
+
             const startStr = weekStart.toISOString().split('T')[0];
             const endStr = weekEnd.toISOString().split('T')[0];
             const weekVal = `Week of ${startStr} to ${endStr}`;
             const weekLabel = formatDateRange(weekStart, weekEnd) + (i === 0 ? " (Current Week)" : " (Next Week)");
-            
+
             $weekSelect.append(`<option value="${weekVal}">${weekLabel}</option>`);
             if (i === 0) {
                 $weekSelect.val(weekVal);
@@ -2276,10 +2281,10 @@ function generatePeriods(examID, classSubjectID, testType) {
 
     // Add listener for period change
     $weekSelect.off('change').on('change', function() {
-        if ($(this).val()) {
-            loadExistingResults(classSubjectID, examID, $(this).val());
+        if (jQuery(this).val()) {
+            loadExistingResults(classSubjectID, examID, jQuery(this).val());
         } else {
-            $('.marks-input, .grade-input, .remark-input').val('');
+            jQuery('.marks-input, .grade-input, .remark-input').val('');
         }
     });
 

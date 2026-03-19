@@ -74,7 +74,7 @@
         <div class="card-header bg-primary-custom text-white">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="bi bi-gear-fill"></i> Class Management 
+                    <i class="bi bi-gear-fill"></i> Class Management
                     @if(isset($subclassDisplayName) && $subclassDisplayName)
                         <span class="badge bg-light text-primary-custom ms-2">({{ $subclassDisplayName }})</span>
                     @endif
@@ -315,7 +315,7 @@
                         <small class="form-text text-muted">Max size: 2MB. Formats: JPG, JPEG, PNG</small>
                         <div id="student_photo_error" class="text-danger" style="display: none;"></div>
                     </div>
-                    
+
                     <!-- Health Information Section -->
                     <hr class="my-4">
                     <h6 class="mb-3 text-primary-custom"><i class="bi bi-heart-pulse"></i> Health Information</h6>
@@ -358,27 +358,27 @@
                                     <h6 class="card-title mb-3">
                                         <i class="bi bi-router-fill text-primary-custom"></i> Test Fingerprint Device Connection
                                     </h6>
-                                    
+
                                     <div class="form-group">
                                         <label for="device_ip">Device IP Address</label>
-                                        <input type="text" class="form-control" id="device_ip" name="device_ip" 
-                                               value="{{ env('ZKTECO_IP', '192.168.1.108') }}" 
+                                        <input type="text" class="form-control" id="device_ip" name="device_ip"
+                                               value="{{ env('ZKTECO_IP', '192.168.1.108') }}"
                                                placeholder="192.168.1.108">
                                         <small class="form-text text-muted">Enter the IP address of your ZKTeco fingerprint device</small>
                                     </div>
 
                                     <div class="form-group">
                                         <label for="device_port">Device Port</label>
-                                        <input type="number" class="form-control" id="device_port" name="device_port" 
-                                               value="{{ env('ZKTECO_PORT', 4370) }}" 
+                                        <input type="number" class="form-control" id="device_port" name="device_port"
+                                               value="{{ env('ZKTECO_PORT', 4370) }}"
                                                placeholder="4370">
                                         <small class="form-text text-muted">Default ZKTeco port is 4370</small>
                                     </div>
 
                                     <div class="form-group">
                                         <label for="device_password">Comm Key (Password)</label>
-                                        <input type="text" class="form-control" id="device_password" name="device_password" 
-                                               value="{{ env('ZKTECO_PASSWORD', '0') }}" 
+                                        <input type="text" class="form-control" id="device_password" name="device_password"
+                                               value="{{ env('ZKTECO_PASSWORD', '0') }}"
                                                placeholder="0">
                                         <small class="form-text text-muted">Usually 0 for no password, or your device Comm Key</small>
                                     </div>
@@ -386,14 +386,14 @@
                                     <button type="button" class="btn btn-primary-custom btn-block" id="testDeviceConnectionBtn">
                                         <i class="bi bi-wifi"></i> Test Connection
                                     </button>
-                                    
+
                                     <!-- Connection Test Results -->
                                     <div id="connectionTestResults" class="mt-3" style="display: none;">
                                         <div class="alert" id="connectionTestAlert" role="alert">
                                             <div id="connectionTestMessage"></div>
                                         </div>
                                     </div>
-                                    
+
                                     <small class="form-text text-muted mt-2">
                                         <i class="bi bi-info-circle"></i> Test connection to ZKTeco fingerprint device
                                     </small>
@@ -408,38 +408,38 @@
                                     <h6 class="card-title mb-3">
                                         <i class="bi bi-download text-primary-custom"></i> Retrieve Users from Fingerprint Device
                                     </h6>
-                                    
+
                                     <div class="form-group">
                                         <label for="retrieve_device_ip">Device IP Address</label>
-                                        <input type="text" class="form-control" id="retrieve_device_ip" name="retrieve_device_ip" 
-                                               value="{{ env('ZKTECO_IP', '192.168.1.108') }}" 
+                                        <input type="text" class="form-control" id="retrieve_device_ip" name="retrieve_device_ip"
+                                               value="{{ env('ZKTECO_IP', '192.168.1.108') }}"
                                                placeholder="192.168.1.108">
                                     </div>
 
                                     <div class="form-group">
                                         <label for="retrieve_device_port">Device Port</label>
-                                        <input type="number" class="form-control" id="retrieve_device_port" name="retrieve_device_port" 
-                                               value="{{ env('ZKTECO_PORT', 4370) }}" 
+                                        <input type="number" class="form-control" id="retrieve_device_port" name="retrieve_device_port"
+                                               value="{{ env('ZKTECO_PORT', 4370) }}"
                                                placeholder="4370">
                                     </div>
 
                                     <div class="form-group">
                                         <label for="retrieve_device_password">Comm Key (Password)</label>
-                                        <input type="text" class="form-control" id="retrieve_device_password" name="retrieve_device_password" 
-                                               value="{{ env('ZKTECO_PASSWORD', '0') }}" 
+                                        <input type="text" class="form-control" id="retrieve_device_password" name="retrieve_device_password"
+                                               value="{{ env('ZKTECO_PASSWORD', '0') }}"
                                                placeholder="0">
                                     </div>
 
                                     <button type="button" class="btn btn-primary-custom btn-block" id="retrieveUsersBtn">
                                         <i class="bi bi-download"></i> Retrieve Users from Device
                                     </button>
-                                    
+
                                     <!-- Retrieve Users Results -->
                                     <div id="retrieveUsersResults" class="mt-3" style="display: none;">
                                         <div class="alert" id="retrieveUsersAlert" role="alert">
                                             <div id="retrieveUsersMessage"></div>
                                         </div>
-                                        
+
                                         <!-- Users List Table -->
                                         <div id="retrievedUsersTable" class="mt-3" style="display: none;">
                                             <h6 class="mb-2">Users Found on Device:</h6>
@@ -459,7 +459,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <small class="form-text text-muted mt-2">
                                         <i class="bi bi-info-circle"></i> Retrieve all users registered on the fingerprint device
                                     </small>
@@ -609,18 +609,18 @@
                         <i class="bi bi-check-circle"></i> <span id="fingerprintSentMessage"></span>
                     </div>
                 </div>
-                
+
                 <div class="mb-4">
                     <h6 class="mb-3">Please place your finger on the device three times</h6>
-                    
+
                     <!-- Fingerprint Progress Widget -->
                     <div class="fingerprint-progress-container" style="max-width: 400px; margin: 0 auto;">
                         <div class="progress" style="height: 40px; border-radius: 20px; background-color: #e9ecef;">
-                            <div id="fingerprintProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary-custom" 
-                                 role="progressbar" 
+                            <div id="fingerprintProgress" class="progress-bar progress-bar-striped progress-bar-animated bg-primary-custom"
+                                 role="progressbar"
                                  style="width: 0%; transition: width 0.5s ease;"
-                                 aria-valuenow="0" 
-                                 aria-valuemin="0" 
+                                 aria-valuenow="0"
+                                 aria-valuemin="0"
                                  aria-valuemax="100">
                                 <span id="fingerprintProgressText" style="line-height: 40px; font-weight: bold; color: white;">0%</span>
                             </div>
@@ -632,7 +632,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div id="fingerprintSuccessMessage" class="alert alert-success" style="display: none;">
                     <i class="bi bi-check-circle-fill"></i> <strong>Success!</strong> Fingerprint captured successfully!
                 </div>
@@ -694,7 +694,7 @@
                                 </button>
                             </div>
                         </div>
-                        
+
                         <!-- Statistics -->
                         <div class="row" id="studentsStatistics">
                             <div class="col-md-3">
@@ -1154,7 +1154,7 @@
                                 <input type="hidden" name="subclassID" value="{{ $decryptedSubclassID }}" id="attendanceSubclassID">
                             @endif
                             <input type="hidden" name="schoolID" value="{{ Session::get('schoolID') }}">
-                            
+
                             <div class="row mb-3">
                                 <div class="col-md-6">
                                     <div class="form-group">
@@ -1533,12 +1533,12 @@
     var subclassID = @if(isset($decryptedSubclassID) && $decryptedSubclassID) {{ $decryptedSubclassID }} @else null @endif;
     var classID = @if(isset($decryptedClassID) && $decryptedClassID) {{ $decryptedClassID }} @else null @endif;
     var isCoordinatorView = @if(isset($isCoordinatorView) && $isCoordinatorView) true @else false @endif;
-    
+
     $(document).ready(function() {
-        
+
         // Store all students data globally for statistics and filtering
         var allStudentsData = [];
-        
+
         // Initialize global export data
         window.allStudentsForExport = [];
 
@@ -1561,18 +1561,18 @@
                 if (!subclassName) {
                     subclassName = 'Class'; // Fallback
                 }
-                
+
                 // Set subclassID and name in the registration modal
                 const selectedSubclassIDInput = document.getElementById('selectedSubclassID');
                 const selectedSubclassNameDisplay = document.getElementById('selectedSubclassName');
-                
+
                 if (selectedSubclassIDInput) {
                     selectedSubclassIDInput.value = subclassID;
                 }
                 if (selectedSubclassNameDisplay) {
                     selectedSubclassNameDisplay.textContent = subclassName.toUpperCase();
                 }
-                
+
                 // Open registration modal
                 setTimeout(function() {
                     const modal = document.getElementById('registrationModal');
@@ -1594,7 +1594,7 @@
                             backdrop.className = 'modal-backdrop fade show';
                             document.body.appendChild(backdrop);
                         }
-                        
+
                         // Focus first input after modal is shown
                         setTimeout(() => {
                             const firstInput = modal.querySelector('input[name="first_name"]');
@@ -1606,7 +1606,7 @@
                 Swal.fire('Error', 'Class ID not found', 'error');
             }
         });
-        
+
         // Function to load registration form data with pre-selected subclass
         function loadRegistrationFormData(preSelectSubclassID) {
             // Load subclasses
@@ -1617,14 +1617,14 @@
                 success: function(response) {
                     if (response.success) {
                         let subclassSelect = $('#addStudentModal #subclassID');
-                        
+
                         // Destroy existing Select2 if it exists
                         if (subclassSelect.hasClass('select2-hidden-accessible')) {
                             subclassSelect.select2('destroy');
                         }
-                        
+
                         subclassSelect.html('<option value="">Choose a class...</option>');
-                        
+
                         // Filter subclasses if preSelectSubclassID is provided
                         let filteredSubclasses = response.subclasses;
                         if (preSelectSubclassID) {
@@ -1632,12 +1632,12 @@
                                 return subclass.subclassID == preSelectSubclassID;
                             });
                         }
-                        
+
                         filteredSubclasses.forEach(function(subclass) {
                             const displayName = subclass.display_name || (subclass.class_name + ' ' + subclass.subclass_name) || subclass.subclass_name;
                             subclassSelect.append('<option value="' + subclass.subclassID + '">' + displayName + '</option>');
                         });
-                        
+
                         // Initialize Select2
                         subclassSelect.select2({
                             theme: 'bootstrap-5',
@@ -1646,7 +1646,7 @@
                             width: '100%',
                             dropdownParent: $('#addStudentModal')
                         });
-                        
+
                         // Pre-select subclass if provided
                         if (preSelectSubclassID) {
                             subclassSelect.val(preSelectSubclassID).trigger('change');
@@ -1655,7 +1655,7 @@
                     }
                 }
             });
-            
+
             // Load parents
             $.ajax({
                 url: '{{ route("get_parents") }}',
@@ -1671,12 +1671,12 @@
                             let displayText = fullName + (parent.phone ? ' (' + parent.phone + ')' : '');
                             parentSelect.append('<option value="' + parent.parentID + '">' + displayText + '</option>');
                         });
-                        
+
                         if (parentSelect.length) {
                             if (parentSelect.hasClass('select2-hidden-accessible')) {
                                 parentSelect.select2('destroy');
                             }
-                            
+
                             parentSelect.select2({
                                 theme: 'bootstrap-5',
                                 placeholder: 'Search and select a parent...',
@@ -1689,7 +1689,44 @@
                 }
             });
         }
-        
+
+        function hideModal(modalId) {
+            const el = document.getElementById(modalId);
+            if (!el) return;
+            try {
+                if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                    const inst = bootstrap.Modal.getInstance(el);
+                    if (inst) inst.hide();
+                }
+            } catch (e) {}
+            if (window.jQuery && typeof jQuery.fn.modal === 'function') {
+                jQuery(el).modal('hide');
+            }
+        }
+
+        function closeAllStudentModals() {
+            hideModal('viewStudentModal');
+            hideModal('editStudentModal');
+            hideModal('shiftStudentModal');
+            hideModal('fingerprintCaptureModal');
+            hideModal('viewParentDetailsModal');
+            hideModal('editParentModal');
+        }
+
+        function showModal(modalId) {
+            closeAllStudentModals();
+            const el = document.getElementById(modalId);
+            if (!el) return;
+            if (window.bootstrap && typeof bootstrap.Modal === 'function') {
+                const bsModal = new bootstrap.Modal(el, { backdrop: true, keyboard: true });
+                bsModal.show();
+                return;
+            }
+            if (window.jQuery && typeof jQuery.fn.modal === 'function') {
+                jQuery(el).modal('show');
+            }
+        }
+
         // Show/hide allergies details based on checkbox (for addStudentModal)
         $(document).on('change', '#addStudentModal #has_allergies', function() {
             if ($(this).is(':checked')) {
@@ -1699,7 +1736,7 @@
                 $('#addStudentModal #allergies_details').val('');
             }
         });
-        
+
         // Register Student Form Submission Handler (for addStudentModal)
         $(document).on('submit', '#addStudentForm', function(e) {
             e.preventDefault();
@@ -1781,7 +1818,7 @@
                         if ($('#addStudentModal #subclassID').hasClass('select2-hidden-accessible')) {
                             $('#addStudentModal #subclassID').select2('destroy');
                         }
-                        
+
                         // Close modal using Bootstrap
                         const modalElement = document.getElementById('addStudentModal');
                         if (modalElement) {
@@ -1794,7 +1831,7 @@
                                 jQuery(modalElement).modal('hide');
                             }
                         }
-                        
+
                         $('#addStudentForm')[0].reset();
                         $('#addStudentModal .is-invalid').removeClass('is-invalid');
                         $('#addStudentModal .validation-error').remove();
@@ -1961,7 +1998,7 @@
                         $('#registerStudentModal').modal('hide');
                         $('#registerStudentForm')[0].reset();
                         $('#student_photo').val('');
-                        
+
                         // Simple message – user will proceed to capture fingerprint directly on device
                         if (response.fingerprint_id) {
                             var fid = response.fingerprint_id;
@@ -2035,7 +2072,7 @@
         function showFingerprintCaptureModal(fingerprintId, firstName, sentToDevice, apiResponse) {
             $('#fingerprintIdDisplay').text(fingerprintId);
             $('#fingerprintStudentName').text(firstName);
-            
+
             // Show API response if available
             if (sentToDevice && apiResponse && apiResponse.success) {
                 $('#fingerprintSentStatus').show();
@@ -2053,23 +2090,23 @@
             } else {
                 $('#fingerprintSentStatus').hide();
             }
-            
+
             // Reset progress
             $('#fingerprintProgress').css('width', '0%').attr('aria-valuenow', 0);
             $('#fingerprintProgressText').text('0%');
             $('#fingerprintInstruction').html('<i class="bi bi-hand-index"></i> Place your finger on the device (1st time)');
             $('#fingerprintSuccessMessage').hide();
-            
+
             // Show modal (we now use real-time polling instead of pure simulation)
-            $('#fingerprintCaptureModal').modal('show');
+            showModal('fingerprintCaptureModal');
         }
-        
+
         // Function to update fingerprint capture progress
         function updateFingerprintProgress(captureCount) {
             const progress = (captureCount / 3) * 100;
             $('#fingerprintProgress').css('width', progress + '%').attr('aria-valuenow', progress);
             $('#fingerprintProgressText').text(Math.round(progress) + '%');
-            
+
             if (captureCount === 1) {
                 $('#fingerprintInstruction').html('<i class="bi bi-hand-index"></i> Place your finger on the device (2nd time)');
             } else if (captureCount === 2) {
@@ -2080,13 +2117,13 @@
                 $('#fingerprintProgress').removeClass('progress-bar-animated');
             }
         }
-        
+
         // Poll for fingerprint capture updates (real-time via backend)
         let fingerprintPollInterval = null;
         $('#fingerprintCaptureModal').on('shown.bs.modal', function() {
             const fingerprintId = $('#fingerprintIdDisplay').text();
             let lastCount = 0;
-            
+
             fingerprintPollInterval = setInterval(function() {
                 $.ajax({
                     url: '{{ route("check_fingerprint_progress") }}',
@@ -2113,7 +2150,7 @@
                             fingerprintPollInterval = null;
                             // Auto-close modal after short delay
                             setTimeout(function() {
-                                $('#fingerprintCaptureModal').modal('hide');
+                                hideModal('fingerprintCaptureModal');
                             }, 2000);
                         }
                     },
@@ -2123,7 +2160,7 @@
                 });
             }, 2000);
         });
-        
+
         $('#fingerprintCaptureModal').on('hidden.bs.modal', function() {
             if (fingerprintPollInterval) {
                 clearInterval(fingerprintPollInterval);
@@ -2155,7 +2192,7 @@
             var $btn = $(this);
             var originalHtml = $btn.html();
             $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Testing...');
-            
+
             $('#connectionTestResults').hide();
             $('#connectionTestAlert').removeClass('alert-success alert-danger alert-warning');
 
@@ -2171,13 +2208,13 @@
                 },
                 success: function(response) {
                     $btn.prop('disabled', false).html(originalHtml);
-                    
+
                     if (response.success) {
                         var message = '<h6 class="alert-heading"><i class="bi bi-check-circle"></i> Connection Successful!</h6>';
                         message += '<hr>';
                         message += '<p class="mb-1"><strong>Device IP:</strong> ' + response.device_info.ip + '</p>';
                         message += '<p class="mb-1"><strong>Port:</strong> ' + response.device_info.port + '</p>';
-                        
+
                         if (response.device_info.serial_number) {
                             message += '<p class="mb-1"><strong>Serial Number:</strong> ' + response.device_info.serial_number + '</p>';
                         }
@@ -2187,29 +2224,29 @@
                         if (response.device_info.device_name) {
                             message += '<p class="mb-1"><strong>Device Name:</strong> ' + response.device_info.device_name + '</p>';
                         }
-                        
+
                         if (response.connection_method) {
                             message += '<p class="mb-0"><small><strong>Connection Method:</strong> ' + response.connection_method + '</small></p>';
                         }
-                        
+
                         $('#connectionTestAlert').addClass('alert-success').html(message);
                         $('#connectionTestResults').show();
                     } else {
                         var message = '<h6 class="alert-heading"><i class="bi bi-x-circle"></i> Connection Failed</h6>';
                         message += '<hr>';
                         message += '<p class="mb-0">' + (response.message || 'Failed to connect to device. Please check your settings.') + '</p>';
-                        
+
                         $('#connectionTestAlert').addClass('alert-danger').html(message);
                         $('#connectionTestResults').show();
                     }
                 },
                 error: function(xhr) {
                     $btn.prop('disabled', false).html(originalHtml);
-                    
+
                     var message = '<h6 class="alert-heading"><i class="bi bi-x-circle"></i> Connection Error</h6>';
                     message += '<hr>';
                     message += '<p class="mb-0">' + (xhr.responseJSON?.message || 'An error occurred while testing connection.') + '</p>';
-                    
+
                     $('#connectionTestAlert').addClass('alert-danger').html(message);
                     $('#connectionTestResults').show();
                 }
@@ -2240,7 +2277,7 @@
             var $btn = $(this);
             var originalHtml = $btn.html();
             $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Retrieving...');
-            
+
             $('#retrieveUsersResults').hide();
             $('#retrieveUsersAlert').removeClass('alert-success alert-danger alert-warning');
             $('#retrievedUsersTable').hide();
@@ -2258,15 +2295,15 @@
                 },
                 success: function(response) {
                     $btn.prop('disabled', false).html(originalHtml);
-                    
+
                     if (response.success) {
                         var message = '<h6 class="alert-heading"><i class="bi bi-check-circle"></i> Users Retrieved Successfully!</h6>';
                         message += '<hr>';
                         message += '<p class="mb-1"><strong>Total Users:</strong> ' + response.count + '</p>';
-                        
+
                         $('#retrieveUsersAlert').addClass('alert-success').html(message);
                         $('#retrieveUsersResults').show();
-                        
+
                         // Display users in table
                         if (response.users && response.users.length > 0) {
                             var tableRows = '';
@@ -2289,30 +2326,30 @@
                         var message = '<h6 class="alert-heading"><i class="bi bi-x-circle"></i> Failed to Retrieve Users</h6>';
                         message += '<hr>';
                         message += '<p class="mb-0">' + (response.message || 'Failed to retrieve users from device. Please check your settings.') + '</p>';
-                        
+
                         $('#retrieveUsersAlert').addClass('alert-danger').html(message);
                         $('#retrieveUsersResults').show();
                     }
                 },
                 error: function(xhr) {
                     $btn.prop('disabled', false).html(originalHtml);
-                    
+
                     var errorMessage = 'Failed to retrieve users from device.';
                     var errorDetails = '';
-                    
+
                     if (xhr.responseJSON) {
                         if (xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
                         }
-                        
+
                         if (xhr.responseJSON.error_code) {
                             errorDetails += '<p class="mb-1"><strong>Error Code:</strong> ' + xhr.responseJSON.error_code + '</p>';
                         }
-                        
+
                         if (xhr.responseJSON.error_string) {
                             errorDetails += '<p class="mb-1"><strong>Error:</strong> ' + xhr.responseJSON.error_string + '</p>';
                         }
-                        
+
                         if (xhr.responseJSON.recent_logs && xhr.responseJSON.recent_logs.length > 0) {
                             errorDetails += '<hr><h6 class="mb-2">Recent Log Entries:</h6>';
                             errorDetails += '<div style="max-height: 200px; overflow-y: auto; font-size: 0.85em; background: #f8f9fa; padding: 10px; border-radius: 4px;">';
@@ -2326,12 +2363,12 @@
                     } else if (xhr.status === 500) {
                         errorMessage = 'Server error. Please check logs for details.';
                     }
-                    
+
                     var message = '<h6 class="alert-heading"><i class="bi bi-x-circle"></i> Error</h6>';
                     message += '<hr>';
                     message += '<p class="mb-2">' + errorMessage + '</p>';
                     message += errorDetails;
-                    
+
                     $('#retrieveUsersAlert').addClass('alert-danger').html(message);
                     $('#retrieveUsersResults').show();
                 }
@@ -2495,7 +2532,7 @@
         // Load Subclasses for Coordinator
         function loadSubclassesForCoordinator(classID) {
             if (!classID) return;
-            
+
             $.ajax({
                 url: '{{ url("get_class_subclasses") }}/' + classID,
                 type: 'GET',
@@ -2504,11 +2541,11 @@
                     var $subclassSelect = $('#subclassID');
                     $subclassSelect.empty();
                     $subclassSelect.append('<option value="">Select Subclass</option>');
-                    
+
                     if (response.subclasses && response.subclasses.length > 0) {
                         $.each(response.subclasses, function(index, subclass) {
-                            var displayName = subclass.subclass_name 
-                                ? subclass.class_name + ' ' + subclass.subclass_name 
+                            var displayName = subclass.subclass_name
+                                ? subclass.class_name + ' ' + subclass.subclass_name
                                 : subclass.class_name;
                             $subclassSelect.append('<option value="' + subclass.subclassID + '">' + displayName + '</option>');
                         });
@@ -2534,11 +2571,11 @@
                         success: function(response) {
                             $subclassSelect.empty();
                             $subclassSelect.append('<option value="">All Subclasses</option>');
-                            
+
                             if (response.subclasses && response.subclasses.length > 0) {
                                 $.each(response.subclasses, function(index, subclass) {
-                                    var displayName = subclass.subclass_name 
-                                        ? subclass.class_name + ' - ' + subclass.subclass_name 
+                                    var displayName = subclass.subclass_name
+                                        ? subclass.class_name + ' - ' + subclass.subclass_name
                                         : subclass.class_name;
                                     $subclassSelect.append('<option value="' + subclass.subclassID + '">' + displayName + '</option>');
                                 });
@@ -2556,13 +2593,13 @@
         function updateStatistics(filteredData) {
             // Use filtered data if provided, otherwise use all students data
             var studentsToCount = filteredData || allStudentsData;
-            
+
             // Calculate statistics from all students (not just visible in table)
             var totalStudents = studentsToCount.length;
             var maleCount = studentsToCount.filter(function(s) { return s.gender === 'Male'; }).length;
             var femaleCount = studentsToCount.filter(function(s) { return s.gender === 'Female'; }).length;
             var healthIssuesCount = studentsToCount.filter(function(s) { return s.has_health_issues === true || s.has_health_issues === 'true'; }).length;
-            
+
             // Update statistics display
             $('#statTotalStudents').text(totalStudents);
             $('#statMaleStudents').text(maleCount);
@@ -2575,22 +2612,22 @@
             console.log('=== APPLYING FILTERS ===');
             console.log('allStudentsData:', allStudentsData);
             console.log('allStudentsData length:', allStudentsData ? allStudentsData.length : 0);
-            
+
             if (!allStudentsData || allStudentsData.length === 0) {
                 console.error('ERROR: No students data available!');
                 Swal.fire('Info', 'Please wait for students to load first', 'info');
                 return;
             }
-            
+
             var genderFilter = $('#filterGender').val() || '';
             var subclassFilter = $('#filterSubclass').val() || '';
-            
+
             console.log('Filter values:', {
                 gender: genderFilter,
                 subclass: subclassFilter,
                 totalStudents: allStudentsData.length
             });
-            
+
             // Filter all students data
             var filteredStudents = allStudentsData.filter(function(student, index) {
                 var matches = true;
@@ -2600,7 +2637,7 @@
                     matches: true,
                     reasons: []
                 };
-                
+
                 // Gender filter (only for coordinator view)
                 if (genderFilter) {
                     console.log('Checking gender - Student:', student.admission_number, '- Gender:', student.gender, '- Filter:', genderFilter);
@@ -2609,7 +2646,7 @@
                         debugInfo.reasons.push('Gender mismatch: ' + student.gender + ' != ' + genderFilter);
                     }
                 }
-                
+
                 // Subclass filter (only for coordinator view)
                 if (subclassFilter) {
                     console.log('Checking subclass - Student:', student.admission_number, '- SubclassID:', student.subclassID, '- Filter:', subclassFilter);
@@ -2621,27 +2658,27 @@
                         debugInfo.reasons.push('Subclass mismatch: ' + student.subclassID + ' != ' + subclassFilter);
                     }
                 }
-                
+
                 debugInfo.matches = matches;
                 if (!matches && debugInfo.reasons.length > 0) {
                     console.log('Student filtered out:', debugInfo);
                 }
-                
+
                 return matches;
             });
-            
+
             console.log('=== FILTERING RESULTS ===');
             console.log('Total students:', allStudentsData.length);
             console.log('Filtered students:', filteredStudents.length);
             console.log('Filtered students data:', filteredStudents);
-            
+
             // Update statistics with filtered data
             updateStatistics(filteredStudents);
-            
+
             // Get DataTable instances
             var activeTable = $('#activeStudentsTable').DataTable();
             var transferredTable = $('#transferredStudentsTable').DataTable();
-            
+
             // Store filtered admission numbers for quick lookup
             var filteredAdmissionNumbers = {};
             filteredStudents.forEach(function(s) {
@@ -2651,12 +2688,12 @@
                     filteredAdmissionNumbers[admNum] = true;
                 }
             });
-            
+
             console.log('=== FILTERED ADMISSION NUMBERS ===');
             console.log('Filtered admission numbers:', filteredAdmissionNumbers);
             console.log('Number of filtered admission numbers:', Object.keys(filteredAdmissionNumbers).length);
             console.log('Sample filtered admission numbers:', Object.keys(filteredAdmissionNumbers).slice(0, 10));
-            
+
             // Also log all students admission numbers for comparison
             console.log('=== ALL STUDENTS ADMISSION NUMBERS (for comparison) ===');
             var allAdmNumbers = allStudentsData.map(function(s) {
@@ -2664,12 +2701,12 @@
             });
             console.log('Total all admission numbers:', allAdmNumbers.length);
             console.log('Sample all admission numbers:', allAdmNumbers.slice(0, 10));
-            
+
             console.log('=== FILTERED ADMISSION NUMBERS ===');
             console.log('Filtered admission numbers:', filteredAdmissionNumbers);
             console.log('Number of filtered admission numbers:', Object.keys(filteredAdmissionNumbers).length);
             console.log('Sample filtered admission numbers:', Object.keys(filteredAdmissionNumbers).slice(0, 10));
-            
+
             // Also log all students admission numbers for comparison
             console.log('=== ALL STUDENTS ADMISSION NUMBERS (for comparison) ===');
             var allAdmNumbers = allStudentsData.map(function(s) {
@@ -2677,13 +2714,13 @@
             });
             console.log('Total all admission numbers:', allAdmNumbers.length);
             console.log('Sample all admission numbers:', allAdmNumbers.slice(0, 10));
-            
+
             if (activeTable) {
                 console.log('Applying filter to active table...');
-                
+
                 // Store reference to filtered data for the filter function (use closure)
                 var activeFilterData = filteredAdmissionNumbers;
-                
+
                 // Remove any existing custom filters for this table
                 if ($.fn.dataTable.ext.search) {
                     var originalExtSearch = $.fn.dataTable.ext.search;
@@ -2694,23 +2731,23 @@
                 } else {
                     $.fn.dataTable.ext.search = [];
                 }
-                
+
                 console.log('Remaining ext.search functions:', $.fn.dataTable.ext.search.length);
-                
+
                 // Apply custom filter
                 $.fn.dataTable.ext.search.push(
                     function(settings, data, dataIndex) {
                         if (settings.nTable.id !== 'activeStudentsTable') {
                             return true;
                         }
-                        
+
                         try {
                             var row = activeTable.row(dataIndex).node();
                             if (!row) return false;
-                            
+
                             // Get admission number - it's always in column index 2 (after #, Photo, Admission No.)
                             var admissionNumber = $(row).find('td:eq(2)').text().trim();
-                            
+
                             // Debug: log first few rows to verify column index and matching
                             if (dataIndex < 5) {
                                 var allCells = [];
@@ -2724,13 +2761,13 @@
                                     console.log('Active Row', dataIndex, '- Available filter keys (first 5):', Object.keys(activeFilterData).slice(0, 5));
                                 }
                             }
-                            
+
                             var shouldShow = activeFilterData[admissionNumber] === true;
-                            
+
                             if (!shouldShow && dataIndex < 5) {
                                 console.log('Hiding row', dataIndex, '- Admission:', '"' + admissionNumber + '"', '- Available keys:', Object.keys(activeFilterData).slice(0, 5));
                             }
-                            
+
                             return shouldShow;
                         } catch(e) {
                             console.error('Error in active table filter:', e, 'at dataIndex:', dataIndex);
@@ -2738,24 +2775,24 @@
                         }
                     }
                 );
-                
+
                 console.log('Total ext.search functions after push:', $.fn.dataTable.ext.search.length);
                 console.log('Drawing active table...');
-                
+
                 // Clear existing search and redraw
                 activeTable.search('').draw();
-                
+
                 console.log('Active table drawn. Visible rows:', activeTable.rows({search: 'applied'}).count());
             } else {
                 console.error('ERROR: activeTable is not initialized!');
             }
-            
+
             if (transferredTable) {
                 console.log('Applying filter to transferred table...');
-                
+
                 // Store reference to filtered data for the filter function (use closure)
                 var transferredFilterData = filteredAdmissionNumbers;
-                
+
                 // Remove any existing custom filters for this table
                 if ($.fn.dataTable.ext.search) {
                     var originalExtSearch = $.fn.dataTable.ext.search;
@@ -2766,21 +2803,21 @@
                 } else {
                     $.fn.dataTable.ext.search = [];
                 }
-                
+
                 // Apply custom filter
                 $.fn.dataTable.ext.search.push(
                     function(settings, data, dataIndex) {
                         if (settings.nTable.id !== 'transferredStudentsTable') {
                             return true;
                         }
-                        
+
                         try {
                             var row = transferredTable.row(dataIndex).node();
                             if (!row) return false;
-                            
+
                             // Get admission number - it's always in column index 2 (after #, Photo, Admission No.)
                             var admissionNumber = $(row).find('td:eq(2)').text().trim();
-                            
+
                             // Debug: log all cells to verify column index
                             if (dataIndex < 3) {
                                 var allCells = [];
@@ -2790,15 +2827,15 @@
                                 console.log('Transferred Row', dataIndex, '- All cells:', allCells);
                                 console.log('Transferred Row', dataIndex, '- Admission number from cell 2:', admissionNumber);
                             }
-                            
+
                             var shouldShow = transferredFilterData[admissionNumber] === true;
-                            
+
                             if (!shouldShow) {
                                 console.log('Hiding transferred row', dataIndex, 'with admission number:', admissionNumber, '- Available in filter:', transferredFilterData.hasOwnProperty(admissionNumber));
                             } else {
                                 console.log('Showing transferred row', dataIndex, 'with admission number:', admissionNumber);
                             }
-                            
+
                             return shouldShow;
                         } catch(e) {
                             console.error('Error in transferred table filter:', e, 'at dataIndex:', dataIndex);
@@ -2806,17 +2843,17 @@
                         }
                     }
                 );
-                
+
                 console.log('Drawing transferred table...');
-                
+
                 // Clear existing search and redraw
                 transferredTable.search('').draw();
-                
+
                 console.log('Transferred table drawn. Visible rows:', transferredTable.rows({search: 'applied'}).count());
             } else {
                 console.log('INFO: transferredTable is not initialized (might be empty)');
             }
-            
+
             console.log('=== FILTERING COMPLETE ===');
         }
 
@@ -2830,29 +2867,29 @@
                 applyFiltersAndUpdateStats();
             }
         });
-        
+
         // Apply Filters with AJAX (for coordinator view)
         function applyFiltersWithAjax() {
             if (!classID) {
                 Swal.fire('Error', 'Class ID not found', 'error');
                 return;
             }
-            
+
             var genderFilter = $('#filterGender').val() || '';
             var subclassFilter = $('#filterSubclass').val() || '';
-            
+
             console.log('=== APPLYING FILTERS WITH AJAX ===');
             console.log('Filters:', {
                 gender: genderFilter,
                 subclass: subclassFilter,
                 classID: classID
             });
-            
+
             // Show loading
             var $btn = $('#applyFiltersBtn');
             var originalText = $btn.html();
             $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Loading...');
-            
+
             $.ajax({
                 url: '{{ url("get_subclass_students") }}/0',
                 type: 'GET',
@@ -2865,10 +2902,10 @@
                 dataType: 'json',
                 success: function(response) {
                     $btn.prop('disabled', false).html(originalText);
-                    
+
                     console.log('=== AJAX RESPONSE ===');
                     console.log('Response:', response);
-                    
+
                     if (response.success && response.students) {
                         // Update statistics from server
                         // Filter only active students before calculating statistics
@@ -2876,19 +2913,19 @@
                             var status = s.status || '';
                             return status === 'Active' || status === 'active' || status === '';
                         });
-                        
+
                         // Calculate statistics from active students only
                         var activeTotal = activeStudents.length;
                         var activeMale = activeStudents.filter(function(s) { return s.gender === 'Male'; }).length;
                         var activeFemale = activeStudents.filter(function(s) { return s.gender === 'Female'; }).length;
                         var activeHealthIssues = activeStudents.filter(function(s) { return s.has_health_issues === true || s.has_health_issues === 'true'; }).length;
-                        
+
                         // Update statistics display (only active students)
                         $('#statTotalStudents').text(activeTotal);
                         $('#statMaleStudents').text(activeMale);
                         $('#statFemaleStudents').text(activeFemale);
                         $('#statHealthIssues').text(activeHealthIssues);
-                        
+
                         // Reload students table with filtered data (will filter again for safety)
                         renderStudentsTable(response.students);
                     } else {
@@ -2903,19 +2940,19 @@
                 }
             });
         }
-        
+
         // Render Students Table (reusable function)
         function renderStudentsTable(students) {
             var activeTbody = $('#activeStudentsTable tbody');
             var transferredTbody = $('#transferredStudentsTable tbody');
             activeTbody.empty();
             transferredTbody.empty();
-            
+
             // Filter only active students for export
             var activeStudentsForExport = students.filter(function(s) {
                 return s.status === 'Active' || s.status === 'active' || !s.status;
             });
-            
+
             // Store only active students data globally for export
             allStudentsData = activeStudentsForExport.map(function(s) {
                 return {
@@ -2937,24 +2974,24 @@
                     photo: s.photo || null
                 };
             });
-            
+
             // Store full students data globally for export (only active)
             window.allStudentsForExport = allStudentsData;
             console.log('Active students data stored for export:', window.allStudentsForExport.length, 'students');
-            
+
             // Filter only active students for display (exclude Transferred, Graduated, Inactive)
             var activeStudentsForDisplay = students.filter(function(s) {
                 var status = s.status || '';
                 return status === 'Active' || status === 'active' || status === '';
             });
-            
+
             // Update statistics with only active students
             if (activeStudentsForDisplay && activeStudentsForDisplay.length > 0) {
                 var activeTotal = activeStudentsForDisplay.length;
                 var activeMale = activeStudentsForDisplay.filter(function(s) { return s.gender === 'Male'; }).length;
                 var activeFemale = activeStudentsForDisplay.filter(function(s) { return s.gender === 'Female'; }).length;
                 var activeHealthIssues = activeStudentsForDisplay.filter(function(s) { return s.has_health_issues === true || s.has_health_issues === 'true'; }).length;
-                
+
                 // Update statistics display
                 $('#statTotalStudents').text(activeTotal);
                 $('#statMaleStudents').text(activeMale);
@@ -2967,12 +3004,12 @@
                 $('#statFemaleStudents').text(0);
                 $('#statHealthIssues').text(0);
             }
-            
+
             if (activeStudentsForDisplay && activeStudentsForDisplay.length > 0) {
                 var activeIndex = 0;
                 var transferredIndex = 0;
                 var schoolType = '{{ isset($school_details) ? $school_details->school_type : "Secondary" }}';
-                
+
                 // Function to generate random color based on student name (deterministic)
                 function getColorFromName(name) {
                     if (!name) return '#940000';
@@ -2990,26 +3027,26 @@
                     }
                     return colors[Math.abs(hash) % colors.length];
                 }
-                
+
                 $.each(activeStudentsForDisplay, function(index, student) {
                     var baseUrl = '{{ asset("") }}';
                     var photoUrl = '';
-                    
+
                     // Get first letter of student name
                     var firstName = student.first_name || '';
                     var firstLetter = firstName ? firstName.charAt(0).toUpperCase() : 'N';
-                    
+
                     // Generate color based on student name
                     var studentFullName = (student.first_name || '') + ' ' + (student.last_name || '');
                     var placeholderColor = getColorFromName(studentFullName);
-                    
+
                     // Determine photo URL
                     if (student.photo) {
                         photoUrl = baseUrl + 'userImages/' + student.photo;
                     } else {
                         photoUrl = '';
                     }
-                    
+
                     // Create photo HTML
                     var photoHtml = '';
                     if (photoUrl) {
@@ -3020,13 +3057,13 @@
                     } else {
                         photoHtml = '<div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px; background-color: ' + placeholderColor + '; font-size: 16px; font-weight: bold; border: 2px solid #940000;">' + firstLetter + '</div>';
                     }
-                    
+
                     // Get subclass display
                     var subclassDisplay = student.subclass_display || (student.class_name && student.subclass_name ? student.class_name + ' - ' + student.subclass_name : (student.subclass_name || 'N/A'));
-                    
+
                     var actionButtons = '<button class="btn btn-sm btn-info view-student-btn" data-student-id="' + student.studentID + '" title="View Details"><i class="bi bi-eye"></i></button> ' +
                         '<button class="btn btn-sm btn-warning edit-student-btn" data-student-id="' + student.studentID + '" title="Edit"><i class="bi bi-pencil-square"></i></button> ';
-                    
+
                     // Handle Transferred students
                     if (student.status === 'Transferred') {
                         actionButtons += '<button class="btn btn-sm btn-success activate-student-btn" data-student-id="' + student.studentID + '" title="Activate Student"><i class="bi bi-check-circle"></i></button> ';
@@ -3034,7 +3071,7 @@
                             actionButtons += '<button class="btn btn-sm btn-secondary revert-transfer-btn" data-student-id="' + student.studentID + '" title="Revert to ' + (student.old_subclass_info.display_name || 'Previous Class') + '"><i class="bi bi-arrow-left-circle"></i></button> ';
                         }
                         actionButtons += '<button class="btn btn-sm btn-danger delete-student-btn" data-student-id="' + student.studentID + '" title="Delete"><i class="bi bi-trash-fill"></i></button>';
-                        
+
                         var gradeDisplay = '<span class="text-muted">N/A</span>';
                         var gradeClass = '';
                         if (student.student_grade) {
@@ -3062,12 +3099,12 @@
                             }
                             gradeDisplay = '<span class="badge ' + gradeClass + '">' + grade + '</span>';
                         }
-                        
+
                         var previousClass = '<span class="text-muted">N/A</span>';
                         if (student.old_subclass_info) {
                             previousClass = '<strong>' + (student.old_subclass_info.subclass_name || student.old_subclass_info.display_name || 'N/A') + '</strong>';
                         }
-                        
+
                         var subclassIDForFilter = student.subclassID || '';
                         var row = $('<tr>')
                             .attr('data-subclass-id', subclassIDForFilter)
@@ -3091,13 +3128,13 @@
                         // Active Students
                         actionButtons += '<button class="btn btn-sm btn-primary shift-student-btn" data-student-id="' + student.studentID + '" title="Shift Class"><i class="bi bi-arrow-right-circle"></i></button> ';
                         actionButtons += '<a href="#" class="btn btn-sm btn-success text-white send-student-to-fingerprint-btn" data-student-id="' + student.studentID + '" data-student-name="' + (student.first_name || '') + '" data-fingerprint-id="' + (student.fingerprint_id || '') + '" title="Send to Fingerprint Device"><i class="bi bi-fingerprint"></i></a> ';
-                        
+
                         if (student.status !== 'Active') {
                             actionButtons += '<button class="btn btn-sm btn-danger delete-student-btn" data-student-id="' + student.studentID + '" title="Delete"><i class="bi bi-trash-fill"></i></button>';
                         }
-                        
+
                         var statusBadge = '<span class="badge badge-success">' + (student.status || 'Active') + '</span>';
-                        
+
                         var fingerprintStatus = '';
                         if (student.fingerprint_id) {
                             if (student.sent_to_device) {
@@ -3115,7 +3152,7 @@
                         } else {
                             fingerprintStatus = '<span class="badge badge-secondary"><i class="bi bi-dash"></i> No ID</span>';
                         }
-                        
+
                         var subclassIDForFilter = student.subclassID || '';
                         var row = $('<tr>')
                             .attr('data-subclass-id', subclassIDForFilter)
@@ -3137,7 +3174,7 @@
                         activeIndex++;
                     }
                 });
-                
+
                 // Reinitialize DataTables
                 if ($.fn.DataTable.isDataTable('#activeStudentsTable')) {
                     $('#activeStudentsTable').DataTable().destroy();
@@ -3145,13 +3182,13 @@
                 if ($.fn.DataTable.isDataTable('#transferredStudentsTable')) {
                     $('#transferredStudentsTable').DataTable().destroy();
                 }
-                
+
                 $('#activeStudentsTable').DataTable({
                     responsive: true,
                     pageLength: 10,
                     order: [[3, 'asc']]
                 });
-                
+
                 $('#transferredStudentsTable').DataTable({
                     responsive: true,
                     pageLength: 10,
@@ -3167,7 +3204,7 @@
         // Load Students for Coordinator (all subclasses in main class)
         function loadStudentsForCoordinator(classID) {
             if (!classID) return;
-            
+
             $.ajax({
                 url: '{{ url("get_subclass_students") }}/0?classID=' + classID + '&coordinator=true',
                 type: 'GET',
@@ -3179,22 +3216,22 @@
                             var status = s.status || '';
                             return status === 'Active' || status === 'active' || status === '';
                         });
-                        
+
                         // Calculate statistics from active students only
                         var activeTotal = activeStudents.length;
                         var activeMale = activeStudents.filter(function(s) { return s.gender === 'Male'; }).length;
                         var activeFemale = activeStudents.filter(function(s) { return s.gender === 'Female'; }).length;
                         var activeHealthIssues = activeStudents.filter(function(s) { return s.has_health_issues === true || s.has_health_issues === 'true'; }).length;
-                        
+
                         // Update statistics display (only active students)
                         $('#statTotalStudents').text(activeTotal);
                         $('#statMaleStudents').text(activeMale);
                         $('#statFemaleStudents').text(activeFemale);
                         $('#statHealthIssues').text(activeHealthIssues);
-                        
+
                         // Use renderStudentsTable to display students (will filter again for safety)
                         renderStudentsTable(response.students);
-                        
+
                         var activeIndex = 0;
                         var transferredIndex = 0;
                         var schoolType = '{{ isset($school_details) ? $school_details->school_type : "Secondary" }}';
@@ -3339,7 +3376,7 @@
 
                                 // Get subclassID for filtering
                                 var subclassIDForFilter = student.subclassID || '';
-                                
+
                                 var row = $('<tr>')
                                     .attr('data-subclass-id', subclassIDForFilter)
                                     .attr('data-admission-date', student.admission_date || '')
@@ -3380,7 +3417,7 @@
                             pageLength: 10,
                             order: [[3, 'asc']]
                         });
-                        
+
                     } else {
                         // No students found
                         window.allStudentsForExport = [];
@@ -3401,7 +3438,7 @@
                 loadStudentsForCoordinator(classID);
                 return;
             }
-            
+
             if (!subclassID) return;
 
             $.ajax({
@@ -3420,19 +3457,19 @@
                             var status = s.status || '';
                             return status === 'Active' || status === 'active' || status === '';
                         });
-                        
+
                         // Calculate statistics from active students only
                         var activeTotal = activeStudents.length;
                         var activeMale = activeStudents.filter(function(s) { return s.gender === 'Male'; }).length;
                         var activeFemale = activeStudents.filter(function(s) { return s.gender === 'Female'; }).length;
                         var activeHealthIssues = activeStudents.filter(function(s) { return s.has_health_issues === true || s.has_health_issues === 'true'; }).length;
-                        
+
                         // Update statistics display (only active students)
                         $('#statTotalStudents').text(activeTotal);
                         $('#statMaleStudents').text(activeMale);
                         $('#statFemaleStudents').text(activeFemale);
                         $('#statHealthIssues').text(activeHealthIssues);
-                        
+
                         // Store all students data globally for statistics and filtering (only active)
                         allStudentsData = activeStudents.map(function(s) {
                             return {
@@ -3445,7 +3482,7 @@
                                 status: s.status || 'Active'
                             };
                         });
-                        
+
                         // Store full students data globally for export (only active)
                         window.allStudentsForExport = activeStudents.map(function(s) {
                             return {
@@ -3468,7 +3505,7 @@
                             };
                         });
                         console.log('Students data stored for export (loadStudents):', window.allStudentsForExport.length, 'students');
-                        
+
                         var activeIndex = 0;
                         var transferredIndex = 0;
                         var schoolType = '{{ isset($school_details) ? $school_details->school_type : "Secondary" }}';
@@ -3629,7 +3666,7 @@
 
                                 var subclassIDForFilter = student.subclassID || '';
                                 var subclassDisplay = student.subclass_display || (student.class_name && student.subclass_name ? student.class_name + ' - ' + student.subclass_name : (student.subclass_name || 'N/A'));
-                                
+
                                 var row = $('<tr>')
                                     .attr('data-subclass-id', subclassIDForFilter)
                                     .attr('data-admission-date', student.admission_date || '')
@@ -3789,7 +3826,7 @@
         // Load Parents
         function loadParents() {
             var requestData = {};
-            
+
             if (isCoordinatorView && classID) {
                 // Coordinator view - load parents for all subclasses in main class
                 requestData = {
@@ -3888,7 +3925,7 @@
                             studentsHtml +
                         '</div>';
                         $('#parentDetailsContent').html(html);
-                        $('#viewParentDetailsModal').modal('show');
+                        showModal('viewParentDetailsModal');
                     }
                 }
             });
@@ -3982,7 +4019,7 @@
                                 '<small class="form-text text-muted">Max size: 2MB. Formats: JPG, JPEG, PNG</small>' +
                             '</div>';
                         $('#editParentContent').html(html);
-                        $('#editParentModal').modal('show');
+                        showModal('editParentModal');
                     }
                 }
             });
@@ -4123,7 +4160,7 @@
                 success: function(response) {
                     if (response.success) {
                         let student = response.student;
-                        
+
                         // Create tab structure
                         let html = '<ul class="nav nav-tabs mb-3" id="studentDetailsTabs" role="tablist" style="border-radius: 0;">';
                         html += '<li class="nav-item" role="presentation">';
@@ -4137,9 +4174,9 @@
                         html += '</button>';
                         html += '</li>';
                         html += '</ul>';
-                        
+
                         html += '<div class="tab-content" id="studentDetailsTabContent">';
-                        
+
                         // Tab 1: Student Particulars
                         html += '<div class="tab-pane fade show active" id="particulars-pane" role="tabpanel" aria-labelledby="particulars-tab">';
                         html += '<div class="school-details-card" style="border-radius: 0;">';
@@ -4152,25 +4189,25 @@
                         // Check for bad health conditions - support both boolean and integer values
                         let hasBadHealth = false;
                         let healthConditions = [];
-                        
+
                         // Check is_disabled (can be true, 1, or "1")
                         if (student.is_disabled === true || student.is_disabled == 1 || student.is_disabled === "1") {
                             hasBadHealth = true;
                             healthConditions.push('Disabled');
                         }
-                        
+
                         // Check has_epilepsy (can be true, 1, or "1")
                         if (student.has_epilepsy === true || student.has_epilepsy == 1 || student.has_epilepsy === "1") {
                             hasBadHealth = true;
                             healthConditions.push('Epilepsy/Seizure Disorder');
                         }
-                        
+
                         // Check has_allergies (can be true, 1, or "1")
                         if (student.has_allergies === true || student.has_allergies == 1 || student.has_allergies === "1") {
                             hasBadHealth = true;
                             healthConditions.push('Allergies');
                         }
-                        
+
                         // Check has_disability (can be true, 1, or "1")
                         if (student.has_disability === true || student.has_disability == 1 || student.has_disability === "1") {
                             hasBadHealth = true;
@@ -4178,18 +4215,18 @@
                                 healthConditions.push('Disability');
                             }
                         }
-                        
+
                         // Check has_chronic_illness (can be true, 1, or "1")
                         if (student.has_chronic_illness === true || student.has_chronic_illness == 1 || student.has_chronic_illness === "1") {
                             hasBadHealth = true;
                             healthConditions.push('Chronic Illness');
                         }
-                        
+
                         let healthAlertIcon = '';
                         if (hasBadHealth) {
                             healthAlertIcon = ' <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 1.2rem;" title="Health Condition Alert - This student has health conditions: ' + healthConditions.join(', ') + '"></i>';
                         }
-                        
+
                         html += '<h3 class="school-title">' + student.full_name + healthAlertIcon + '</h3>';
                         html += '<small class="text-muted">Admission: ' + student.admission_number + '</small>';
                         html += '</div>';
@@ -4206,7 +4243,7 @@
 
                         // Health Information Section - Rebuild health conditions array
                         let healthConditionsList = [];
-                        
+
                         // Check is_disabled (can be true, 1, or "1")
                         if (student.is_disabled === true || student.is_disabled == 1 || student.is_disabled === "1") {
                             let disabledText = '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> Disabled</span>';
@@ -4215,7 +4252,7 @@
                             }
                             healthConditionsList.push(disabledText);
                         }
-                        
+
                         // Check has_disability (can be true, 1, or "1")
                         if (student.has_disability === true || student.has_disability == 1 || student.has_disability === "1") {
                             let disabilityText = '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> Disability</span>';
@@ -4224,12 +4261,12 @@
                             }
                             healthConditionsList.push(disabilityText);
                         }
-                        
+
                         // Check has_epilepsy (can be true, 1, or "1")
                         if (student.has_epilepsy === true || student.has_epilepsy == 1 || student.has_epilepsy === "1") {
                             healthConditionsList.push('<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> Epilepsy/Seizure Disorder</span>');
                         }
-                        
+
                         // Check has_allergies (can be true, 1, or "1")
                         if (student.has_allergies === true || student.has_allergies == 1 || student.has_allergies === "1") {
                             let allergiesText = '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> Allergies</span>';
@@ -4238,7 +4275,7 @@
                             }
                             healthConditionsList.push(allergiesText);
                         }
-                        
+
                         // Check has_chronic_illness (can be true, 1, or "1")
                         if (student.has_chronic_illness === true || student.has_chronic_illness == 1 || student.has_chronic_illness === "1") {
                             let chronicText = '<span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill"></i> Chronic Illness</span>';
@@ -4247,7 +4284,7 @@
                             }
                             healthConditionsList.push(chronicText);
                         }
-                        
+
                         // Check general_health_condition - separate good health from bad health
                         let generalHealthCondition = '';
                         let isGoodHealth = false;
@@ -4262,7 +4299,7 @@
                             healthConditionsList.push('<span class="badge bg-warning text-dark"><i class="bi bi-info-circle-fill"></i> General Health: ' + student.general_health_condition + '</span>');
                             }
                         }
-                        
+
                         // Display health conditions alert if there are bad conditions
                         if (healthConditionsList.length > 0) {
                             html += '<div class="info-item" style="grid-column: 1 / -1; background-color: #fff5f5; border: 2px solid #dc3545; border-radius: 0; padding: 15px;">';
@@ -4305,7 +4342,7 @@
                             html += '</div>';
                             html += '</div>';
                         }
-                        
+
                         // Emergency Contact (Next of Kin)
                         if (student.emergency_contact_name && student.emergency_contact_name !== 'N/A') {
                             html += '<div class="info-item" style="grid-column: 1 / -1; background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6;">';
@@ -4320,7 +4357,7 @@
                             html += '</div>';
                             html += '</div>';
                         }
-                        
+
                         // Registration Information
                         if (student.registering_officer_name && student.registering_officer_name !== 'N/A') {
                             html += '<div class="info-item" style="grid-column: 1 / -1; background-color: #f8f9fa; padding: 15px; border: 1px solid #dee2e6;">';
@@ -4334,7 +4371,7 @@
                             html += '</div>';
                             html += '</div>';
                         }
-                        
+
                         // Additional Student Details
                         html += '<div class="info-item"><i class="bi bi-card-text"></i><div class="info-item-content"><div class="info-item-label">Birth Certificate Number</div><div class="info-item-value">' + (student.birth_certificate_number || 'N/A') + '</div></div></div>';
                         html += '<div class="info-item"><i class="bi bi-heart"></i><div class="info-item-content"><div class="info-item-label">Religion</div><div class="info-item-value">' + (student.religion || 'N/A') + '</div></div></div>';
@@ -4345,7 +4382,7 @@
 
                         html += '</div></div>'; // Close school-details-card
                         html += '</div>'; // Close particulars-pane
-                        
+
                         // Tab 2: Academic Details
                         html += '<div class="tab-pane fade" id="academic-pane" role="tabpanel" aria-labelledby="academic-tab">';
                         html += '<div class="p-4" style="border-radius: 0;">';
@@ -4355,7 +4392,7 @@
                         html += '<option value="">Loading...</option>';
                         html += '</select>';
                         html += '</div>';
-                        
+
                         // Class Widget (Expandable)
                         html += '<div class="card mb-3 academic-widget" id="classWidget" style="border-radius: 0; cursor: pointer; border: 2px solid #dee2e6;" data-expanded="false">';
                         html += '<div class="card-header bg-primary-custom text-white d-flex justify-content-between align-items-center" style="border-radius: 0;">';
@@ -4368,7 +4405,7 @@
                         html += '</div>';
                         html += '</div>';
                         html += '</div>';
-                        
+
                         // Results Widget (Expandable)
                         html += '<div class="card mb-3 academic-widget" id="resultsWidget" style="border-radius: 0; cursor: pointer; border: 2px solid #dee2e6;" data-expanded="false">';
                         html += '<div class="card-header bg-info text-white d-flex justify-content-between align-items-center" style="border-radius: 0;">';
@@ -4381,7 +4418,7 @@
                         html += '</div>';
                         html += '</div>';
                         html += '</div>';
-                        
+
                         // Attendance Widget (Expandable)
                         html += '<div class="card mb-3 academic-widget" id="attendanceWidget" style="border-radius: 0; cursor: pointer; border: 2px solid #dee2e6;" data-expanded="false">';
                         html += '<div class="card-header bg-success text-white d-flex justify-content-between align-items-center" style="border-radius: 0;">';
@@ -4394,7 +4431,7 @@
                         html += '</div>';
                         html += '</div>';
                         html += '</div>';
-                        
+
                         // Payments Widget (Expandable)
                         html += '<div class="card mb-3 academic-widget" id="paymentsWidget" style="border-radius: 0; cursor: pointer; border: 2px solid #dee2e6;" data-expanded="false">';
                         html += '<div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center" style="border-radius: 0;">';
@@ -4407,7 +4444,7 @@
                         html += '</div>';
                         html += '</div>';
                         html += '</div>';
-                        
+
                         // Debits (Madeni) Widget (Expandable)
                         html += '<div class="card mb-3 academic-widget" id="debitsWidget" style="border-radius: 0; cursor: pointer; border: 2px solid #dee2e6;" data-expanded="false">';
                         html += '<div class="card-header bg-danger text-white d-flex justify-content-between align-items-center" style="border-radius: 0;">';
@@ -4420,15 +4457,15 @@
                         html += '</div>';
                         html += '</div>';
                         html += '</div>';
-                        
+
                         html += '</div>'; // Close p-4
                         html += '</div>'; // Close academic-pane
-                        
+
                         html += '</div>'; // Close tab-content
 
                         $('#studentDetailsContent').html(html);
                         showModal('viewStudentModal');
-                        
+
                         // Load academic years for this student (non-blocking)
                         try {
                             setTimeout(function() {
@@ -4560,6 +4597,138 @@
                                 '<label>Address</label>' +
                                 '<textarea class="form-control" name="address" rows="2">' + (student.address || '') + '</textarea>' +
                             '</div>' +
+                            '<div class="row">' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>Birth Certificate Number</label>' +
+                                        '<input type="text" class="form-control" name="birth_certificate_number" value="' + (student.birth_certificate_number || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>Religion</label>' +
+                                        '<input type="text" class="form-control" name="religion" value="' + (student.religion || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="row">' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>Nationality</label>' +
+                                        '<input type="text" class="form-control" name="nationality" value="' + (student.nationality || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>General Health Condition</label>' +
+                                        '<input type="text" class="form-control" name="general_health_condition" value="' + (student.general_health_condition || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="row">' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-check">' +
+                                        '<input class="form-check-input" type="checkbox" name="has_disability" value="1" ' + ((student.has_disability == 1 || student.has_disability === true) ? 'checked' : '') + '>' +
+                                        '<label class="form-check-label">Has Disability</label>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-check">' +
+                                        '<input class="form-check-input" type="checkbox" name="has_chronic_illness" value="1" ' + ((student.has_chronic_illness == 1 || student.has_chronic_illness === true) ? 'checked' : '') + '>' +
+                                        '<label class="form-check-label">Has Chronic Illness</label>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-check">' +
+                                        '<input class="form-check-input" type="checkbox" name="is_disabled" value="1" ' + ((student.is_disabled == 1 || student.is_disabled === true) ? 'checked' : '') + '>' +
+                                        '<label class="form-check-label">Disabled</label>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="row">' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-check">' +
+                                        '<input class="form-check-input" type="checkbox" name="has_epilepsy" value="1" ' + ((student.has_epilepsy == 1 || student.has_epilepsy === true) ? 'checked' : '') + '>' +
+                                        '<label class="form-check-label">Epilepsy</label>' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-check">' +
+                                        '<input class="form-check-input" type="checkbox" name="has_allergies" value="1" ' + ((student.has_allergies == 1 || student.has_allergies === true) ? 'checked' : '') + '>' +
+                                        '<label class="form-check-label">Allergies</label>' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label>Disability Details</label>' +
+                                '<textarea class="form-control" name="disability_details" rows="2">' + (student.disability_details || '') + '</textarea>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label>Chronic Illness Details</label>' +
+                                '<textarea class="form-control" name="chronic_illness_details" rows="2">' + (student.chronic_illness_details || '') + '</textarea>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label>Allergies Details</label>' +
+                                '<textarea class="form-control" name="allergies_details" rows="2">' + (student.allergies_details || '') + '</textarea>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label>Immunization Details</label>' +
+                                '<textarea class="form-control" name="immunization_details" rows="2">' + (student.immunization_details || '') + '</textarea>' +
+                            '</div>' +
+                            '<hr>' +
+                            '<div class="row">' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-group">' +
+                                        '<label>Emergency Contact Name</label>' +
+                                        '<input type="text" class="form-control" name="emergency_contact_name" value="' + (student.emergency_contact_name || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-group">' +
+                                        '<label>Emergency Relationship</label>' +
+                                        '<input type="text" class="form-control" name="emergency_contact_relationship" value="' + (student.emergency_contact_relationship || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-4">' +
+                                    '<div class="form-group">' +
+                                        '<label>Emergency Phone</label>' +
+                                        '<input type="text" class="form-control" name="emergency_contact_phone" value="' + (student.emergency_contact_phone || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<hr>' +
+                            '<div class="row">' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>Declaration Date</label>' +
+                                        '<input type="date" class="form-control" name="declaration_date" value="' + (student.declaration_date || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>Registering Officer Name</label>' +
+                                        '<input type="text" class="form-control" name="registering_officer_name" value="' + (student.registering_officer_name || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="row">' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>Registering Officer Title</label>' +
+                                        '<input type="text" class="form-control" name="registering_officer_title" value="' + (student.registering_officer_title || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                                '<div class="col-md-6">' +
+                                    '<div class="form-group">' +
+                                        '<label>Sponsor ID</label>' +
+                                        '<input type="number" class="form-control" name="sponsor_id" value="' + (student.sponsor_id || '') + '">' +
+                                    '</div>' +
+                                '</div>' +
+                            '</div>' +
+                            '<div class="form-group">' +
+                                '<label>Sponsorship Percentage</label>' +
+                                '<input type="number" class="form-control" name="sponsorship_percentage" min="0" max="100" value="' + (student.sponsorship_percentage || '') + '">' +
+                            '</div>' +
                             '<div class="form-group">' +
                                 '<label>Update Photo</label>' +
                                 '<input type="file" class="form-control-file" name="photo" accept="image/*">' +
@@ -4570,7 +4739,7 @@
                         // Load parents dropdown
                         loadParentsDropdownForEdit(student.parentID);
 
-                        $('#editStudentModal').modal('show');
+                        showModal('editStudentModal');
                     }
                 }
             });
@@ -4619,7 +4788,7 @@
                         $.each(response.subclasses, function(index, subclass) {
                             select.append('<option value="' + subclass.subclassID + '">' + subclass.display_name + '</option>');
                         });
-                        $('#shiftStudentModal').modal('show');
+                        showModal('shiftStudentModal');
                     } else {
                         select.append('<option value="">No classes found</option>');
                         select.prop('disabled', true);
@@ -4629,7 +4798,7 @@
                             icon: 'info',
                             confirmButtonColor: '#940000'
                         });
-                        $('#shiftStudentModal').modal('show');
+                        showModal('shiftStudentModal');
                     }
                 },
                 error: function(xhr) {
@@ -4647,9 +4816,9 @@
         $(document).off('click', '.send-student-to-fingerprint-btn').on('click', '.send-student-to-fingerprint-btn', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
+
             console.log('Fingerprint button clicked');
-            
+
             var studentId = $(this).data('student-id');
             var studentName = $(this).data('student-name');
             var fingerprintId = $(this).data('fingerprint-id') || '';
@@ -4683,7 +4852,7 @@
                 showLoaderOnConfirm: true,
                 preConfirm: () => {
                     $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Sending...');
-                    
+
                     return $.ajax({
                         url: "{{ route('send_student_to_fingerprint') }}",
                         type: "POST",
@@ -4731,7 +4900,7 @@
                     $btn.prop('disabled', false).html(originalHtml);
                 }
             });
-            
+
             return false;
         });
 
@@ -6209,11 +6378,11 @@
         }
 
         // ==================== ATTENDANCE MANAGEMENT ====================
-        
+
         // Format date function (e.g., "11 November 2025")
         function formatDate(dateString) {
             if (!dateString) return 'N/A';
-            
+
             try {
                 var date = new Date(dateString);
                 if (isNaN(date.getTime())) {
@@ -6225,20 +6394,20 @@
                         return dateString; // Return as is if can't parse
                     }
                 }
-                
+
                 var months = ['January', 'February', 'March', 'April', 'May', 'June',
                              'July', 'August', 'September', 'October', 'November', 'December'];
-                
+
                 var day = date.getDate();
                 var month = months[date.getMonth()];
                 var year = date.getFullYear();
-                
+
                 return day + ' ' + month + ' ' + year;
             } catch (e) {
                 return dateString; // Return original if error
             }
         }
-        
+
         // Attendance Button Click
         $('#attendanceBtn').on('click', function() {
             if (isCoordinatorView && classID) {
@@ -6252,7 +6421,7 @@
                 Swal.fire('Error', 'Class ID not found', 'error');
                 return;
             }
-            
+
             // Set date to today and lock it
             var today = new Date().toISOString().split('T')[0];
             $('#attendance_date').val(today).attr('max', today).attr('min', today);
@@ -6274,7 +6443,7 @@
                 Swal.fire('Error', 'Class ID not found', 'error');
                 return;
             }
-            
+
             $.ajax({
                 url: '{{ url("get_class_subclasses") }}/' + classID,
                 type: 'GET',
@@ -6283,11 +6452,11 @@
                     var $subclassSelect = $('#attendanceSubclassSelect');
                     $subclassSelect.empty();
                     $subclassSelect.append('<option value="">Select Subclass</option>');
-                    
+
                     if (response.subclasses && response.subclasses.length > 0) {
                         $.each(response.subclasses, function(index, subclass) {
-                            var displayName = subclass.subclass_name 
-                                ? subclass.class_name + ' - ' + subclass.subclass_name 
+                            var displayName = subclass.subclass_name
+                                ? subclass.class_name + ' - ' + subclass.subclass_name
                                 : subclass.class_name;
                             $subclassSelect.append('<option value="' + subclass.subclassID + '">' + displayName + '</option>');
                         });
@@ -6298,7 +6467,7 @@
                     Swal.fire('Error', 'Failed to load subclasses', 'error');
                 }
             });
-            
+
             // When subclass is selected, load students
             $('#attendanceSubclassSelect').off('change').on('change', function() {
                 var selectedSubclassID = $(this).val();
@@ -6316,10 +6485,10 @@
                 }
             });
         }
-        
+
         function loadStudentsForAttendance(subclassIDParam) {
             var targetSubclassID = subclassIDParam || subclassID;
-            
+
             if (!targetSubclassID) {
                 $('#attendanceStudentsList').html('<tr><td colspan="6" class="text-center text-warning">Please select a class first</td></tr>');
                 return;
@@ -6343,7 +6512,7 @@
                     if (response.success && response.students && response.students.length > 0) {
                         var baseUrl = '{{ asset("") }}';
                         var studentIndex = 0;
-                        
+
                         $.each(response.students, function(index, student) {
                             // Skip transferred students
                             if (student.status === 'Transferred') return;
@@ -6390,7 +6559,7 @@
                             tbody.append(row);
                             studentIndex++;
                         });
-                        
+
                         if (studentIndex === 0) {
                             tbody.append('<tr><td colspan="6" class="text-center text-muted">No active students found</td></tr>');
                         }
@@ -6426,7 +6595,7 @@
         // Collect Attendance Form Submit
         $('#collectAttendanceForm').on('submit', function(e) {
             e.preventDefault();
-            
+
             // For coordinator view, ensure subclass is selected
             if (isCoordinatorView && classID) {
                 var selectedSubclass = $('#attendanceSubclassSelect').val();
@@ -6495,7 +6664,7 @@
 
                     if (response.success && response.attendances && response.attendances.length > 0) {
                         var baseUrl = '{{ asset("") }}';
-                        
+
                         $.each(response.attendances, function(index, attendance) {
                             var photoUrl = '';
                             var firstLetter = (attendance.first_name || 'N').charAt(0).toUpperCase();
@@ -6528,7 +6697,7 @@
 
                             // Format attendance date
                             var formattedDate = formatDate(attendance.attendance_date);
-                            
+
                             var row = '<tr>' +
                                 '<td>' + (index + 1) + '</td>' +
                                 '<td>' + photoHtml + '</td>' +
@@ -6581,7 +6750,7 @@
                 dataType: 'json',
                 success: function(response) {
                     btn.prop('disabled', false).html(originalText);
-                    
+
                     if (response.success) {
                         Swal.fire({
                             icon: 'success',
@@ -6677,18 +6846,18 @@
                 const isNew = rec.is_new === true;
 
                 // New badge (if record is new) - will be in last column
-                const newBadge = isNew 
-                    ? '<span class="badge bg-success">New</span>' 
+                const newBadge = isNew
+                    ? '<span class="badge bg-success">New</span>'
                     : '-';
 
                 // Check In badge (success/green)
-                const checkInBadge = checkInTime 
-                    ? '<span class="badge bg-success">Check In</span>' 
+                const checkInBadge = checkInTime
+                    ? '<span class="badge bg-success">Check In</span>'
                     : '';
 
                 // Check Out badge (primary/blue)
-                const checkOutBadge = checkOutTime 
-                    ? '<span class="badge bg-primary">Check Out</span>' 
+                const checkOutBadge = checkOutTime
+                    ? '<span class="badge bg-primary">Check Out</span>'
                     : '';
 
                 // Status (Complete or Check In Only)
@@ -6988,7 +7157,7 @@
                     page: page,
                     subclassID: subclassID
                 };
-                
+
                 // For day view, send date to backend for filtering
                 if (searchType === 'day' && searchDate) {
                     requestData.date = searchDate;
@@ -6999,7 +7168,7 @@
                     // Send year parameter
                     requestData.year = searchYear;
                 }
-                
+
                 $.ajax({
                     url: '{{ route("zkteco.attendance.from-db") }}',
                     type: 'GET',
@@ -7008,7 +7177,7 @@
                     success: function(data) {
                         if (data.success && data.data) {
                             allRecords = allRecords.concat(data.data);
-                            
+
                             if (data.pagination && data.pagination.current_page < data.pagination.last_page) {
                                 fetchPage(page + 1);
                             } else {
@@ -7087,12 +7256,12 @@
                     var monthParts = searchMonth.split('-');
                     var targetYear = parseInt(monthParts[0]);
                     var targetMonth = parseInt(monthParts[1]) - 1; // Month is 0-indexed
-                    
+
                     // Compare using date string parts to avoid timezone issues
                     var recordDateParts = attendanceDateStr.split('-');
                     var recordYear = parseInt(recordDateParts[0]);
                     var recordMonth = parseInt(recordDateParts[1]) - 1;
-                    
+
                     match = recordYear === targetYear && recordMonth === targetMonth;
                 } else if (searchType === 'year' && searchYear) {
                     // Use searchYear parameter
@@ -7188,7 +7357,7 @@
                 if (rec.attendance_date) {
                     var dateLabel = rec.attendance_date;
                     var dateIndex = stats.chart_data.labels.indexOf(dateLabel);
-                    
+
                     if (dateIndex === -1) {
                         dateIndex = stats.chart_data.labels.length;
                         stats.chart_data.labels.push(dateLabel);
@@ -7224,7 +7393,7 @@
             stats.unique_students_count = stats.unique_students.size;
             stats.students_with_attendance = stats.unique_students_count;
             stats.students_without_attendance = Math.max(0, stats.total_students_in_class - stats.students_with_attendance);
-            stats.attendance_rate = stats.total_students_in_class > 0 ? 
+            stats.attendance_rate = stats.total_students_in_class > 0 ?
                 ((stats.students_with_attendance / stats.total_students_in_class) * 100).toFixed(1) : 0;
             stats.present_rate = stats.total_students_in_class > 0 ?
                 (((stats.checked_in + stats.both) / stats.total_students_in_class) * 100).toFixed(1) : 0;
@@ -7243,10 +7412,10 @@
                 var monthParts = searchMonth.split('-');
                 var year = parseInt(monthParts[0]);
                 var month = parseInt(monthParts[1]) - 1; // Month is 0-indexed
-                
+
                 startDate = new Date(year, month, 1);
                 startDate.setHours(0, 0, 0, 0);
-                
+
                 // If current month, end at today; otherwise end of month
                 if (year === today.getFullYear() && month === today.getMonth()) {
                     // Use today's date (already set to 00:00:00)
@@ -7260,7 +7429,7 @@
                 var year = parseInt(searchYear);
                 startDate = new Date(year, 0, 1); // January 1
                 startDate.setHours(0, 0, 0, 0);
-                
+
                 // If current year, end at today; otherwise end of year
                 if (year === today.getFullYear()) {
                     // Use today's date (already set to 00:00:00)
@@ -7282,7 +7451,7 @@
             var workingDays = 0;
             var current = new Date(startDate);
             current.setHours(0, 0, 0, 0);
-            
+
             // Create end date for comparison (date only, no time)
             var endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
             endDateOnly.setHours(0, 0, 0, 0);
@@ -7292,12 +7461,12 @@
             while (true) {
                 // Check if current date is before or equal to end date
                 if (current.getFullYear() > endDateOnly.getFullYear()) break;
-                if (current.getFullYear() === endDateOnly.getFullYear() && 
+                if (current.getFullYear() === endDateOnly.getFullYear() &&
                     current.getMonth() > endDateOnly.getMonth()) break;
-                if (current.getFullYear() === endDateOnly.getFullYear() && 
-                    current.getMonth() === endDateOnly.getMonth() && 
+                if (current.getFullYear() === endDateOnly.getFullYear() &&
+                    current.getMonth() === endDateOnly.getMonth() &&
                     current.getDate() > endDateOnly.getDate()) break;
-                
+
                 var dayOfWeek = current.getDay();
                 // Skip weekends (Sunday = 0, Saturday = 6)
                 if (dayOfWeek !== 0 && dayOfWeek !== 6) {
@@ -7313,7 +7482,7 @@
         // Display Fingerprint Attendance Overview
         function displayFingerprintAttendanceOverview(stats, searchType, deviceFailed = false, records = [], totalStudentsInClass = 0, searchMonth = null, searchYear = null) {
             var html = '';
-            
+
             // Check if no attendance was collected
             if (stats.total_records === 0 || stats.students_with_attendance === 0) {
                 html += '<div class="alert alert-info text-center" role="alert">';
@@ -7356,7 +7525,7 @@
             }
 
             $('#fingerprintAttendanceOverviewContent').html(html);
-            
+
             // Display student attendance table for all views (day, month, year)
             // For day view, show detailed attendance records table
             if (searchType === 'day') {
@@ -7410,7 +7579,7 @@
                     // Format times to HH:mm:ss only
                     var checkInTime = rec.check_in_time || '-';
                     var checkOutTime = rec.check_out_time || '-';
-                    
+
                     // Extract time part if datetime format
                     if (checkInTime !== '-' && checkInTime.indexOf(' ') !== -1) {
                         checkInTime = checkInTime.split(' ')[1] || checkInTime;
@@ -7418,7 +7587,7 @@
                     if (checkOutTime !== '-' && checkOutTime.indexOf(' ') !== -1) {
                         checkOutTime = checkOutTime.split(' ')[1] || checkOutTime;
                     }
-                    
+
                     studentRecords[studentId].records.push({
                         checkInTime: checkInTime,
                         checkOutTime: checkOutTime,
@@ -7461,7 +7630,7 @@
                     if ($.fn.DataTable.isDataTable('#dayViewAttendanceTable')) {
                         $('#dayViewAttendanceTable').DataTable().destroy();
                     }
-                    
+
                     // Initialize new DataTable
                     $('#dayViewAttendanceTable').DataTable({
                         pageLength: 25,
@@ -7495,7 +7664,7 @@
                 var studentId = student.studentID || student.fingerprint_id || '';
                 var fullName = (student.first_name || '') + ' ' + (student.middle_name ? student.middle_name + ' ' : '') + (student.last_name || '');
                 fullName = fullName.trim() || 'N/A';
-                
+
                 // Get attendance data from stats
                 var attendanceData = stats.student_attendance[studentId] || {
                     studentID: studentId,
@@ -7508,7 +7677,7 @@
                     check_in_count: 0,
                     check_out_count: 0
                 };
-                
+
                 completeStudentList.push(attendanceData);
             });
 
@@ -7569,7 +7738,7 @@
                     if ($.fn.DataTable.isDataTable('#studentAttendanceOverviewTable')) {
                         $('#studentAttendanceOverviewTable').DataTable().destroy();
                     }
-                    
+
                     // Initialize new DataTable
                     $('#studentAttendanceOverviewTable').DataTable({
                         pageLength: 25,
@@ -7628,12 +7797,12 @@
                 var totalWorkingDays = stats.total_working_days || 0;
                 var totalPossiblePresentDays = totalStudentsInClass * totalWorkingDays;
                 var totalActualPresentDays = 0;
-                
+
                 // Sum up all present days from all students
                 Object.keys(stats.student_attendance || {}).forEach(function(studentID) {
                     totalActualPresentDays += (stats.student_attendance[studentID].present_days || 0);
                 });
-                
+
                 var totalAbsentDays = totalPossiblePresentDays - totalActualPresentDays;
                 var presentPercentage = totalPossiblePresentDays > 0 ? ((totalActualPresentDays / totalPossiblePresentDays) * 100).toFixed(1) : 0;
                 var absentPercentage = totalPossiblePresentDays > 0 ? ((totalAbsentDays / totalPossiblePresentDays) * 100).toFixed(1) : 0;
@@ -8027,22 +8196,22 @@
             if (currentFingerprintSearchType !== 'day') {
                 startDate.setHours(0, 0, 0, 0);
                 endDate.setHours(0, 0, 0, 0);
-                
+
                 var current = new Date(startDate);
                 var endDateOnly = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
                 endDateOnly.setHours(0, 0, 0, 0);
-                
+
                 // Loop through all dates from start to end (inclusive)
                 // Compare dates by comparing year, month, and day separately to avoid time issues
                 while (true) {
                     // Check if current date is before or equal to end date
                     if (current.getFullYear() > endDateOnly.getFullYear()) break;
-                    if (current.getFullYear() === endDateOnly.getFullYear() && 
+                    if (current.getFullYear() === endDateOnly.getFullYear() &&
                         current.getMonth() > endDateOnly.getMonth()) break;
-                    if (current.getFullYear() === endDateOnly.getFullYear() && 
-                        current.getMonth() === endDateOnly.getMonth() && 
+                    if (current.getFullYear() === endDateOnly.getFullYear() &&
+                        current.getMonth() === endDateOnly.getMonth() &&
                         current.getDate() > endDateOnly.getDate()) break;
-                    
+
                     var dayOfWeek = current.getDay();
                     // Skip weekends (Sunday = 0, Saturday = 6)
                     if (dayOfWeek !== 0 && dayOfWeek !== 6) {
@@ -8060,7 +8229,7 @@
                 var studentName = rec.user_name || 'N/A';
                 var className = rec.class_name || 'N/A';
                 var fingerprintId = rec.fingerprint_id || rec.enroll_id || studentId;
-                
+
                 if (!studentId) return;
 
                 // For day view, collect detailed records
@@ -8069,7 +8238,7 @@
                         // Format times to HH:mm:ss only
                         var checkInTime = rec.check_in_time || '-';
                         var checkOutTime = rec.check_out_time || '-';
-                        
+
                         // Extract time part if datetime format
                         if (checkInTime !== '-') {
                             if (checkInTime.indexOf(' ') !== -1) {
@@ -8091,7 +8260,7 @@
                                 }
                             }
                         }
-                        
+
                         detailedRecords.push({
                             studentName: studentName,
                             className: className,
@@ -8138,7 +8307,7 @@
                         studentMap[studentId].presentDates.add(attendanceDate);
                     }
                 }
-                
+
                 if (rec.check_out_time && rec.check_out_time.trim() !== '') {
                     studentMap[studentId].hasCheckOut = true;
                 }
@@ -8403,7 +8572,7 @@
             $.ajax({
                 url: '{{ route("zkteco.attendance.from-db") }}',
                 type: 'GET',
-                data: { 
+                data: {
                     page: page,
                     subclassID: subclassID,
                     date: dateFilter || null
@@ -8431,10 +8600,10 @@
 
                     if (records.length === 0) {
                         const isFromDB = data.source === 'database';
-                        const message = isFromDB 
+                        const message = isFromDB
                             ? 'No attendance records found in local database' + (dateFilter ? ' for the selected date' : '') + '. The device is currently unavailable.'
                             : 'No attendance records found' + (dateFilter ? ' for the selected date' : ' from the biometric device') + '.';
-                        
+
                         container.html(`
                             <div class="alert ${isFromDB ? 'alert-warning' : 'alert-info'} mb-0">
                                 <i class="bi bi-${isFromDB ? 'exclamation-triangle' : 'info-circle'}"></i> ${message}
@@ -8476,7 +8645,7 @@
                         const subclassName = rec.class_name || 'N/A';
                         const fingerprintId = rec.fingerprint_id || rec.enroll_id || rec.user_id || 'N/A';
                         const attendanceDate = rec.attendance_date || '';
-                        
+
                         // Format times to HH:mm:ss only
                         const checkInTime = formatTimeOnly(rec.check_in_time || '');
                         const checkOutTime = formatTimeOnly(rec.check_out_time || '');
@@ -8837,7 +9006,7 @@
         function loadTeacherClassSubjects() {
             var url = '';
             var requestData = {};
-            
+
             if (isCoordinatorView && classID) {
                 // Coordinator view - load subjects for all subclasses in main class
                 url = "{{ url('get_class_subjects_by_subclass') }}/0";
@@ -8898,7 +9067,7 @@
                                 if (isCoordinatorView && classID) {
                                     html += '<td>' + (subject.subclass_display || 'N/A') + '</td>';
                                 }
-                                
+
                                 // Student Status Badge
                                 var studentStatusBadge = '';
                                 if (subject.student_status === 'Required') {
@@ -8909,7 +9078,7 @@
                                     studentStatusBadge = '<span class="badge bg-secondary">Not Set</span>';
                                 }
                                 html += '<td>' + studentStatusBadge + '</td>';
-                                
+
                                 // Election Stats
                                 var electionStats = '';
                                 if (subject.student_status === 'Optional') {
@@ -8925,11 +9094,11 @@
                                     electionStats = '<span class="text-muted small">N/A</span>';
                                 }
                                 html += '<td>' + electionStats + '</td>';
-                                
+
                                 // Actions
                                 html += '<td>';
                                 html += '<div class="d-flex gap-1">';
-                                
+
                                 // Election button for optional subjects
                                 if (subject.student_status === 'Optional' && subject.class_subjectID) {
                                     var subjectSubclassID = isCoordinatorView && classID ? (subject.subclassID || '') : subclassID;
@@ -8941,7 +9110,7 @@
                                     html += '<i class="bi bi-person-check"></i> Election';
                                     html += '</button>';
                                 }
-                                
+
                                 html += '</div>';
                                 html += '</td>';
                                 html += '</tr>';
@@ -9038,7 +9207,7 @@
                             dataType: 'json',
                             success: function(electorsResponse) {
                                 console.log('Electors data received:', electorsResponse);
-                                
+
                                 var electedStudentIDs = [];
                                 if (electorsResponse.success && electorsResponse.electors) {
                                     electedStudentIDs = electorsResponse.electors.map(function(e) {
@@ -9104,7 +9273,7 @@
                             error: function(xhr) {
                                 console.error('Error fetching electors:', xhr);
                                 var electedStudentIDs = [];
-                                
+
                                 var html = '<div class="table-responsive">';
                                 html += '<table class="table table-hover table-bordered" id="teacherElectionStudentsTable">';
                                 html += '<thead class="bg-primary-custom text-white">';
@@ -9320,7 +9489,7 @@
                                         'data-student-id="' + studentID + '" ' +
                                         'value="' + studentID + '">'
                                     );
-                                    
+
                                     if ($('#subjectManagementModal').hasClass('show')) {
                                         loadTeacherClassSubjects();
                                     }
@@ -9353,20 +9522,20 @@
             });
         });
     });
-    
+
     // Export Student Details to PDF
     $(document).on('click', '.export-student-pdf-btn', function() {
         if (!window.currentStudentDetailsData) {
             Swal.fire('Error', 'Student data not available', 'error');
             return;
         }
-        
+
         var studentData = window.currentStudentDetailsData;
-        
+
         // Check if jsPDF is available
         var jsPDFLib = window.jspdf || window.jsPDF;
         var JSPDF = null;
-        
+
         if (jsPDFLib && jsPDFLib.jsPDF) {
             JSPDF = jsPDFLib.jsPDF;
         } else if (typeof jsPDF !== 'undefined') {
@@ -9374,24 +9543,24 @@
         } else if (typeof window.jsPDF !== 'undefined') {
             JSPDF = window.jsPDF;
         }
-        
+
         if (!JSPDF) {
             Swal.fire('Error', 'PDF library not loaded. Please refresh the page.', 'error');
             return;
         }
-        
+
         try {
             var doc = new JSPDF('p', 'mm', 'a4');
             var pageWidth = doc.internal.pageSize.getWidth();
             var margin = 15;
             var yPos = margin;
             var lineHeight = 7;
-            
+
             // Get school info
             var schoolName = '{{ isset($school_details) ? $school_details->school_name : "School" }}';
             var schoolLogo = '{{ isset($school_details) ? $school_details->school_logo : "" }}';
             var logoUrl = schoolLogo ? '{{ asset("logos") }}/' + schoolLogo : null;
-            
+
             // Load logo if available
             var logoPromise = Promise.resolve(null);
             if (logoUrl) {
@@ -9403,7 +9572,7 @@
                     img.src = logoUrl + (logoUrl.indexOf('?') > -1 ? '&' : '?') + 't=' + Date.now();
                 });
             }
-            
+
             // Load student photo if available
             var photoPromise = Promise.resolve(null);
             if (studentData.photo) {
@@ -9416,11 +9585,11 @@
                     img.src = photoUrl + (photoUrl.indexOf('?') > -1 ? '&' : '?') + 't=' + Date.now();
                 });
             }
-            
+
             Promise.all([logoPromise, photoPromise]).then(function(images) {
                 var logo = images[0];
                 var photo = images[1];
-                
+
                 // Header with logo
                 if (logo) {
                     doc.addImage(logo, 'PNG', margin, yPos, 20, 20);
@@ -9432,22 +9601,22 @@
                 doc.setFont('helvetica', 'normal');
                 doc.text('Student Details Report', logo ? margin + 25 : margin, yPos + 16);
                 yPos += 30;
-                
+
                 // Student Photo
                 if (photo) {
                     var photoSize = 40;
                     doc.addImage(photo, 'PNG', pageWidth - margin - photoSize, margin, photoSize, photoSize);
                 }
-                
+
                 // Student Information
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
                 doc.text('Student Information', margin, yPos);
                 yPos += lineHeight + 2;
-                
+
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
-                
+
                 var details = [
                     ['Admission Number:', studentData.admission_number],
                     ['Full Name:', studentData.full_name],
@@ -9458,20 +9627,20 @@
                     ['Address:', studentData.address],
                     ['Status:', studentData.status]
                 ];
-                
+
                 details.forEach(function(detail) {
                     doc.setFont('helvetica', 'bold');
                     doc.text(detail[0], margin, yPos);
                     doc.setFont('helvetica', 'normal');
                     doc.text(detail[1] || 'N/A', margin + 50, yPos);
                     yPos += lineHeight;
-                    
+
                     if (yPos > 270) {
                         doc.addPage();
                         yPos = margin;
                     }
                 });
-                
+
                 // Footer
                 var pageCount = doc.internal.getNumberOfPages();
                 for (var i = 1; i <= pageCount; i++) {
@@ -9480,11 +9649,11 @@
                     doc.text('Generated on: ' + new Date().toLocaleString(), margin, doc.internal.pageSize.getHeight() - 10);
                     doc.text('Page ' + i + ' of ' + pageCount, pageWidth - margin - 20, doc.internal.pageSize.getHeight() - 10);
                 }
-                
+
                 // Save PDF
                 var fileName = 'Student_' + studentData.admission_number.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.pdf';
                 doc.save(fileName);
-                
+
                 Swal.fire('Success', 'PDF exported successfully', 'success');
             });
         } catch (error) {
@@ -9492,26 +9661,26 @@
             Swal.fire('Error', 'Failed to export PDF: ' + error.message, 'error');
         }
     });
-    
+
     // Export Student Details to Excel
     $(document).on('click', '.export-student-excel-btn', function() {
         if (!window.currentStudentDetailsData) {
             Swal.fire('Error', 'Student data not available', 'error');
             return;
         }
-        
+
         // Check if XLSX is available
         if (typeof XLSX === 'undefined') {
             Swal.fire('Error', 'Excel library not loaded. Please refresh the page.', 'error');
             return;
         }
-        
+
         var studentData = window.currentStudentDetailsData;
-        
+
         try {
             // Create workbook
             var wb = XLSX.utils.book_new();
-            
+
             // Prepare data
             var data = [
                 ['Student Details Report'],
@@ -9530,52 +9699,52 @@
                 [''],
                 ['Generated on', new Date().toLocaleString()]
             ];
-            
+
             // Create worksheet
             var ws = XLSX.utils.aoa_to_sheet(data);
-            
+
             // Set column widths
             ws['!cols'] = [
                 { wch: 20 },
                 { wch: 30 }
             ];
-            
+
             // Add worksheet to workbook
             XLSX.utils.book_append_sheet(wb, ws, 'Student Details');
-            
+
             // Generate filename
             var fileName = 'Student_' + studentData.admission_number.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
-            
+
             // Save file
             XLSX.writeFile(wb, fileName);
-            
+
             Swal.fire('Success', 'Excel file exported successfully', 'success');
         } catch (error) {
             console.error('Excel Export Error:', error);
             Swal.fire('Error', 'Failed to export Excel: ' + error.message, 'error');
         }
     });
-    
+
     // Export Students List to PDF
     $(document).on('click', '#exportStudentsPdfBtn', function(e) {
         e.preventDefault();
         console.log('Export PDF clicked');
         console.log('window.allStudentsForExport:', window.allStudentsForExport);
-        
+
         if (!window.allStudentsForExport || window.allStudentsForExport.length === 0) {
             console.error('No students data available');
             Swal.fire('Error', 'No students data available to export. Please load students first.', 'error');
             return;
         }
-        
+
         var students = window.allStudentsForExport;
         var isCoordinatorView = {{ isset($isCoordinatorView) && $isCoordinatorView ? 'true' : 'false' }};
         var className = isCoordinatorView && classID ? '{{ isset($selectedClass) ? $selectedClass->class_name : "Class" }}' : '{{ isset($subclassDisplayName) ? $subclassDisplayName : "Class" }}';
-        
+
         // Check if jsPDF is available
         var jsPDFLib = window.jspdf || window.jsPDF;
         var JSPDF = null;
-        
+
         if (jsPDFLib && jsPDFLib.jsPDF) {
             JSPDF = jsPDFLib.jsPDF;
         } else if (typeof jsPDF !== 'undefined') {
@@ -9583,27 +9752,27 @@
         } else if (typeof window.jsPDF !== 'undefined') {
             JSPDF = window.jsPDF;
         }
-        
+
         if (!JSPDF) {
             Swal.fire('Error', 'PDF library not loaded. Please refresh the page.', 'error');
             return;
         }
-        
+
         try {
             var doc = new JSPDF('p', 'mm', 'a4');
             var pageWidth = doc.internal.pageSize.getWidth();
             var pageHeight = doc.internal.pageSize.getHeight();
             var margin = 15;
             var yPos = margin;
-            
+
             // Calculate available width for tables (used for both stats and main table)
             var availableWidth = pageWidth - (margin * 2);
-            
+
             // Get school info
             var schoolName = '{{ isset($school_details) ? $school_details->school_name : "School" }}';
             var schoolLogo = '{{ isset($school_details) && $school_details->school_logo ? asset($school_details->school_logo) : "" }}';
             var logoUrl = schoolLogo || null;
-            
+
             // Load logo if available
             var logoPromise = Promise.resolve(null);
             if (logoUrl) {
@@ -9615,10 +9784,10 @@
                     img.src = logoUrl + (logoUrl.indexOf('?') > -1 ? '&' : '?') + 't=' + Date.now();
                 });
             }
-            
+
             Promise.all([logoPromise]).then(function(images) {
                 var logo = images[0];
-                
+
                 // Header with logo
                 if (logo) {
                     try {
@@ -9627,17 +9796,17 @@
                         console.warn('Failed to add logo:', e);
                     }
                 }
-                
+
                 // School name (centered, with color #940000)
                 doc.setFontSize(18);
                 doc.setTextColor(148, 0, 0); // #940000
                 doc.setFont('helvetica', 'bold');
                 var centerX = pageWidth / 2;
                 doc.text(schoolName.toUpperCase(), centerX, yPos + 12, { align: 'center' });
-                
+
                 // Title - Use className variable (already defined above) in CAPS
                 var displayClassName = className && className !== 'Class' ? className.toUpperCase().trim() : '';
-                
+
                 // Title with class name and "STUDENT INFORMATION" (all caps, no "CLASS" prefix)
                 doc.setFontSize(14);
                 doc.setTextColor(0, 0, 0);
@@ -9645,18 +9814,18 @@
                 var titleText = displayClassName ? (displayClassName + ' STUDENT INFORMATION') : 'STUDENT INFORMATION';
                 doc.text(titleText, centerX, yPos + 20, { align: 'center' });
                 yPos += 30;
-                
+
                 // Filter only active students (for both statistics and table)
                 var activeStudents = students.filter(function(s) {
                     return s.status === 'Active' || s.status === 'active' || !s.status;
                 });
-                
+
                 // Statistics in tabular form (only active students)
                 var totalStudents = activeStudents.length;
                 var maleCount = activeStudents.filter(function(s) { return s.gender === 'Male'; }).length;
                 var femaleCount = activeStudents.filter(function(s) { return s.gender === 'Female'; }).length;
                 var healthIssuesCount = activeStudents.filter(function(s) { return s.has_health_issues; }).length;
-                
+
                 // Create statistics table using autoTable
                 if (typeof doc.autoTable !== 'undefined') {
                     doc.autoTable({
@@ -9664,9 +9833,9 @@
                         head: [['Total Students', 'Male', 'Female', 'Health Issues']],
                         body: [[totalStudents.toString(), maleCount.toString(), femaleCount.toString(), healthIssuesCount.toString()]],
                         theme: 'plain',
-                        headStyles: { 
+                        headStyles: {
                             fillColor: [148, 0, 0], // #940000
-                            textColor: 255, 
+                            textColor: 255,
                             fontStyle: 'bold',
                             fontSize: 10
                         },
@@ -9684,7 +9853,7 @@
                         },
                         styles: { cellPadding: 5 }
                     });
-                    
+
                     yPos = doc.lastAutoTable.finalY + 10;
                 } else {
                     // Fallback if autoTable not available
@@ -9692,13 +9861,13 @@
                     doc.text('Total Students: ' + totalStudents + ' | Male: ' + maleCount + ' | Female: ' + femaleCount + ' | Health Issues: ' + healthIssuesCount, margin, yPos);
                     yPos += 10;
                 }
-                
+
                 // Prepare table data (only active students)
                 var tableHeaders = ['#', 'Admission No.', 'Full Name', 'Gender', 'Admission Date', 'Parent/Guardian'];
                 if (isCoordinatorView) {
                     tableHeaders.splice(4, 0, 'Subclass');
                 }
-                
+
                 var tableData = [];
                 activeStudents.forEach(function(student, index) {
                     var row = [
@@ -9709,17 +9878,17 @@
                         student.admission_date || 'N/A',
                         student.parent_name || 'Not Assigned'
                     ];
-                    
+
                     if (isCoordinatorView) {
                         row.splice(4, 0, student.subclass_display || 'N/A');
                     }
-                    
+
                     tableData.push(row);
                 });
-                
+
                 // Table margin (availableWidth already defined above)
                 var tableMargin = { left: margin, right: margin, top: 5, bottom: 25 };
-                
+
                 // Column styles based on coordinator view (Status column removed)
                 var columnStyles = {};
                 if (isCoordinatorView) {
@@ -9742,7 +9911,7 @@
                         5: { cellWidth: availableWidth * 0.30 } // Parent/Guardian
                     };
                 }
-                
+
                 // Check if jsPDF-autoTable plugin is available
                 if (typeof doc.autoTable !== 'undefined') {
                     // Use autoTable plugin for main students table
@@ -9751,13 +9920,13 @@
                         head: [tableHeaders],
                         body: tableData,
                         theme: 'striped',
-                        headStyles: { 
+                        headStyles: {
                             fillColor: [148, 0, 0], // #940000
-                            textColor: 255, 
+                            textColor: 255,
                             fontStyle: 'bold',
                             fontSize: 9
                         },
-                        styles: { 
+                        styles: {
                             fontSize: 8,
                             cellPadding: 3
                         },
@@ -9772,15 +9941,15 @@
                             var totalPages = doc.internal.getNumberOfPages();
                             var footerY = pageHeight - 8;
                             var dateY = footerY - 5;
-                            
+
                             // Generated date
                             doc.setFontSize(8);
                             doc.setTextColor(100, 100, 100);
                             doc.text('Generated on: ' + new Date().toLocaleString(), centerX, dateY, { align: 'center' });
-                            
+
                             // Page number
                             doc.text('Page ' + pageNumber + ' of ' + totalPages, pageWidth - tableMargin.right - 5, pageHeight - 10, { align: 'right' });
-                            
+
                             // Powered by: EmCa Technologies LTD
                             doc.setFontSize(8);
                             doc.setTextColor(148, 0, 0); // #940000
@@ -9793,11 +9962,11 @@
                     Swal.fire('Error', 'Table plugin not loaded. Please refresh the page.', 'error');
                     return;
                 }
-                
+
                 // Save PDF
                 var fileName = 'Students_' + className.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.pdf';
                 doc.save(fileName);
-                
+
                 Swal.fire('Success', 'PDF exported successfully', 'success');
             });
         } catch (error) {
@@ -9805,33 +9974,33 @@
             Swal.fire('Error', 'Failed to export PDF: ' + error.message, 'error');
         }
     });
-    
+
     // Export Students List to Excel
     $(document).on('click', '#exportStudentsExcelBtn', function(e) {
         e.preventDefault();
         console.log('Export Excel clicked');
         console.log('window.allStudentsForExport:', window.allStudentsForExport);
-        
+
         if (!window.allStudentsForExport || window.allStudentsForExport.length === 0) {
             console.error('No students data available');
             Swal.fire('Error', 'No students data available to export. Please load students first.', 'error');
             return;
         }
-        
+
         // Check if XLSX is available
         if (typeof XLSX === 'undefined') {
             Swal.fire('Error', 'Excel library not loaded. Please refresh the page.', 'error');
             return;
         }
-        
+
         var students = window.allStudentsForExport;
         var isCoordinatorView = {{ isset($isCoordinatorView) && $isCoordinatorView ? 'true' : 'false' }};
         var className = isCoordinatorView && classID ? '{{ isset($selectedClass) ? $selectedClass->class_name : "Class" }}' : '{{ isset($subclassDisplayName) ? $subclassDisplayName : "Class" }}';
-        
+
         try {
             // Create workbook
             var wb = XLSX.utils.book_new();
-            
+
             // Prepare data
             var data = [
                 ['Students List - ' + className],
@@ -9843,11 +10012,11 @@
                 [''],
                 ['#', 'Admission Number', 'First Name', 'Middle Name', 'Last Name', 'Gender', 'Date of Birth', 'Admission Date', 'Parent/Guardian', 'Address', 'Status']
             ];
-            
+
             if (isCoordinatorView) {
                 data[7].splice(7, 0, 'Subclass');
             }
-            
+
             // Add student rows
             students.forEach(function(student, index) {
                 var row = [
@@ -9863,35 +10032,35 @@
                     student.address,
                     student.status
                 ];
-                
+
                 if (isCoordinatorView) {
                     row.splice(7, 0, student.subclass_display);
                 }
-                
+
                 data.push(row);
             });
-            
+
             data.push(['']);
             data.push(['Generated on', new Date().toLocaleString()]);
-            
+
             // Create worksheet
             var ws = XLSX.utils.aoa_to_sheet(data);
-            
+
             // Set column widths
-            var colWidths = isCoordinatorView 
+            var colWidths = isCoordinatorView
                 ? [{ wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 25 }, { wch: 30 }, { wch: 15 }, { wch: 10 }]
                 : [{ wch: 5 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 25 }, { wch: 30 }, { wch: 10 }];
             ws['!cols'] = colWidths;
-            
+
             // Add worksheet to workbook
             XLSX.utils.book_append_sheet(wb, ws, 'Students');
-            
+
             // Generate filename
             var fileName = 'Students_' + className.replace(/\s+/g, '_') + '_' + new Date().toISOString().split('T')[0] + '.xlsx';
-            
+
             // Save file
             XLSX.writeFile(wb, fileName);
-            
+
             Swal.fire('Success', 'Excel file exported successfully', 'success');
         } catch (error) {
             console.error('Excel Export Error:', error);
