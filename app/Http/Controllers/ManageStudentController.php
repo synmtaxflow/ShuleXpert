@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ManageStudentController extends Controller
@@ -158,7 +159,7 @@ class ManageStudentController extends Controller
     public function save_student(Request $request)
     {
         Log::info('DEBUG: save_student hit', $request->all());
-        
+
         // Check create permission - New format: student_create
         if (!$this->hasPermission('student_create')) {
             return response()->json([
@@ -259,7 +260,7 @@ class ManageStudentController extends Controller
                 } else {
                     $uploadPath = $localPublicPath;
                 }
-                
+
                 // Create directory if it doesn't exist
                 if (!file_exists($uploadPath)) {
                     @mkdir($uploadPath, 0755, true);
@@ -537,7 +538,7 @@ class ManageStudentController extends Controller
                 $studentImgPath = asset('userImages/' . $filename);
             }
         }
-        
+
         if (!$studentImgPath) {
             $studentImgPath = $student->gender == 'Female'
                 ? asset('images/female.png')
@@ -685,7 +686,7 @@ class ManageStudentController extends Controller
                 } else {
                     $uploadPath = $localPublicPath;
                 }
-                
+
                 if (!file_exists($uploadPath)) {
                     @mkdir($uploadPath, 0755, true);
                 }
@@ -1276,7 +1277,7 @@ class ManageStudentController extends Controller
             $subclassID = $request->input('subclassID', '');
             $gender = $request->input('gender', ''); // 'Male' or 'Female'
             $health = $request->input('health', ''); // 'good' or 'bad'
-            
+
             \Log::info('get_students called with filters', [
                 'status' => $status,
                 'classID' => $classID,
@@ -1374,7 +1375,7 @@ class ManageStudentController extends Controller
             $studentImgPath = $student->gender == 'Female'
                 ? asset('images/female.png')
                 : asset('images/male.png'); // Default to placeholder
-            
+
             if ($student->photo && !empty(trim($student->photo))) {
                 $filename = $student->photo;
                 $basePath = base_path();
@@ -1536,7 +1537,7 @@ class ManageStudentController extends Controller
         $totalStudents = $students->count();
         $maleCount = $students->where('gender', 'Male')->count();
         $femaleCount = $students->where('gender', 'Female')->count();
-        
+
         // Good health: no disability, no chronic illness, positive health condition
         $goodHealthStudents = $students->filter(function($student) {
             $hasGoodHealth = true;
@@ -1545,28 +1546,28 @@ class ManageStudentController extends Controller
             }
             if ($student->general_health_condition) {
                 $healthLower = strtolower($student->general_health_condition);
-                if (strpos($healthLower, 'poor') !== false || 
-                    strpos($healthLower, 'bad') !== false || 
-                    strpos($healthLower, 'sick') !== false || 
+                if (strpos($healthLower, 'poor') !== false ||
+                    strpos($healthLower, 'bad') !== false ||
+                    strpos($healthLower, 'sick') !== false ||
                     strpos($healthLower, 'ill') !== false) {
                     $hasGoodHealth = false;
                 }
             }
             return $hasGoodHealth;
         });
-        
+
         $goodHealthCount = $goodHealthStudents->count();
         $badHealthCount = $totalStudents - $goodHealthCount;
-        
+
         // Male with good health
         $maleGoodHealthCount = $goodHealthStudents->where('gender', 'Male')->count();
-        
+
         // Female with good health
         $femaleGoodHealthCount = $goodHealthStudents->where('gender', 'Female')->count();
-        
+
         // Male with bad health
         $maleBadHealthCount = $maleCount - $maleGoodHealthCount;
-        
+
         // Female with bad health
         $femaleBadHealthCount = $femaleCount - $femaleGoodHealthCount;
 
@@ -1808,25 +1809,25 @@ class ManageStudentController extends Controller
             $data[] = ['Admission Number', 'Full Name', 'Gender', 'Class', 'Subclass', 'Status', 'Health', 'Parent Name', 'Parent Phone', 'Admission Date'];
 
             foreach ($students as $student) {
-                $className = $student->subclass && $student->subclass->class 
-                    ? $student->subclass->class->class_name 
+                $className = $student->subclass && $student->subclass->class
+                    ? $student->subclass->class->class_name
                     : 'N/A';
                 $subclassName = $student->subclass ? $student->subclass->subclass_name : 'N/A';
                 $fullName = $student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name;
-                $parentName = $student->parent 
+                $parentName = $student->parent
                     ? $student->parent->first_name . ' ' . ($student->parent->middle_name ? $student->parent->middle_name . ' ' : '') . $student->parent->last_name
                     : 'N/A';
                 $parentPhone = $student->parent ? $student->parent->phone : 'N/A';
-                
+
                 // Determine health status
                 $healthStatus = 'Good';
                 if ($student->has_disability || $student->has_chronic_illness) {
                     $healthStatus = 'Bad';
                 } elseif ($student->general_health_condition) {
                     $healthLower = strtolower($student->general_health_condition);
-                    if (strpos($healthLower, 'poor') !== false || 
-                        strpos($healthLower, 'bad') !== false || 
-                        strpos($healthLower, 'sick') !== false || 
+                    if (strpos($healthLower, 'poor') !== false ||
+                        strpos($healthLower, 'bad') !== false ||
+                        strpos($healthLower, 'sick') !== false ||
                         strpos($healthLower, 'ill') !== false) {
                         $healthStatus = 'Bad';
                     }
@@ -1848,7 +1849,7 @@ class ManageStudentController extends Controller
 
             // Generate CSV file
             $filename = 'Students_Report_' . date('Y-m-d') . '.csv';
-            
+
             $headers = [
                 'Content-Type' => 'text/csv',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
@@ -2532,21 +2533,21 @@ class ManageStudentController extends Controller
     public function get_student_academic_years($studentID)
     {
         $schoolID = Session::get('schoolID');
-        
+
         $student = Student::where('studentID', $studentID)
             ->where('schoolID', $schoolID)
             ->first();
-            
+
         if (!$student) {
             return response()->json(['success' => false, 'message' => 'Student not found'], 404);
         }
-        
+
         // Get active academic year
         $activeYear = DB::table('academic_years')
             ->where('schoolID', $schoolID)
             ->where('status', 'Active')
             ->first();
-        
+
         // If student is graduated, all years should be closed/past
         // Otherwise, get all years but default to active year
         if ($student->status === 'Graduated') {
@@ -2555,7 +2556,7 @@ class ManageStudentController extends Controller
                 ->where('studentID', $studentID)
                 ->distinct()
                 ->pluck('academic_yearID');
-            
+
             $academicYears = DB::table('academic_years')
                 ->where('schoolID', $schoolID)
                 ->whereIn('academic_yearID', $enrolledYears)
@@ -2568,14 +2569,14 @@ class ManageStudentController extends Controller
                 ->orderBy('year', 'desc')
                 ->get();
         }
-        
+
         $years = $academicYears->map(function($year) use ($activeYear, $student) {
             // For graduated students, all years are considered closed
             $isActive = false;
             if ($student->status !== 'Graduated' && $activeYear && $activeYear->academic_yearID == $year->academic_yearID) {
                 $isActive = true;
             }
-            
+
             return [
                 'academic_yearID' => $year->academic_yearID,
                 'year' => $year->year,
@@ -2584,7 +2585,7 @@ class ManageStudentController extends Controller
                 'is_active' => $isActive
             ];
         });
-        
+
         return response()->json([
             'success' => true,
             'years' => $years->values()->toArray()
@@ -2599,25 +2600,25 @@ class ManageStudentController extends Controller
         $studentID = $request->input('student_id');
         $academicYearID = $request->input('academic_year_id');
         $yearStatus = $request->input('year_status');
-        
+
         $schoolID = Session::get('schoolID');
-        
+
         $classes = [];
-        
+
         if ($yearStatus === 'Closed') {
             // Get from history
             $classHistory = DB::table('student_class_history')
                 ->where('studentID', $studentID)
                 ->where('academic_yearID', $academicYearID)
                 ->get();
-            
+
             $uniqueClasses = [];
             foreach ($classHistory as $history) {
                 $classHistoryData = DB::table('classes_history')
                     ->where('academic_yearID', $academicYearID)
                     ->where('original_classID', $history->classID)
                     ->first();
-                
+
                 if ($classHistoryData && !isset($uniqueClasses[$classHistoryData->original_classID])) {
                     $uniqueClasses[$classHistoryData->original_classID] = [
                         'class_id' => $classHistoryData->original_classID,
@@ -2639,7 +2640,7 @@ class ManageStudentController extends Controller
                 }
             }
         }
-        
+
         return response()->json([
             'success' => true,
             'classes' => $classes
@@ -2655,9 +2656,9 @@ class ManageStudentController extends Controller
         $academicYearID = $request->input('academic_year_id');
         $classID = $request->input('class_id');
         $yearStatus = $request->input('year_status');
-        
+
         $subclasses = [];
-        
+
         if ($yearStatus === 'Closed') {
             // Get from history
             $subclassHistory = DB::table('student_class_history')
@@ -2665,14 +2666,14 @@ class ManageStudentController extends Controller
                 ->where('academic_yearID', $academicYearID)
                 ->where('classID', $classID)
                 ->get();
-            
+
             foreach ($subclassHistory as $history) {
                 $subclassHistoryData = DB::table('subclasses_history')
                     ->where('academic_yearID', $academicYearID)
                     ->where('original_subclassID', $history->subclassID)
                     ->where('original_classID', $classID)
                     ->first();
-                
+
                 if ($subclassHistoryData) {
                     $subclasses[] = [
                         'subclass_id' => $subclassHistoryData->original_subclassID,
@@ -2690,7 +2691,7 @@ class ManageStudentController extends Controller
                 ];
             }
         }
-        
+
         return response()->json([
             'success' => true,
             'subclasses' => $subclasses
@@ -2706,18 +2707,18 @@ class ManageStudentController extends Controller
             $studentID = $request->input('student_id');
             $academicYearID = $request->input('academic_year_id');
             $yearStatus = $request->input('year_status');
-            
+
             if (!$studentID || !$academicYearID) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Missing required parameters'
                 ], 400);
             }
-            
+
             // Get terms from both examinations and results (to catch all terms student has data for)
             $terms = [];
             $uniqueTerms = [];
-            
+
             // Get terms from examinations
             if ($yearStatus === 'Closed') {
                 $examTerms = DB::table('examinations_history')
@@ -2728,7 +2729,7 @@ class ManageStudentController extends Controller
                         return !empty($term);
                     })
                     ->toArray();
-                
+
                 // Also get terms from results_history by getting exam IDs first
                 $resultExamIDs = DB::table('results_history')
                     ->where('academic_yearID', $academicYearID)
@@ -2736,7 +2737,7 @@ class ManageStudentController extends Controller
                     ->distinct()
                     ->pluck('original_examID')
                     ->toArray();
-                
+
                 if (!empty($resultExamIDs)) {
                     $resultTerms = DB::table('examinations_history')
                         ->where('academic_yearID', $academicYearID)
@@ -2756,16 +2757,16 @@ class ManageStudentController extends Controller
                 $academicYear = DB::table('academic_years')
                     ->where('academic_yearID', $academicYearID)
                     ->first();
-                
+
                 if (!$academicYear) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Academic year not found'
                     ], 404);
                 }
-                
+
                 $yearValue = $academicYear->year;
-                
+
                 // Examinations table uses 'year' column, not 'academic_yearID'
                 $examTerms = DB::table('examinations')
                     ->where('year', $yearValue)
@@ -2776,7 +2777,7 @@ class ManageStudentController extends Controller
                         return !empty($term);
                     })
                     ->toArray();
-                
+
                 // Also get terms from results
                 // Results table doesn't have academic_yearID, so we need to join with examinations
                 // and match by year with academic_years
@@ -2789,7 +2790,7 @@ class ManageStudentController extends Controller
                     ->distinct()
                     ->pluck('results.examID')
                     ->toArray();
-                
+
                 if (!empty($resultExamIDs)) {
                     $resultTerms = DB::table('examinations')
                         ->where('year', $yearValue)
@@ -2805,16 +2806,16 @@ class ManageStudentController extends Controller
                     $resultTerms = [];
                 }
             }
-            
+
             // Combine and get unique terms
             $allTerms = array_unique(array_merge($examTerms, $resultTerms));
-            
+
             $termMap = [
                 'first_term' => 'First Term',
                 'second_term' => 'Second Term',
                 'third_term' => 'Third Term'
             ];
-            
+
             foreach ($allTerms as $term) {
                 if ($term && isset($termMap[$term]) && !isset($uniqueTerms[$term])) {
                     $uniqueTerms[$term] = true;
@@ -2824,13 +2825,13 @@ class ManageStudentController extends Controller
                     ];
                 }
             }
-            
+
             // Sort terms in order: first_term, second_term, third_term
             usort($terms, function($a, $b) {
                 $order = ['first_term' => 1, 'second_term' => 2, 'third_term' => 3];
                 return ($order[$a['term']] ?? 999) - ($order[$b['term']] ?? 999);
             });
-            
+
             return response()->json([
                 'success' => true,
                 'terms' => $terms
@@ -2852,9 +2853,9 @@ class ManageStudentController extends Controller
         $academicYearID = $request->input('academic_year_id');
         $term = $request->input('term');
         $yearStatus = $request->input('year_status');
-        
+
         $exams = [];
-        
+
         if ($yearStatus === 'Closed') {
             $examData = DB::table('examinations_history')
                 ->where('academic_yearID', $academicYearID)
@@ -2866,14 +2867,14 @@ class ManageStudentController extends Controller
                 ->where('term', $term)
                 ->get();
         }
-        
+
         foreach ($examData as $exam) {
             $exams[] = [
                 'exam_id' => $yearStatus === 'Closed' ? $exam->original_examID : $exam->examID,
                 'exam_name' => $exam->exam_name ?? 'Exam'
             ];
         }
-        
+
         return response()->json([
             'success' => true,
             'exams' => $exams
@@ -2891,15 +2892,15 @@ class ManageStudentController extends Controller
         $examID = $request->input('exam_id');
         $yearStatus = $request->input('year_status');
         $schoolID = Session::get('schoolID');
-        
+
         $results = [];
-        
+
         // Get student and class info
         $student = Student::where('studentID', $studentID)->first();
         if (!$student) {
             return response()->json(['success' => false, 'message' => 'Student not found'], 404);
         }
-        
+
         // Get class ID
         $classID = null;
         if ($yearStatus === 'Closed') {
@@ -2913,7 +2914,7 @@ class ManageStudentController extends Controller
                 $classID = $student->subclass->class->classID ?? null;
             }
         }
-        
+
         if ($yearStatus === 'Closed') {
             $resultData = DB::table('results_history')
                 ->where('academic_yearID', $academicYearID)
@@ -2928,11 +2929,11 @@ class ManageStudentController extends Controller
                 ->where('status', 'allowed')
                 ->get();
         }
-        
+
         foreach ($resultData as $result) {
             // Get subject name
             $subjectName = 'N/A';
-            
+
             if ($yearStatus === 'Closed') {
                 // For closed years, get from history tables
                 $classSubjectID = $result->original_class_subjectID ?? null;
@@ -2943,7 +2944,7 @@ class ManageStudentController extends Controller
                         ->where('class_subjects.class_subjectID', $classSubjectID)
                         ->select('school_subjects.subject_name')
                         ->first();
-                    
+
                     if ($subject) {
                         $subjectName = $subject->subject_name;
                     } else {
@@ -2954,7 +2955,7 @@ class ManageStudentController extends Controller
                             ->where('class_subjects_history.academic_yearID', $academicYearID)
                             ->select('school_subjects.subject_name')
                             ->first();
-                        
+
                         if ($subjectHistory) {
                             $subjectName = $subjectHistory->subject_name;
                         }
@@ -2969,13 +2970,13 @@ class ManageStudentController extends Controller
                         ->where('class_subjects.class_subjectID', $classSubjectID)
                         ->select('school_subjects.subject_name')
                         ->first();
-                    
+
                     if ($subject) {
                         $subjectName = $subject->subject_name;
                     }
                 }
             }
-            
+
             $results[] = [
                 'subject_name' => $subjectName,
                 'marks' => $result->marks ?? 0,
@@ -2983,7 +2984,7 @@ class ManageStudentController extends Controller
                 'remark' => $result->remark ?? ''
             ];
         }
-        
+
         // Calculate position in class for this exam
         $position = null;
         $totalStudents = 0;
@@ -3005,13 +3006,13 @@ class ManageStudentController extends Controller
                     ->pluck('students.studentID')
                     ->toArray();
             }
-            
+
             // Calculate average for each student in this exam
             $studentAverages = [];
             foreach ($classStudentIDs as $classStudentID) {
                 $studentTotalMarks = 0;
                 $studentSubjectCount = 0;
-                
+
                 if ($yearStatus === 'Closed') {
                     $studentResults = DB::table('results_history')
                         ->where('academic_yearID', $academicYearID)
@@ -3028,14 +3029,14 @@ class ManageStudentController extends Controller
                         ->where('status', 'allowed')
                         ->get();
                 }
-                
+
                 foreach ($studentResults as $studentResult) {
                     if ($studentResult->marks !== null && $studentResult->marks !== '') {
                         $studentTotalMarks += (float)$studentResult->marks;
                         $studentSubjectCount++;
                     }
                 }
-                
+
                 if ($studentSubjectCount > 0) {
                     $studentAverage = $studentTotalMarks / $studentSubjectCount;
                     $studentAverages[] = [
@@ -3044,33 +3045,33 @@ class ManageStudentController extends Controller
                     ];
                 }
             }
-            
+
             // Sort by average (descending)
             usort($studentAverages, function($a, $b) {
                 return $b['average'] <=> $a['average'];
             });
-            
+
             // Find position (handle ties)
             $currentPos = 1;
             $prevAverage = null;
             foreach ($studentAverages as $studentAvg) {
                 $currentAverage = $studentAvg['average'];
-                
+
                 if ($prevAverage !== null && abs($currentAverage - $prevAverage) > 0.01) {
                     $currentPos++;
                 }
-                
+
                 if ($studentAvg['studentID'] == $studentID) {
                     $position = $currentPos;
                     break;
                 }
-                
+
                 $prevAverage = $currentAverage;
             }
-            
+
             $totalStudents = count($studentAverages);
         }
-        
+
         return response()->json([
             'success' => true,
             'results' => $results,
@@ -3089,26 +3090,26 @@ class ManageStudentController extends Controller
         $term = $request->input('term');
         $yearStatus = $request->input('year_status');
         $schoolID = Session::get('schoolID');
-        
+
         // Get school type
         $school = DB::table('schools')->where('schoolID', $schoolID)->first();
         $schoolType = $school->school_type ?? 'Secondary';
-        
+
         // Get student and class info
         $student = Student::where('studentID', $studentID)->first();
         if (!$student) {
             return response()->json(['success' => false, 'message' => 'Student not found'], 404);
         }
-        
+
         // Get academic year info
         $academicYear = DB::table('academic_years')
             ->where('academic_yearID', $academicYearID)
             ->where('schoolID', $schoolID)
             ->first();
-        
+
         $studentName = trim(($student->first_name ?? '') . ' ' . ($student->middle_name ?? '') . ' ' . ($student->last_name ?? ''));
         $yearName = $academicYear->year_name ?? $academicYear->year ?? 'N/A';
-        
+
         $className = '';
         $classID = null;
         if ($yearStatus === 'Closed') {
@@ -3117,7 +3118,7 @@ class ManageStudentController extends Controller
                 ->where('studentID', $studentID)
                 ->where('academic_yearID', $academicYearID)
                 ->first();
-            
+
             if ($classHistory) {
                 $classHistoryData = DB::table('classes_history')
                     ->where('academic_yearID', $academicYearID)
@@ -3134,7 +3135,7 @@ class ManageStudentController extends Controller
                 $classID = $student->subclass->class->classID ?? null;
             }
         }
-        
+
         // Get all exams for this term
         if ($yearStatus === 'Closed') {
             $exams = DB::table('examinations_history')
@@ -3150,7 +3151,7 @@ class ManageStudentController extends Controller
                 ->orderBy('start_date')
                 ->get();
         }
-        
+
         if ($exams->isEmpty()) {
             return response()->json([
                 'success' => true,
@@ -3160,11 +3161,11 @@ class ManageStudentController extends Controller
                 'division' => null
             ]);
         }
-        
-        $examIDs = $yearStatus === 'Closed' 
+
+        $examIDs = $yearStatus === 'Closed'
             ? $exams->pluck('original_examID')->toArray()
             : $exams->pluck('examID')->toArray();
-        
+
         // Get all results for this student in all exams of this term
         $allExamResults = [];
         $totalMarksAllExams = 0;
@@ -3172,10 +3173,10 @@ class ManageStudentController extends Controller
         $allSubjectPoints = [];
         $subjectData = []; // Store subject data with all exam marks
         $subjectExamMarks = []; // Store marks per subject per exam
-        
+
         foreach ($exams as $exam) {
             $examID = $yearStatus === 'Closed' ? $exam->original_examID : $exam->examID;
-            
+
             if ($yearStatus === 'Closed') {
                 $examResults = DB::table('results_history')
                     ->where('academic_yearID', $academicYearID)
@@ -3192,31 +3193,31 @@ class ManageStudentController extends Controller
                     ->where('status', 'allowed')
                     ->get();
             }
-            
+
             if ($examResults->isEmpty()) {
                 continue;
             }
-            
+
             $examTotalMarks = 0;
             $examSubjectCount = 0;
-            
+
             foreach ($examResults as $result) {
                 $classSubjectID = $yearStatus === 'Closed' ? ($result->original_class_subjectID ?? null) : ($result->class_subjectID ?? null);
-                
+
                 if ($classSubjectID && $result->marks !== null && $result->marks !== '') {
                     $marks = (float)$result->marks;
                     $examTotalMarks += $marks;
                     $examSubjectCount++;
-                    
+
                     // Get subject name
                     $subject = DB::table('class_subjects')
                         ->join('school_subjects', 'class_subjects.subjectID', '=', 'school_subjects.subjectID')
                         ->where('class_subjects.class_subjectID', $classSubjectID)
                         ->select('school_subjects.subject_name')
                         ->first();
-                    
+
                     $subjectName = $subject->subject_name ?? 'N/A';
-                    
+
                     // Store subject data
                     if (!isset($subjectData[$subjectName])) {
                         $subjectData[$subjectName] = [
@@ -3226,7 +3227,7 @@ class ManageStudentController extends Controller
                         $subjectExamMarks[$subjectName] = [];
                     }
                     $subjectData[$subjectName]['marks'][] = $marks;
-                    
+
                     // Store marks per exam for this subject (only store once per exam per subject)
                     $examName = $exam->exam_name ?? 'N/A';
                     if (!isset($subjectExamMarks[$subjectName][$examName])) {
@@ -3236,7 +3237,7 @@ class ManageStudentController extends Controller
                             'grade' => $gradeResult['grade'] ?? 'N/A'
                         ];
                     }
-                    
+
                     // Calculate grade points for this subject mark
                     $gradePoints = $this->calculateGradePointsForTermReport($marks, $schoolType, $className, $classID);
                     if ($gradePoints['points'] !== null) {
@@ -3244,11 +3245,11 @@ class ManageStudentController extends Controller
                     }
                 }
             }
-            
+
             if ($examSubjectCount > 0) {
                 $examAverage = $examTotalMarks / $examSubjectCount;
                 $examAverageRounded = round($examAverage); // Approximate (no decimal)
-                
+
                 // Calculate grade for this exam based on average
                 $examGrade = null;
                 if ($classID && $examAverageRounded > 0) {
@@ -3262,7 +3263,7 @@ class ManageStudentController extends Controller
                     elseif ($examAverageRounded >= 30) $examGrade = 'D';
                     else $examGrade = 'F';
                 }
-                
+
                 $allExamResults[] = [
                     'exam' => $exam,
                     'exam_name' => $exam->exam_name ?? 'N/A',
@@ -3275,7 +3276,7 @@ class ManageStudentController extends Controller
                 $totalSubjectCount += $examSubjectCount;
             }
         }
-        
+
         if (empty($allExamResults)) {
             return response()->json([
                 'success' => true,
@@ -3285,14 +3286,14 @@ class ManageStudentController extends Controller
                 'division' => null
             ]);
         }
-        
+
         // Calculate overall average as average of exam averages (for report view)
         $examAveragesSum = 0;
         foreach ($allExamResults as $examResult) {
             $examAveragesSum += $examResult['average'];
         }
         $overallAverage = count($allExamResults) > 0 ? round($examAveragesSum / count($allExamResults)) : 0; // Approximate
-        
+
         // Calculate total points for division
         $totalPoints = 0;
         $classNameLower = strtolower(preg_replace('/[\s\-]+/', '_', $className));
@@ -3311,7 +3312,7 @@ class ManageStudentController extends Controller
                 $totalPoints = array_sum($bestThree);
             }
         }
-        
+
         // Calculate overall grade based on overall average
         $overallGrade = null;
         if ($classID && $overallAverage > 0) {
@@ -3325,10 +3326,10 @@ class ManageStudentController extends Controller
             elseif ($overallAverage >= 30) $overallGrade = 'D';
             else $overallGrade = 'F';
         }
-        
+
         // Calculate division for Secondary using points
         $gradeDivision = $this->calculateGradeDivision($totalMarksAllExams, $overallAverage, $totalSubjectCount, $schoolType, $className, $totalPoints, $classID);
-        
+
         // Build examinations array for display
         $examinations = [];
         foreach ($allExamResults as $examResult) {
@@ -3338,13 +3339,13 @@ class ManageStudentController extends Controller
                 'grade' => $examResult['grade']
             ];
         }
-        
+
         // Build subject report with marks per exam
         $report = [];
         foreach ($subjectData as $subjectName => $data) {
             $averageMarks = count($data['marks']) > 0 ? array_sum($data['marks']) / count($data['marks']) : 0;
             $averageMarksRounded = round($averageMarks); // Approximate
-            
+
             // Calculate grade for this subject's average
             $subjectGrade = null;
             if ($classID && $averageMarksRounded > 0) {
@@ -3358,7 +3359,7 @@ class ManageStudentController extends Controller
                 elseif ($averageMarksRounded >= 30) $subjectGrade = 'D';
                 else $subjectGrade = 'F';
             }
-            
+
             // Get marks per exam for this subject
             $examMarks = [];
             if (isset($subjectExamMarks[$subjectName])) {
@@ -3375,7 +3376,7 @@ class ManageStudentController extends Controller
                     }
                 }
             }
-            
+
             $report[] = [
                 'subject_name' => $subjectName,
                 'average' => $averageMarksRounded, // Approximate
@@ -3383,12 +3384,12 @@ class ManageStudentController extends Controller
                 'exam_marks' => $examMarks
             ];
         }
-        
+
         // Sort by subject name
         usort($report, function($a, $b) {
             return strcmp($a['subject_name'], $b['subject_name']);
         });
-        
+
         // Get position (calculate from class)
         $position = null;
         $totalStudents = 0;
@@ -3410,7 +3411,7 @@ class ManageStudentController extends Controller
                     ->pluck('students.studentID')
                     ->toArray();
             }
-            
+
             // Calculate overall average for each student
             $studentAverages = [];
             foreach ($classStudentIDs as $classStudentID) {
@@ -3418,7 +3419,7 @@ class ManageStudentController extends Controller
                 $studentExamAverages = [];
                 foreach ($exams as $exam) {
                     $examID = $yearStatus === 'Closed' ? $exam->original_examID : $exam->examID;
-                    
+
                     if ($yearStatus === 'Closed') {
                         $studentResults = DB::table('results_history')
                             ->where('academic_yearID', $academicYearID)
@@ -3435,7 +3436,7 @@ class ManageStudentController extends Controller
                             ->where('status', 'allowed')
                             ->get();
                     }
-                    
+
                     if ($studentResults->count() > 0) {
                         $examTotal = 0;
                         foreach ($studentResults as $result) {
@@ -3445,7 +3446,7 @@ class ManageStudentController extends Controller
                         $studentExamAverages[] = $examAvg;
                     }
                 }
-                
+
                 if (count($studentExamAverages) > 0) {
                     $studentOverallAvg = round(array_sum($studentExamAverages) / count($studentExamAverages));
                     $studentAverages[] = [
@@ -3454,33 +3455,33 @@ class ManageStudentController extends Controller
                     ];
                 }
             }
-            
+
             // Sort by average (descending)
             usort($studentAverages, function($a, $b) {
                 return $b['average'] <=> $a['average'];
             });
-            
+
             // Find position
             $currentPos = 1;
             $prevAverage = null;
             foreach ($studentAverages as $studentAvg) {
                 $currentAverage = $studentAvg['average'];
-                
+
                 if ($prevAverage !== null && abs($currentAverage - $prevAverage) > 0.01) {
                     $currentPos++;
                 }
-                
+
                 if ($studentAvg['studentID'] == $studentID) {
                     $position = $currentPos;
                     break;
                 }
-                
+
                 $prevAverage = $currentAverage;
             }
-            
+
             $totalStudents = count($studentAverages);
         }
-        
+
         return response()->json([
             'success' => true,
             'report' => $report,
@@ -3497,7 +3498,7 @@ class ManageStudentController extends Controller
             'total_students' => $totalStudents
         ]);
     }
-    
+
     /**
      * Calculate grade points for term report (same as ResultManagementController)
      */
@@ -3506,16 +3507,16 @@ class ManageStudentController extends Controller
         if ($marks === null || $marks === '') {
             return ['grade' => null, 'points' => null];
         }
-        
+
         // If classID is provided, use grade_definitions table
         if ($classID) {
             return $this->getGradeFromDefinition($marks, $classID);
         }
-        
+
         // Fallback to old logic
         $marksNum = (float)$marks;
         $classNameLower = strtolower(preg_replace('/[\s\-]+/', '_', $className));
-        
+
         if ($schoolType === 'Secondary') {
             if (in_array($classNameLower, ['form_one', 'form_two', 'form_three', 'form_four'])) {
                 // O-Level
@@ -3534,10 +3535,10 @@ class ManageStudentController extends Controller
                 else return ['grade' => 'S/F', 'points' => 0];
             }
         }
-        
+
         return ['grade' => null, 'points' => null];
     }
-    
+
     /**
      * Get grade from grade_definitions table (same as ResultManagementController)
      */
@@ -3546,26 +3547,26 @@ class ManageStudentController extends Controller
         if ($marks === null || $marks === '' || !$classID) {
             return ['grade' => null, 'points' => null];
         }
-        
+
         $marksNum = (float)$marks;
         $gradeDefinition = DB::table('grade_definitions')
             ->where('classID', $classID)
             ->where('first', '<=', $marksNum)
             ->where('last', '>=', $marksNum)
             ->first();
-        
+
         if (!$gradeDefinition) {
             return ['grade' => null, 'points' => null];
         }
-        
+
         $grade = $gradeDefinition->grade;
         $points = null;
-        
+
         // Calculate points based on grade
         $class = DB::table('classes')->where('classID', $classID)->first();
         $className = $class->class_name ?? '';
         $classNameLower = strtolower(preg_replace('/[\s\-]+/', '_', $className));
-        
+
         if (in_array($classNameLower, ['form_one', 'form_two', 'form_three', 'form_four'])) {
             $pointsMap = ['A' => 1, 'B' => 2, 'C' => 3, 'D' => 4, 'F' => 5];
             $points = $pointsMap[$grade] ?? 5;
@@ -3573,17 +3574,17 @@ class ManageStudentController extends Controller
             $pointsMap = ['A' => 5, 'B' => 4, 'C' => 3, 'D' => 2, 'E' => 1, 'S/F' => 0];
             $points = $pointsMap[$grade] ?? 0;
         }
-        
+
         return ['grade' => $grade, 'points' => $points];
     }
-    
+
     /**
      * Calculate grade or division (same as ResultManagementController)
      */
     private function calculateGradeDivision($totalMarks, $averageMarks, $subjectCount, $schoolType, $className, $totalPoints = 0, $classID = null)
     {
         $classNameLower = strtolower(preg_replace('/[\s\-]+/', '_', $className));
-        
+
         if ($schoolType === 'Secondary' && in_array($classNameLower, ['form_one', 'form_two', 'form_three', 'form_four'])) {
             // O-Level
             if ($totalPoints >= 7 && $totalPoints <= 17) {
@@ -3616,7 +3617,7 @@ class ManageStudentController extends Controller
                 $gradeResult = $this->getGradeFromDefinition($averageMarks, $classID);
                 return ['grade' => $gradeResult['grade'], 'division' => null];
             }
-            
+
             // Fallback
             if ($averageMarks >= 75) return ['grade' => 'A', 'division' => null];
             elseif ($averageMarks >= 65) return ['grade' => 'B', 'division' => null];
@@ -3637,9 +3638,9 @@ class ManageStudentController extends Controller
         $toDate = $request->input('to_date');
         $month = $request->input('month');
         $yearStatus = $request->input('year_status');
-        
+
         $attendance = [];
-        
+
         if ($yearStatus === 'Closed') {
             $query = DB::table('attendances_history')
                 ->where('academic_yearID', $academicYearID)
@@ -3649,16 +3650,16 @@ class ManageStudentController extends Controller
                 ->where('academic_yearID', $academicYearID)
                 ->where('studentID', $studentID);
         }
-        
+
         if ($fromDate && $toDate) {
             $query->whereBetween('attendance_date', [$fromDate, $toDate]);
         } elseif ($month) {
             $query->whereYear('attendance_date', date('Y', strtotime($month . '-01')))
                   ->whereMonth('attendance_date', date('m', strtotime($month . '-01')));
         }
-        
+
         $attendanceData = $query->orderBy('attendance_date', 'desc')->get();
-        
+
         foreach ($attendanceData as $record) {
             $attendance[] = [
                 'date' => $record->attendance_date,
@@ -3668,7 +3669,7 @@ class ManageStudentController extends Controller
                 'remark' => $record->remark ?? ''
             ];
         }
-        
+
         return response()->json([
             'success' => true,
             'attendance' => $attendance
@@ -3701,7 +3702,7 @@ class ManageStudentController extends Controller
         // Implementation for Excel export
         return response()->json(['success' => false, 'message' => 'Not implemented yet']);
     }
-    
+
     /**
      * Get student payments for academic year
      */
@@ -3711,14 +3712,14 @@ class ManageStudentController extends Controller
             $studentID = $request->input('student_id');
             $academicYearID = $request->input('academic_year_id');
             $yearStatus = $request->input('year_status');
-            
+
             if (!$studentID || !$academicYearID) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Missing required parameters'
                 ], 400);
             }
-            
+
             if ($yearStatus === 'Closed') {
                 // For closed years, get from payments_history
                 $payments = DB::table('payments_history')
@@ -3726,7 +3727,7 @@ class ManageStudentController extends Controller
                     ->where('academic_yearID', $academicYearID)
                     ->orderBy('payment_date', 'desc')
                     ->get();
-                
+
                 $paymentsData = [];
                 foreach ($payments as $payment) {
                     // Map fee_type: 'Tuition Fees' -> 'School Fee', 'Other Fees' -> 'Other Contribution'
@@ -3736,7 +3737,7 @@ class ManageStudentController extends Controller
                     } elseif ($payment->fee_type === 'Other Fees') {
                         $feeTypeDisplay = 'Other Contribution';
                     }
-                    
+
                     $paymentsData[] = [
                         'date' => $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') : 'N/A',
                         'control_number' => $payment->control_number ?? 'N/A',
@@ -3762,7 +3763,7 @@ class ManageStudentController extends Controller
                     )
                     ->orderBy('payment_records.payment_date', 'desc')
                     ->get();
-                
+
                 $paymentsData = [];
                 foreach ($payments as $payment) {
                     // Map fee_type: 'Tuition Fees' -> 'School Fee', 'Other Fees' -> 'Other Contribution'
@@ -3772,7 +3773,7 @@ class ManageStudentController extends Controller
                     } elseif ($payment->fee_type === 'Other Fees') {
                         $feeTypeDisplay = 'Other Contribution';
                     }
-                    
+
                     $paymentsData[] = [
                         'date' => $payment->payment_date ? \Carbon\Carbon::parse($payment->payment_date)->format('d M Y') : 'N/A',
                         'control_number' => $payment->control_number ?? 'N/A',
@@ -3783,7 +3784,7 @@ class ManageStudentController extends Controller
                     ];
                 }
             }
-            
+
             return response()->json([
                 'success' => true,
                 'payments' => $paymentsData
@@ -3795,7 +3796,7 @@ class ManageStudentController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * Get student debts for academic year
      */
@@ -3806,29 +3807,29 @@ class ManageStudentController extends Controller
             $academicYearID = $request->input('academic_year_id');
             $yearStatus = $request->input('year_status');
             $schoolID = Session::get('schoolID');
-            
+
             if (!$studentID || !$academicYearID) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Missing required parameters'
                 ], 400);
             }
-            
+
             // Get the selected academic year to get its year value
             $selectedYear = DB::table('academic_years')
                 ->where('academic_yearID', $academicYearID)
                 ->where('schoolID', $schoolID)
                 ->first();
-            
+
             if (!$selectedYear) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Academic year not found'
                 ], 404);
             }
-            
+
             $selectedYearValue = $selectedYear->year;
-            
+
             // Get all closed academic years up to and including the selected year
             $closedYears = DB::table('academic_years')
                 ->where('schoolID', $schoolID)
@@ -3836,7 +3837,7 @@ class ManageStudentController extends Controller
                 ->where('year', '<=', $selectedYearValue)
                 ->orderBy('year', 'asc')
                 ->get();
-            
+
             // Also include current year if it's active
             if ($yearStatus === 'Active') {
                 $activeYear = DB::table('academic_years')
@@ -3844,15 +3845,15 @@ class ManageStudentController extends Controller
                     ->where('status', 'Active')
                     ->where('academic_yearID', $academicYearID)
                     ->first();
-                
+
                 if ($activeYear) {
                     $closedYears->push($activeYear);
                 }
             }
-            
+
             $debtsData = [];
             $totalDebt = 0;
-            
+
             // Calculate cumulative debt from all years up to selected year
             foreach ($closedYears as $year) {
                 if ($year->status === 'Closed') {
@@ -3867,12 +3868,12 @@ class ManageStudentController extends Controller
                         ->where('academic_yearID', $year->academic_yearID)
                         ->get();
                 }
-                
+
                 foreach ($payments as $payment) {
                     $requiredAmount = $payment->amount_required ?? 0;
                     $paidAmount = $payment->amount_paid ?? 0;
                     $outstanding = $requiredAmount - $paidAmount;
-                    
+
                     if ($outstanding > 0) {
                         // Group by fee_type and accumulate
                         $feeType = $payment->fee_type ?? 'N/A';
@@ -3884,7 +3885,7 @@ class ManageStudentController extends Controller
                                 'outstanding' => 0
                             ];
                         }
-                        
+
                         $debtsData[$feeType]['required_amount'] += $requiredAmount;
                         $debtsData[$feeType]['paid_amount'] += $paidAmount;
                         $debtsData[$feeType]['outstanding'] += $outstanding;
@@ -3892,7 +3893,7 @@ class ManageStudentController extends Controller
                     }
                 }
             }
-            
+
             // Format the debts data and map fee types
             $formattedDebts = [];
             foreach ($debtsData as $debt) {
@@ -3903,7 +3904,7 @@ class ManageStudentController extends Controller
                 } elseif ($debt['fee_type'] === 'Other Fees') {
                     $feeTypeDisplay = 'Other Contribution';
                 }
-                
+
                 $formattedDebts[] = [
                     'fee_type' => $feeTypeDisplay,
                     'required_amount' => number_format($debt['required_amount'], 0),
@@ -3911,7 +3912,7 @@ class ManageStudentController extends Controller
                     'outstanding' => number_format($debt['outstanding'], 0)
                 ];
             }
-            
+
             // Get library records (books not returned) for this student
             // Only get books from this school
             $libraryRecords = DB::table('book_borrows')
@@ -3932,7 +3933,7 @@ class ManageStudentController extends Controller
                 )
                 ->orderBy('book_borrows.borrow_date', 'desc')
                 ->get();
-            
+
             $libraryData = [];
             foreach ($libraryRecords as $record) {
                 $libraryData[] = [
@@ -3942,7 +3943,7 @@ class ManageStudentController extends Controller
                     'class_name' => $record->class_name ?? 'N/A'
                 ];
             }
-            
+
             return response()->json([
                 'success' => true,
                 'debts' => $formattedDebts,
@@ -3956,7 +3957,7 @@ class ManageStudentController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * Get student library records for academic year
      */
@@ -3965,7 +3966,7 @@ class ManageStudentController extends Controller
         $studentID = $request->input('student_id');
         $academicYearID = $request->input('academic_year_id');
         $yearStatus = $request->input('year_status');
-        
+
         if ($yearStatus === 'Closed') {
             $libraryRecords = DB::table('library_transactions_history')
                 ->where('studentID', $studentID)
@@ -3979,7 +3980,7 @@ class ManageStudentController extends Controller
                 ->orderBy('borrowed_date', 'desc')
                 ->get();
         }
-        
+
         $libraryData = [];
         foreach ($libraryRecords as $record) {
             $libraryData[] = [
@@ -3990,13 +3991,13 @@ class ManageStudentController extends Controller
                 'fine' => number_format($record->fine ?? 0, 0)
             ];
         }
-        
+
         return response()->json([
             'success' => true,
             'library_records' => $libraryData
         ]);
     }
-    
+
     /**
      * Get student fees for academic year
      */
@@ -4005,7 +4006,7 @@ class ManageStudentController extends Controller
         $studentID = $request->input('student_id');
         $academicYearID = $request->input('academic_year_id');
         $yearStatus = $request->input('year_status');
-        
+
         // Get payments for this student and year
         if ($yearStatus === 'Closed') {
             $payments = DB::table('payments_history')
@@ -4018,20 +4019,20 @@ class ManageStudentController extends Controller
                 ->where('academic_yearID', $academicYearID)
                 ->get();
         }
-        
+
         $feesData = [];
         foreach ($payments as $payment) {
             $requiredAmount = $payment->amount_required ?? 0;
             $paidAmount = $payment->amount_paid ?? 0;
             $balance = $requiredAmount - $paidAmount;
-            
+
             $status = 'Pending';
             if ($paidAmount >= $requiredAmount) {
                 $status = 'Paid';
             } elseif ($paidAmount > 0) {
                 $status = 'Partial';
             }
-            
+
             $feesData[] = [
                 'fee_type' => $payment->fee_type ?? 'N/A',
                 'control_number' => $payment->control_number ?? 'N/A',
@@ -4041,7 +4042,7 @@ class ManageStudentController extends Controller
                 'status' => $status
             ];
         }
-        
+
         return response()->json([
             'success' => true,
             'fees' => $feesData
@@ -4061,10 +4062,10 @@ class ManageStudentController extends Controller
             ->where('status', 'Active')
             ->orderBy('class_name', 'asc')
             ->get();
-        
+
         $selectedClassID = $classID ?? $request->input('classID');
         $selectedSubclassID = $request->input('subclassID');
-        
+
         $students = collect();
         $subclasses = collect();
 
@@ -4073,25 +4074,25 @@ class ManageStudentController extends Controller
             $subclasses = Subclass::where('classID', $selectedClassID)
                 ->where('status', 'Active')
                 ->get();
-            
+
             $query = Student::where('schoolID', $schoolID)
                 ->where('status', 'Active')
                 ->whereHas('subclass', function($q) use ($selectedClassID) {
                     $q->where('classID', $selectedClassID);
                 });
-                
+
             if ($selectedSubclassID) {
                 $query->where('subclassID', $selectedSubclassID);
             }
-            
+
             $students = $query->with(['subclass.class', 'parent', 'school'])->get();
         }
 
         return view('Admin.student_identity_card', compact(
-            'students', 
-            'classes', 
-            'subclasses', 
-            'selectedClassID', 
+            'students',
+            'classes',
+            'subclasses',
+            'selectedClassID',
             'selectedSubclassID'
         ));
     }
@@ -4117,7 +4118,7 @@ class ManageStudentController extends Controller
                     $q->where('classID', $classID);
                 });
             }
-            
+
             if ($subclassID) {
                 $query->where('subclassID', $subclassID);
             }
@@ -4138,7 +4139,7 @@ class ManageStudentController extends Controller
          * Width: 85.6mm = 242.65pt
          * Height: 54mm = 153.07pt
          */
-        
+
         $primaryColor = $request->input('primaryColor', '#940000');
         $secondaryColor = $request->input('secondaryColor', '#ffffff');
 
@@ -4152,29 +4153,29 @@ class ManageStudentController extends Controller
     {
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        
+
         $columns = [
             // Parent Info
             'Parent First Name', 'Parent Middle Name', 'Parent Last Name', 'Parent Phone (e.g. 255712345678)', 'Parent Gender (Male/Female)', 'Parent Occupation', 'Parent Email', 'Parent Address',
-            
+
             // Student Info
             'Student First Name*', 'Student Middle Name', 'Student Last Name*', 'Student Gender (Male/Female)*',
-            'Student DOB (YYYY-MM-DD)', 'Admission Number', 'Admission Date (YYYY-MM-DD)', 
+            'Student DOB (YYYY-MM-DD)', 'Admission Number', 'Admission Date (YYYY-MM-DD)',
             'Class Subclass ID*', 'Religion', 'Nationality', 'Birth Certificate No', 'Student Address',
-            
+
             // Sponsorship
             'Payment Type (Own/Sponsor)', 'Sponsor ID', 'Sponsorship Percentage',
-            
+
             // Health Info
             'General Health Condition', 'Is Disabled (Yes/No)', 'Disability Details', 'Has Chronic Illness (Yes/No)', 'Chronic Illness Details', 'Has Epilepsy (Yes/No)', 'Has Allergies (Yes/No)', 'Allergies Details', 'Immunization Details',
-            
+
             // Emergency Contact
             'Emergency Name', 'Emergency Relationship', 'Emergency Phone',
-            
+
             // Registration Details
             'Declaration Date (YYYY-MM-DD)', 'Registering Officer Name', 'Registering Officer Title'
         ];
-        
+
         $colIndexNum = 1;
         foreach ($columns as $column) {
             $colString = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($colIndexNum);
@@ -4213,7 +4214,7 @@ class ManageStudentController extends Controller
         $fileName = 'Student_Upload_Template.xlsx';
         $tempPath = storage_path('app/public/' . $fileName);
         $writer->save($tempPath);
-        
+
         return response()->download($tempPath)->deleteFileAfterSend(true);
     }
 
@@ -4225,40 +4226,69 @@ class ManageStudentController extends Controller
 
         $schoolID = Session::get('schoolID');
         $file = $request->file('excel_file');
-        
+
         if (!$file) {
             return response()->json(['success' => false, 'message' => 'Please upload an excel file']);
         }
 
+        // Large Excel imports may exceed default PHP execution time limits.
+        // Set a higher limit for this request.
+        try {
+            @set_time_limit(0);
+            @ini_set('max_execution_time', '0');
+            @ini_set('memory_limit', '1024M');
+        } catch (\Throwable $e) {
+            // ignore
+        }
+
+        $currentRowNumber = 2; // 1 is header, data starts at row 2
         try {
             $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getPathname());
             $worksheet = $spreadsheet->getActiveSheet();
             $rows = $worksheet->toArray();
-            
+
             array_shift($rows); // Remove header
 
             DB::beginTransaction();
             $successCount = 0;
             $errors = [];
 
+            $generateUniqueFingerprintId = function () {
+                do {
+                    $fingerprintId = (string) rand(1000, 9999);
+                } while (
+                    DB::table('users')->where('fingerprint_id', $fingerprintId)->exists() ||
+                    DB::table('students')->where('fingerprint_id', $fingerprintId)->exists() ||
+                    DB::table('students')->where('studentID', (int) $fingerprintId)->exists()
+                );
+
+                return $fingerprintId;
+            };
+
             foreach ($rows as $index => $row) {
+                $currentRowNumber = $index + 2;
                 // Ensue array has enough elements based on new column count (approx 36 columns)
-                $row = array_pad($row, 36, null);
-                
+                $row = array_pad($row, 38, null);
+
                 // Parent Info (Col 0-7)
                 $pFirstName = trim($row[0] ?? '');
                 $pMiddleName = trim($row[1] ?? '');
                 $pLastName = trim($row[2] ?? '');
                 $pPhone = trim($row[3] ?? '');
                 // Basic normalization for phone
-                if (strpos($pPhone, '0') === 0) {
-                    $pPhone = '255' . substr($pPhone, 1);
+                $pPhoneDigits = preg_replace('/\D+/', '', $pPhone);
+                if (strpos($pPhoneDigits, '0') === 0 && strlen($pPhoneDigits) === 10) {
+                    $pPhoneDigits = '255' . substr($pPhoneDigits, 1);
                 }
+                if (strpos($pPhoneDigits, '2550') === 0 && strlen($pPhoneDigits) === 13) {
+                    $pPhoneDigits = '255' . substr($pPhoneDigits, 4);
+                }
+                $pPhone = $pPhoneDigits;
                 $pGender = trim($row[4] ?? '');
                 $pOccupation = trim($row[5] ?? '');
                 $pEmail = trim($row[6] ?? '');
                 $pAddress = trim($row[7] ?? '');
-                
+
                 // Student Info (Col 8-19)
                 $sFirstName = trim($row[8] ?? '');
                 $sMiddleName = trim($row[9] ?? '');
@@ -4309,24 +4339,26 @@ class ManageStudentController extends Controller
                 }
 
                 $parentID = null;
-                if (!empty($pFirstName) && !empty($pPhone)) {
+                if (!empty($pPhone)) {
                     $parent = ParentModel::where('phone', $pPhone)->where('schoolID', $schoolID)->first();
                     if (!$parent) {
+                        $parentFirst = $pFirstName !== '' ? $pFirstName : 'Parent';
+                        $parentLast = $pLastName !== '' ? $pLastName : $pPhone;
                         $parent = ParentModel::create([
                             'schoolID' => $schoolID,
-                            'first_name' => $pFirstName,
-                            'middle_name' => $pMiddleName,
-                            'last_name' => $pLastName,
+                            'first_name' => $parentFirst,
+                            'middle_name' => $pMiddleName ?: null,
+                            'last_name' => $parentLast,
                             'phone' => $pPhone,
                             'gender' => $pGender ?: 'Male',
                             'occupation' => $pOccupation ?: 'N/A',
-                            'email' => $pEmail,
-                            'address' => $pAddress
+                            'email' => $pEmail ?: null,
+                            'address' => $pAddress ?: null
                         ]);
                     }
                     $parentID = $parent->parentID;
                 }
-                
+
                 if (empty($admissionNum)) {
                      do {
                         $admissionNum = $this->generateAdmissionNumber($schoolID);
@@ -4346,9 +4378,8 @@ class ManageStudentController extends Controller
                     $errors[] = "Row " . ($index + 2) . ": Invalid Subclass ID.";
                     continue;
                 }
-                
-                $maxFingerprintID = DB::table('students')->max('fingerprint_id') ?: 0;
-                $fingerprintID = $maxFingerprintID + 1;
+
+                $fingerprintID = $generateUniqueFingerprintId();
 
                 // Validate Date before parsing
                 $parsedDob = null;
@@ -4357,7 +4388,7 @@ class ManageStudentController extends Controller
                 }
 
                 Student::create([
-                    'studentID' => $fingerprintID,
+                    'studentID' => (int) $fingerprintID,
                     'fingerprint_id' => $fingerprintID,
                     'schoolID' => $schoolID,
                     'subclassID' => $subclassId,
@@ -4394,27 +4425,31 @@ class ManageStudentController extends Controller
                     'status' => 'Active',
                     'sent_to_device' => false
                 ]);
-                
+
                 $defaultPassword = '123';
-                User::create([
-                        'name' => $admissionNum,
-                        'email' => strtolower(preg_replace('/[^a-z0-9]/i', '', $sFirstName) . '.' . preg_replace('/[^a-z0-9]/i', '', $sLastName) . '.' . $fingerprintID . '@student.ShuleXpert'),
-                        'password' => Hash::make($defaultPassword),
-                        'user_type' => 'Student',
-                        'studentID' => $fingerprintID,
-                        'schoolID' => $schoolID,
-                ]);
+                $userPayload = [
+                    'name' => $admissionNum,
+                    'email' => strtolower(preg_replace('/[^a-z0-9]/i', '', $sFirstName) . '.' . preg_replace('/[^a-z0-9]/i', '', $sLastName) . '.' . $fingerprintID . '@student.ShuleXpert'),
+                    'password' => Hash::make($defaultPassword),
+                    'user_type' => 'student',
+                    'studentID' => (int) $fingerprintID,
+                    'schoolID' => $schoolID,
+                ];
+                if (Schema::hasColumn('users', 'fingerprint_id')) {
+                    $userPayload['fingerprint_id'] = $fingerprintID;
+                }
+                User::create($userPayload);
 
                 $successCount++;
             }
 
             DB::commit();
-            
+
             $msg = "Successfully imported $successCount students.";
             if (count($errors) > 0) {
                $msg .= " However, some rows failed: " . implode(" | ", array_slice($errors, 0, 5)) . (count($errors) > 5 ? "..." : "");
             }
-            
+
             return response()->json([
                 'success' => true,
                 'message' => $msg,
@@ -4424,7 +4459,7 @@ class ManageStudentController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Import error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
-            return response()->json(['success' => false, 'message' => 'Error importing file at row ' . ($index + 2) . ': ' . $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Error importing file at row ' . $currentRowNumber . ': ' . $e->getMessage()]);
         }
     }
 }
