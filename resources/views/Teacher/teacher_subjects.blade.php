@@ -2449,8 +2449,8 @@ function loadStudentsForElection(classSubjectID, subclassID) {
                         html += '</tbody></table></div>';
                         jQuery('#electionStudentsContainer').html(html);
 
-                        if ($.fn.DataTable) {
-                            $('#electionStudentsTable').DataTable({
+                        if (jQuery.fn.DataTable) {
+                            jQuery('#electionStudentsTable').DataTable({
                                 "pageLength": 25,
                                 "order": [[1, "asc"]]
                             });
@@ -2472,14 +2472,14 @@ function loadStudentsForElection(classSubjectID, subclassID) {
 
 // Select All Handler
 jQuery(document).on('click', '#electionSelectAllBtn', function() {
-    if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#electionStudentsTable')) {
-        var table = $('#electionStudentsTable').DataTable();
+    if (typeof jQuery.fn.DataTable !== 'undefined' && jQuery.fn.DataTable.isDataTable('#electionStudentsTable')) {
+        var table = jQuery('#electionStudentsTable').DataTable();
         table.rows().every(function() {
-            var $row = $(this.node());
+            var $row = jQuery(this.node());
             $row.find('.election-checkbox').prop('checked', true);
         });
     }
-    $('.election-checkbox').prop('checked', true);
+    jQuery('.election-checkbox').prop('checked', true);
     
     Swal.fire({
         icon: 'success',
@@ -2493,14 +2493,14 @@ jQuery(document).on('click', '#electionSelectAllBtn', function() {
 
 // Deselect All Handler
 jQuery(document).on('click', '#electionDeselectAllBtn', function() {
-    if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#electionStudentsTable')) {
-        var table = $('#electionStudentsTable').DataTable();
+    if (typeof jQuery.fn.DataTable !== 'undefined' && jQuery.fn.DataTable.isDataTable('#electionStudentsTable')) {
+        var table = jQuery('#electionStudentsTable').DataTable();
         table.rows().every(function() {
-            var $row = $(this.node());
+            var $row = jQuery(this.node());
             $row.find('.election-checkbox').prop('checked', false);
         });
     }
-    $('.election-checkbox').prop('checked', false);
+    jQuery('.election-checkbox').prop('checked', false);
     
     Swal.fire({
         icon: 'info',
@@ -2518,10 +2518,10 @@ jQuery(document).on('click', '#saveElectionBtn', function() {
     var subclassID = jQuery(this).data('subclass-id');
     var selectedStudents = [];
     
-    if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#electionStudentsTable')) {
-        var table = $('#electionStudentsTable').DataTable();
+    if (typeof jQuery.fn.DataTable !== 'undefined' && jQuery.fn.DataTable.isDataTable('#electionStudentsTable')) {
+        var table = jQuery('#electionStudentsTable').DataTable();
         table.rows().every(function() {
-            var $row = $(this.node());
+            var $row = jQuery(this.node());
             var $checkbox = $row.find('.election-checkbox');
             if ($checkbox.is(':checked') && $row.find('.deselect-student-btn').length === 0) {
                 selectedStudents.push($checkbox.val());
