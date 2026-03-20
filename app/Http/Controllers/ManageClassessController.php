@@ -66,6 +66,10 @@ class ManageClassessController extends Controller
                 'view_class_details' => [
                     'view_class_details', 'classes_read_only', 'classes_create', 'classes_update', 'classes_delete',
                     'create_class', 'edit_class', 'delete_class'
+                ],
+                'view_students' => [
+                    'view_students', 'student_read_only', 'student_create', 'student_update', 'student_delete',
+                    'subject_create', 'subject_update', 'subject_delete'
                 ]
             ];
 

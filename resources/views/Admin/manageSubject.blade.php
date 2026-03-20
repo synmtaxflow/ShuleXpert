@@ -86,7 +86,8 @@
     /* Scrollbar for View Class/Subclass Subjects Modals */
     #viewClassSubjectsModal .modal-body,
     #viewSubclassSubjectsModal .modal-body,
-    #addClassSubjectModal .modal-body {
+    #addClassSubjectModal .modal-body,
+    #subjectElectionModal .modal-body {
         overflow-y: auto !important;
         max-height: 80vh;
         scrollbar-width: thin;
@@ -105,7 +106,8 @@
     }
     #viewClassSubjectsModal .modal-body::-webkit-scrollbar-thumb,
     #viewSubclassSubjectsModal .modal-body::-webkit-scrollbar-thumb,
-    #addClassSubjectModal .modal-body::-webkit-scrollbar-thumb {
+    #addClassSubjectModal .modal-body::-webkit-scrollbar-thumb,
+    #subjectElectionModal .modal-body::-webkit-scrollbar-thumb {
         background: #940000;
         border-radius: 4px;
     }
@@ -654,6 +656,19 @@
                 </button>
             </div>
             <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded border">
+                    <div class="small text-muted">
+                        <i class="bi bi-info-circle"></i> Use buttons to bulk select/deselect students for this subject.
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="adminElectionSelectAllBtn">
+                            <i class="bi bi-check-all"></i> Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="adminElectionDeselectAllBtn">
+                            <i class="bi bi-dash-circle"></i> Deselect All
+                        </button>
+                    </div>
+                </div>
                 <div id="electionStudentsContainer">
                     <div class="text-center py-4">
                         <div class="spinner-border text-primary-custom" role="status">
@@ -2237,13 +2252,23 @@
 
             // Collect selected students (all checked checkboxes - exclude those with deselect buttons)
             var selectedStudents = [];
-            $('.election-checkbox:checked').each(function() {
-                // Only include if row doesn't have deselect button (meaning not already elected)
-                var $row = $(this).closest('tr');
-                if ($row.find('.deselect-student-btn').length === 0) {
-                    selectedStudents.push($(this).val());
-                }
-            });
+            if ($.fn.DataTable.isDataTable('#electionStudentsTable')) {
+                var table = $('#electionStudentsTable').DataTable();
+                table.rows().every(function() {
+                    var $row = $(this.node());
+                    var $checkbox = $row.find('.election-checkbox');
+                    if ($checkbox.is(':checked') && $row.find('.deselect-student-btn').length === 0) {
+                        selectedStudents.push($checkbox.val());
+                    }
+                });
+            } else {
+                $('.election-checkbox:checked').each(function() {
+                    var $row = $(this).closest('tr');
+                    if ($row.find('.deselect-student-btn').length === 0) {
+                        selectedStudents.push($(this).val());
+                    }
+                });
+            }
 
             console.log('Saving election:', {
                 classSubjectID: classSubjectID,
@@ -2787,6 +2812,50 @@
 
         $('#editClassSubjectModal').on('hidden', function() {
             $('#editClassSubjectForm')[0].reset();
+        });
+
+        // Select All Button for Admin Election
+        $(document).on('click', '#adminElectionSelectAllBtn', function() {
+            if ($.fn.DataTable.isDataTable('#electionStudentsTable')) {
+                var table = $('#electionStudentsTable').DataTable();
+                table.rows().every(function() {
+                    var $row = $(this.node());
+                    $row.find('.election-checkbox').prop('checked', true);
+                });
+            }
+            $('.election-checkbox').prop('checked', true);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Selected All',
+                text: 'All students have been selected. You can uncheck individuals if needed.',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'top-end',
+                toast: true
+            });
+        });
+
+        // Deselect All Button for Admin Election
+        $(document).on('click', '#adminElectionDeselectAllBtn', function() {
+            if ($.fn.DataTable.isDataTable('#electionStudentsTable')) {
+                var table = $('#electionStudentsTable').DataTable();
+                table.rows().every(function() {
+                    var $row = $(this.node());
+                    $row.find('.election-checkbox').prop('checked', false);
+                });
+            }
+            $('.election-checkbox').prop('checked', false);
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Deselected All',
+                text: 'All checkboxes have been cleared.',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'top-end',
+                toast: true
+            });
         });
         });
     })(jQuery);

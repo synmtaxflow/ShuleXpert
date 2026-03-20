@@ -899,6 +899,19 @@
                 </button>
             </div>
             <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded border">
+                    <div class="small text-muted">
+                        <i class="bi bi-info-circle"></i> Use the buttons to bulk select/deselect students.
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="electionSelectAllBtn">
+                            <i class="bi bi-check-all"></i> Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="electionDeselectAllBtn">
+                            <i class="bi bi-dash-circle"></i> Deselect All
+                        </button>
+                    </div>
+                </div>
                 <div id="teacherElectionStudentsContainer">
                     <div class="text-center py-4">
                         <div class="spinner-border text-primary-custom" role="status">
@@ -9354,12 +9367,23 @@
             }
 
             var selectedStudents = [];
-            $('#teacherElectionStudentsContainer .election-checkbox:checked').each(function() {
-                var $row = $(this).closest('tr');
-                if ($row.find('.deselect-student-btn').length === 0) {
-                    selectedStudents.push($(this).val());
-                }
-            });
+            if ($.fn.DataTable.isDataTable('#teacherElectionStudentsTable')) {
+                var table = $('#teacherElectionStudentsTable').DataTable();
+                table.rows().every(function() {
+                    var $row = $(this.node());
+                    var $checkbox = $row.find('.election-checkbox');
+                    if ($checkbox.is(':checked') && $row.find('.deselect-student-btn').length === 0) {
+                        selectedStudents.push($checkbox.val());
+                    }
+                });
+            } else {
+                $('#teacherElectionStudentsContainer .election-checkbox:checked').each(function() {
+                    var $row = $(this).closest('tr');
+                    if ($row.find('.deselect-student-btn').length === 0) {
+                        selectedStudents.push($(this).val());
+                    }
+                });
+            }
 
             var $btn = $(this);
             var originalText = $btn.html();
@@ -9519,6 +9543,50 @@
                         }
                     });
                 }
+            });
+        });
+
+        // Select All Button for Election
+        $(document).on('click', '#electionSelectAllBtn', function() {
+            if ($.fn.DataTable.isDataTable('#teacherElectionStudentsTable')) {
+                var table = $('#teacherElectionStudentsTable').DataTable();
+                table.rows().every(function() {
+                    var $row = $(this.node());
+                    $row.find('.election-checkbox').prop('checked', true);
+                });
+            }
+            $('.election-checkbox').prop('checked', true);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Selected All',
+                text: 'All students have been selected. You can uncheck individuals if needed.',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'top-end',
+                toast: true
+            });
+        });
+
+        // Deselect All Button for Election
+        $(document).on('click', '#electionDeselectAllBtn', function() {
+            if ($.fn.DataTable.isDataTable('#teacherElectionStudentsTable')) {
+                var table = $('#teacherElectionStudentsTable').DataTable();
+                table.rows().every(function() {
+                    var $row = $(this.node());
+                    $row.find('.election-checkbox').prop('checked', false);
+                });
+            }
+            $('.election-checkbox').prop('checked', false);
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Deselected All',
+                text: 'All checkboxes have been cleared.',
+                timer: 1500,
+                showConfirmButton: false,
+                position: 'top-end',
+                toast: true
             });
         });
     });
