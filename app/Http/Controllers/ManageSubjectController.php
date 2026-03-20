@@ -1199,9 +1199,6 @@ class ManageSubjectController extends Controller
                 if ($elector) {
                     $student = Student::find($studentID);
                     $elector->delete();
-
-                    // Send SMS to parent
-                    $this->sendElectionSMS($student, $classSubject, 'deselected');
                 }
             }
 
@@ -1260,9 +1257,6 @@ class ManageSubjectController extends Controller
             if ($elector) {
                 $elector->delete();
 
-                // Send SMS to parent
-                $this->sendElectionSMS($student, $classSubject, 'deselected');
-
                 return response()->json([
                     'success' => 'Student deselected from subject election successfully!'
                 ], 200);
@@ -1276,92 +1270,6 @@ class ManageSubjectController extends Controller
             return response()->json([
                 'error' => 'An error occurred: ' . $e->getMessage()
             ], 500);
-        }
-    }
-
-    /**
-     * Send SMS notification to parent when student is elected/deselected from optional subject
-     *
-     * @param Student $student
-     * @param ClassSubject $classSubject
-     * @param string $action 'elected' or 'deselected'
-     * @return void
-     */
-    private function sendElectionSMS($student, $classSubject, $action = 'elected')
-    {
-        try {
-            // Load relationships if not already loaded
-            if (!$student->relationLoaded('parent')) {
-                $student->load('parent');
-            }
-            if (!$student->relationLoaded('subclass')) {
-                $student->load('subclass');
-            }
-            if (!$classSubject->relationLoaded('subject')) {
-                $classSubject->load('subject');
-            }
-            if (!$classSubject->relationLoaded('subclass')) {
-                $classSubject->load('subclass');
-            }
-            if (!$classSubject->subclass->relationLoaded('class')) {
-                $classSubject->subclass->load('class');
-            }
-
-            // Check if student has a parent
-            if (!$student->parent) {
-                Log::info("Student {$student->studentID} has no parent, skipping SMS notification.");
-                return;
-            }
-
-            // Check if parent has a phone number
-            if (!$student->parent->phone || trim($student->parent->phone) === '') {
-                Log::info("Parent {$student->parent->parentID} has no phone number, skipping SMS notification.");
-                return;
-            }
-
-            // Get school name
-            $schoolID = Session::get('schoolID');
-            $school = School::where('schoolID', $schoolID)->first();
-            $schoolName = $school ? $school->school_name : 'ShuleXpert';
-
-            // Get student name
-            $studentName = trim($student->first_name . ' ' . ($student->middle_name ? $student->middle_name . ' ' : '') . $student->last_name);
-
-            // Get subject name
-            $subjectName = $classSubject->subject ? $classSubject->subject->subject_name : 'Subject';
-
-            // Get class and subclass display name
-            $classDisplayName = '';
-            if ($classSubject->subclass && $classSubject->subclass->class) {
-                $className = $classSubject->subclass->class->class_name;
-                $subclassName = trim($classSubject->subclass->subclass_name);
-                if ($subclassName === '') {
-                    $classDisplayName = $className;
-                } else {
-                    $classDisplayName = $className . ' ' . $subclassName;
-                }
-            }
-
-            // Build message based on action
-            if ($action === 'elected') {
-                $message = "{$schoolName}. Mwanafunzi {$studentName} amechagua somo la {$subjectName} kwenye darasa {$classDisplayName}. Asante";
-            } else {
-                $message = "{$schoolName}. Mwanafunzi {$studentName} ameondoa somo la {$subjectName} kwenye darasa {$classDisplayName}. Asante";
-            }
-
-            // Send SMS
-            $smsService = new SmsService();
-            $result = $smsService->sendSms($student->parent->phone, $message);
-
-            if ($result['success']) {
-                Log::info("SMS sent successfully to parent {$student->parent->parentID} for student {$student->studentID} - {$action} from {$subjectName}");
-            } else {
-                Log::warning("Failed to send SMS to parent {$student->parent->parentID} for student {$student->studentID}: " . ($result['message'] ?? 'Unknown error'));
-            }
-
-        } catch (\Exception $e) {
-            Log::error("Error sending election SMS: " . $e->getMessage());
-            // Don't throw exception - SMS failure shouldn't break the election process
         }
     }
 }
