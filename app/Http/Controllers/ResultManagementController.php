@@ -32,6 +32,36 @@ use PhpOffice\PhpSpreadsheet\Style\Border;
 class ResultManagementController extends Controller
 {
     /**
+     * Helper to check permissions with hierarchy support
+     */
+    private function hasPermission($permission)
+    {
+        $user_type = Session::get('user_type');
+        if ($user_type === 'Admin') {
+            return true;
+        }
+
+        $teacherPermissions = Session::get('teacherPermissions') ?? collect();
+        
+        // Define permission aliases for hierarchy
+        $aliases = [
+            'view_results' => ['view_results', 'result_read_only', 'result_create', 'result_update', 'result_delete', 'manage_results', 'manageResults'],
+            'view_class_subjects' => ['view_class_subjects', 'subject_read_only', 'subject_create', 'subject_update', 'subject_delete', 'manage_subjects'],
+            'view_exams' => ['view_exams', 'examination_read_only', 'examination_create', 'examination_update', 'examination_delete', 'manage_exam'],
+            'view_classes' => ['view_classes', 'classes_read_only', 'classes_create', 'classes_update', 'classes_delete', 'manage_classes', 'create_class', 'edit_class'],
+        ];
+        
+        // If the teacher has broad modify permissions, they also have view permissions
+        if (isset($aliases[$permission])) {
+            if ($teacherPermissions->intersect($aliases[$permission])->isNotEmpty()) {
+                return true;
+            }
+        }
+
+        return $teacherPermissions->contains($permission);
+    }
+
+    /**
      * Display result management page
      */
     public function index(Request $request)
@@ -63,19 +93,22 @@ class ResultManagementController extends Controller
         $weekFilter = $request->get('week', ''); // Week filter for weekly/monthly tests
         $subjectFilter = $request->get('subjectID', ''); // Specific subject filter
 
+        // BROAD PERMISSION CHECK: If teacher has broad result view permissions, don't restrict to "assigned class"
+        $hasBroadResultPermission = $this->hasPermission('view_results');
+
         // Check if coordinator view is requested
         $isCoordinatorResultsView = false;
         if ($isCoordinatorView && !empty($classIDParam) && !empty($teacherID)) {
             // Verify teacher is coordinator of this main class
             $mainClass = \App\Models\ClassModel::find($classIDParam);
-            if ($mainClass && $mainClass->teacherID == $teacherID && $mainClass->schoolID == $schoolID) {
+            if ($mainClass && ($mainClass->teacherID == $teacherID || $hasBroadResultPermission) && $mainClass->schoolID == $schoolID) {
                 // Set default class filter for coordinator view
                 $classFilter = $classIDParam;
                 $isCoordinatorResultsView = true;
                 // Coordinator can only choose subclass, main class is pre-selected and locked
             } else {
                 // Coordinator doesn't have access to this class
-                if ($userType === 'Teacher') {
+                if ($userType === 'Teacher' && !$hasBroadResultPermission) {
                     return redirect()->route('AdmitedClasses', ['coordinator' => 'true'])
                         ->with('error', 'Unauthorized access to this class')
                         ->with('error_type', 'unauthorized_access');
@@ -88,14 +121,18 @@ class ResultManagementController extends Controller
         if (!empty($subclassIDParam) && !empty($teacherID) && !$isCoordinatorResultsView) {
             // Verify teacher has access to this subclass
             $subclass = Subclass::with('class')->find($subclassIDParam);
-            if ($subclass && $subclass->teacherID == $teacherID) {
+            
+            // Allow if teacher is assigned OR has broad permissions
+            if ($subclass && ($subclass->teacherID == $teacherID || $hasBroadResultPermission)) {
                 // Set default filters for teacher view
                 $subclassFilter = $subclassIDParam;
                 $classFilter = $subclass->classID;
-                $isTeacherView = true;
+                if ($subclass->teacherID == $teacherID && !$hasBroadResultPermission) {
+                    $isTeacherView = true;
+                }
             } else {
                 // Teacher doesn't have access to this subclass
-                if ($userType === 'Teacher') {
+                if ($userType === 'Teacher' && !$hasBroadResultPermission) {
                     return redirect()->route('AdmitedClasses')
                         ->with('error', 'Unauthorized access to this class')
                         ->with('error_type', 'unauthorized_access');
@@ -103,9 +140,8 @@ class ResultManagementController extends Controller
             }
         }
 
-        // SECURITY: For teachers, always verify they have access to the selected subclass
-        // This prevents teachers from changing subclass via form manipulation or refresh
-        if ($userType === 'Teacher' && !empty($teacherID)) {
+        // SECURITY: For regular teachers without broad permissions, always verify they have access to the selected subclass
+        if ($userType === 'Teacher' && !empty($teacherID) && !$hasBroadResultPermission) {
             // If subclassID param is provided, use it
             if (!empty($subclassIDParam)) {
                 $subclass = Subclass::with('class')->find($subclassIDParam);
@@ -172,8 +208,8 @@ class ResultManagementController extends Controller
 
             // Group by classID for consistency with other views
             $allSubclasses = $classSubclasses->groupBy('classID');
-        } elseif ($userType === 'Teacher' && !empty($teacherID) && !$isCoordinatorResultsView) {
-            // SECURITY: For teachers (class teacher view), only show their assigned subclasses
+        } elseif ($userType === 'Teacher' && !empty($teacherID) && !$isCoordinatorResultsView && !$hasBroadResultPermission) {
+            // SECURITY: For regular teachers (class teacher view), only show their assigned subclasses
             if ($classFilter) {
                 // Get only teacher's subclasses in the selected class
                 $allSubclasses = Subclass::with('class')
@@ -333,13 +369,17 @@ class ResultManagementController extends Controller
                 // For term report: group by subject and collect exam results
                 $subjectData = [];
 
-                // Get all exams
+                // Get all exams for the term (Unblock for Admin/Broad Permission)
                 $examinationsQuery = Examination::where('schoolID', $schoolID)
                     ->where('year', $yearFilter)
-                    ->where('term', $termFilter)
-                    ->where('approval_status', 'Approved')
-                    ->orderBy('start_date');
-                $examinations = $examinationsQuery->get();
+                    ->where('term', $termFilter);
+                
+                // For regular teachers without broad permission, only show approved exams
+                if ($userType !== 'Admin' && !$hasBroadResultPermission) {
+                    $examinationsQuery->where('approval_status', 'Approved');
+                }
+                
+                $examinations = $examinationsQuery->orderBy('start_date')->get();
 
                 foreach ($examinations as $exam) {
                     $examsData[$exam->examID] = [
@@ -531,27 +571,38 @@ class ResultManagementController extends Controller
                 $classStudentsWithResults = [];
                 foreach ($classStudents as $classStudent) {
                     if ($typeFilterForDetails === 'report') {
-                        // For term report: get all exams in term
                         $examinationsQuery = Examination::where('schoolID', $schoolID)
                             ->where('year', $yearFilter)
-                            ->where('term', $termFilter)
-                            ->where('approval_status', 'Approved');
+                            ->where('term', $termFilter);
+                        
+                        if ($userType !== 'Admin' && !$hasBroadResultPermission) {
+                            $examinationsQuery->where('approval_status', 'Approved');
+                        }
+                        
                         $examinations = $examinationsQuery->get();
                         $examIDs = $examinations->pluck('examID')->toArray();
 
-                        $classStudentResults = Result::where('studentID', $classStudent->studentID)
+                        $classStudentResultsQuery = Result::where('studentID', $classStudent->studentID)
                             ->whereIn('examID', $examIDs)
-                            ->whereNotNull('marks')
-                            ->where('status', 'allowed')
-                            ->with(['classSubject.subject'])
+                            ->whereNotNull('marks');
+                        
+                        if ($userType !== 'Admin' && !$hasBroadResultPermission) {
+                            $classStudentResultsQuery->where('status', 'allowed');
+                        }
+                        
+                        $classStudentResults = $classStudentResultsQuery->with(['classSubject.subject'])
                             ->get();
                     } else {
                         // For exam: get results for specific exam
-                        $classStudentResults = Result::where('studentID', $classStudent->studentID)
+                        $classStudentResultsQuery = Result::where('studentID', $classStudent->studentID)
                             ->where('examID', $examFilter)
-                            ->whereNotNull('marks')
-                            ->where('status', 'allowed')
-                            ->with(['classSubject.subject'])
+                            ->whereNotNull('marks');
+                        
+                        if ($userType !== 'Admin' && !$hasBroadResultPermission) {
+                            $classStudentResultsQuery->where('status', 'allowed');
+                        }
+                        
+                        $classStudentResults = $classStudentResultsQuery->with(['classSubject.subject'])
                             ->get();
                     }
 
@@ -879,8 +930,8 @@ class ResultManagementController extends Controller
         }
         // 'all' includes all students
 
-        // SECURITY: For teachers, ensure they can only access their assigned subclass
-        if ($userType === 'Teacher' && !empty($teacherID)) {
+        // SECURITY: For regular teachers without broad permissions, ensure they can only access their assigned subclass
+        if ($userType === 'Teacher' && !empty($teacherID) && !$hasBroadResultPermission) {
             // If teacher view is active (from classManagement), MUST have subclassFilter set
             if ($isTeacherView) {
                 if (empty($subclassFilter)) {
@@ -1426,11 +1477,17 @@ class ResultManagementController extends Controller
             $resultsString = "{$subject}-({$marks})-({$grade})";
         } elseif ($type === 'report') {
             // Term report: Average across all exams in term
-            $examinations = Examination::where('schoolID', $schoolID)
+            $examinationsQuery = Examination::where('schoolID', $schoolID)
                 ->where('year', $year)
-                ->where('term', $term)
-                ->where('approval_status', 'Approved')
-                ->pluck('examID');
+                ->where('term', $term);
+            
+            // For regular users, only show approved exams for SMS
+            $hasBroadResultPermission = $this->hasPermission('view_results');
+            if ($userType !== 'Admin' && !$hasBroadResultPermission) {
+                $examinationsQuery->where('approval_status', 'Approved');
+            }
+            
+            $examinations = $examinationsQuery->pluck('examID');
 
             $results = Result::where('studentID', $studentID)
                 ->whereIn('examID', $examinations)
@@ -1464,17 +1521,23 @@ class ResultManagementController extends Controller
             $resultsString = implode(", ", $formattedResults);
         } else {
             // Multi-subject mode (Exam level)
-            $allResults = Result::where('studentID', $studentID);
+            $allResultsQuery = Result::where('studentID', $studentID);
+            
+            // For regular users, only show allowed results for SMS
+            $hasBroadResultPermission = $this->hasPermission('view_results');
+            if ($userType !== 'Admin' && !$hasBroadResultPermission) {
+                $allResultsQuery->where('status', 'allowed');
+            }
             
             if ($examID && $examID !== 'null' && $examID !== 'undefined' && $examID !== '1') {
-                $allResults->where('examID', $examID);
+                $allResultsQuery->where('examID', $examID);
             }
             
             if ($week && $week !== 'all') {
-                $allResults->where('test_week', $week);
+                $allResultsQuery->where('test_week', $week);
             }
             
-            $results = $allResults->with('classSubject.subject')->get();
+            $results = $allResultsQuery->with('classSubject.subject')->get();
             
             if ($results->isEmpty()) {
                 return response()->json(['success' => false, 'error' => 'No results found for this student']);
@@ -2174,10 +2237,17 @@ class ResultManagementController extends Controller
         // Calculate averages for all students in the class
         $studentAverages = [];
 
+        $userType = Session::get('user_type');
+        $hasBroadResultPermission = $this->hasPermission('view_results');
+        $bypassRestrictions = ($userType === 'Admin' || $hasBroadResultPermission);
+
         foreach ($classStudents as $classStudent) {
             $examinationsQuery = Examination::where('schoolID', Session::get('schoolID'))
-                ->where('year', $year)
-                ->where('approval_status', 'Approved');
+                ->where('year', $year);
+            
+            if (!$bypassRestrictions) {
+                $examinationsQuery->where('approval_status', 'Approved');
+            }
 
             if ($term) {
                 $examinationsQuery->where('term', $term);
@@ -2189,12 +2259,16 @@ class ResultManagementController extends Controller
             $totalSubjects = 0;
 
             foreach ($examinations as $exam) {
-                // Get results with marks and allowed status
-                $results = Result::where('studentID', $classStudent->studentID)
+                // Get results with marks
+                $resultsQuery = Result::where('studentID', $classStudent->studentID)
                     ->where('examID', $exam->examID)
-                    ->whereNotNull('marks')
-                    ->where('status', 'allowed')
-                    ->get();
+                    ->whereNotNull('marks');
+                
+                if (!$bypassRestrictions) {
+                    $resultsQuery->where('status', 'allowed');
+                }
+                
+                $results = $resultsQuery->get();
 
                 foreach ($results as $result) {
                     if ($result->marks !== null && $result->marks !== '') {
@@ -2238,7 +2312,7 @@ class ResultManagementController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if ($userType !== 'Admin' || !$schoolID) {
+        if (($userType !== 'Admin' && !$this->hasPermission('view_results')) || !$schoolID) {
             return redirect()->route('login')->with('error', 'Access denied');
         }
 
@@ -2383,7 +2457,7 @@ class ResultManagementController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if ($userType !== 'Admin' || !$schoolID) {
+        if (($userType !== 'Admin' && !$this->hasPermission('view_results')) || !$schoolID) {
             return redirect()->route('login')->with('error', 'Access denied');
         }
 

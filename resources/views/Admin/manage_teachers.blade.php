@@ -4458,9 +4458,16 @@
                 'update_results_status',
                 // Subject Management
                 'create_subject',
+                'edit_subject',
                 'update_subject',
                 'delete_subject',
+                'activate_subject',
                 'approve_created_subject',
+                'view_class_subjects',
+                'create_class_subject',
+                'update_class_subject',
+                'delete_class_subject',
+                'activate_class_subject',
                 // Manage Teachers
                 'teacher_create',
                 'teacher_delete',

@@ -12,6 +12,7 @@ use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -101,6 +102,24 @@ class Auth extends Controller
         }
 
         return false;
+    }
+
+    private function hasOtpSkipToken($userLogin): bool
+    {
+        $cookieToken = request()->cookie('otp_remember_token');
+        if (!$cookieToken || !$userLogin->otp_remember_token) return false;
+
+        return hash_equals($userLogin->otp_remember_token, hash('sha256', $cookieToken));
+    }
+
+    private function setOtpSkipToken($userLogin): void
+    {
+        $token = Str::random(60);
+        $userLogin->otp_remember_token = hash('sha256', $token);
+        $userLogin->save();
+
+        // Set cookie for 30 days
+        cookie()->queue('otp_remember_token', $token, 30 * 24 * 60);
     }
 
     /**
@@ -203,6 +222,7 @@ class Auth extends Controller
                 'pending_user_type' => $userLogin->user_type,
                 'pending_username' => $userLogin->name,
                 'pending_user_email' => $userLogin->email,
+                'remember_me' => $request->has('remember_me'),
             ];
 
             if ($userLogin->user_type === 'Admin') {
@@ -211,7 +231,10 @@ class Auth extends Controller
                     if ($this->isAjax($request)) return $this->jsonFail('School not found for this admin account.', 404);
                     return redirect()->back()->with('error', 'School not found for this admin account.')->withInput($request->only('username'));
                 }
-                if ($this->requiresOtpForSchool((int) $school->schoolID)) {
+
+                $skipOtp = $this->hasOtpSkipToken($userLogin);
+
+                if (!$skipOtp && $this->requiresOtpForSchool((int) $school->schoolID)) {
                     $pending['schoolID'] = (int) $school->schoolID;
                     if (empty($school->phone)) {
                         if ($this->isAjax($request)) return $this->jsonFail('School phone number not set. Please contact admin.', 422);
@@ -238,7 +261,10 @@ class Auth extends Controller
                     if ($this->isAjax($request)) return $this->jsonFail('Teacher record not found.', 404);
                     return redirect()->back()->with('error', 'Teacher record not found.')->withInput($request->only('username'));
                 }
-                if ($this->requiresOtpForSchool((int) $teacher->schoolID)) {
+
+                $skipOtp = $this->hasOtpSkipToken($userLogin);
+
+                if (!$skipOtp && $this->requiresOtpForSchool((int) $teacher->schoolID)) {
                     $pending['schoolID'] = (int) $teacher->schoolID;
                     $pending['teacherID'] = (int) $teacher->id;
                     $pending['teacher_name'] = $teacher->first_name . ' ' . $teacher->last_name;
@@ -267,7 +293,10 @@ class Auth extends Controller
                     if ($this->isAjax($request)) return $this->jsonFail('Staff record not found.', 404);
                     return redirect()->back()->with('error', 'Staff record not found.')->withInput($request->only('username'));
                 }
-                if ($this->requiresOtpForSchool((int) $staff->schoolID)) {
+
+                $skipOtp = $this->hasOtpSkipToken($userLogin);
+
+                if (!$skipOtp && $this->requiresOtpForSchool((int) $staff->schoolID)) {
                     $pending['schoolID'] = (int) $staff->schoolID;
                     $pending['staffID'] = (int) $staff->id;
                     $pending['staff_name'] = $staff->first_name . ' ' . $staff->last_name;
@@ -299,6 +328,10 @@ class Auth extends Controller
                 Session::put('user_name', $userLogin->name);
                 Session::put('user_email', $userLogin->email);
 
+                if ($request->has('remember_me')) {
+                    $this->setOtpSkipToken($userLogin);
+                }
+
                 $request->session()->regenerate();
 
                 if ($this->isAjax($request)) {
@@ -324,6 +357,10 @@ class Auth extends Controller
                 Session::put('userID', $userLogin->id);
                 Session::put('user_name', $userLogin->name);
                 Session::put('user_email', $userLogin->email);
+
+                if ($request->has('remember_me')) {
+                    $this->setOtpSkipToken($userLogin);
+                }
 
                 // Regenerate session ID for security
                 $request->session()->regenerate();
@@ -364,6 +401,28 @@ class Auth extends Controller
                 Session::put('user_name', $userLogin->name);
                 Session::put('user_email', $userLogin->email);
                 Session::put('teacher_name', $teacher->first_name . ' ' . $teacher->last_name);
+
+                if ($request->has('remember_me')) {
+                    $this->setOtpSkipToken($userLogin);
+                }
+
+                // Load teacher permissions
+                $roleIds = DB::table('teachers')
+                    ->join('role_user', 'teachers.id', '=', 'role_user.teacher_id')
+                    ->where('role_user.teacher_id', $teacher->id)
+                    ->pluck('role_user.role_id')
+                    ->toArray();
+
+                if (!empty($roleIds)) {
+                    $permissions = DB::table('permissions')
+                        ->whereIn('role_id', $roleIds)
+                        ->pluck('name')
+                        ->unique()
+                        ->toArray();
+                    Session::put('teacher_permissions', $permissions);
+                } else {
+                    Session::put('teacher_permissions', []);
+                }
 
                 // Load teacher roles if Spatie is installed
                 if (class_exists(\Spatie\Permission\Models\Permission::class) && method_exists($teacher, 'roles')) {
@@ -411,6 +470,10 @@ class Auth extends Controller
                 Session::put('user_email', $userLogin->email);
                 Session::put('staff_name', $staff->first_name . ' ' . $staff->last_name);
                 Session::put('profession_id', $staff->profession_id);
+
+                if ($request->has('remember_me')) {
+                    $this->setOtpSkipToken($userLogin);
+                }
 
                 // Load staff permissions based on profession
                 if ($staff->profession_id) {
@@ -488,6 +551,19 @@ class Auth extends Controller
      */
     public function logout(Request $request)
     {
+        // Get user ID before flushing session to clear the persistent OTP token if it exists
+        $userId = Session::get('userID');
+        if ($userId) {
+            $user = User::find($userId);
+            if ($user) {
+                $user->otp_remember_token = null;
+                $user->save();
+            }
+        }
+
+        // Forget the persistent skip cookie
+        cookie()->queue(cookie()->forget('otp_remember_token'));
+
         // Clear all sessions
         Session::flush();
 
@@ -550,6 +626,25 @@ class Auth extends Controller
         if ($userType === 'Teacher') {
             if (isset($payload['teacherID'])) Session::put('teacherID', $payload['teacherID']);
             if (isset($payload['teacher_name'])) Session::put('teacher_name', $payload['teacher_name']);
+            
+            if (isset($payload['teacherID'])) {
+                $roleIds = DB::table('teachers')
+                    ->join('role_user', 'teachers.id', '=', 'role_user.teacher_id')
+                    ->where('role_user.teacher_id', $payload['teacherID'])
+                    ->pluck('role_user.role_id')
+                    ->toArray();
+                
+                if (!empty($roleIds)) {
+                    $permissions = DB::table('permissions')
+                        ->whereIn('role_id', $roleIds)
+                        ->pluck('name')
+                        ->unique()
+                        ->toArray();
+                    Session::put('teacher_permissions', $permissions);
+                } else {
+                    Session::put('teacher_permissions', []);
+                }
+            }
         }
         if ($userType === 'Staff') {
             if (isset($payload['staffID'])) Session::put('staffID', $payload['staffID']);
@@ -583,6 +678,14 @@ class Auth extends Controller
             if ($userType === 'Admin') $redirect = route('admin.change_password');
             if ($userType === 'Teacher') $redirect = route('teacher.profile') . '#change-password';
             if ($userType === 'Staff') $redirect = route('staff.profile');
+        }
+
+        // If remember me was checked, set skip token now
+        if (!empty($payload['remember_me'])) {
+            $user = User::find($userId);
+            if ($user) {
+                $this->setOtpSkipToken($user);
+            }
         }
 
         return response()->json(['success' => true, 'redirect' => $redirect]);

@@ -968,7 +968,7 @@ setTimeout(initializeMenuDropdowns, 500);
 
 <script>
 (function() {
-    const IDLE_MS = 60 * 1000;
+    const IDLE_MS = 270 * 1000;
     const WARN_SECONDS = 30;
     const LOGOUT_URL = '{{ route('logout') }}';
     const CSRF_TOKEN = '{{ csrf_token() }}';

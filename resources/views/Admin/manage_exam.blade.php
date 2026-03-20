@@ -366,6 +366,23 @@
 <!-- Bootstrap Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
 
+@php
+    $perms = $teacherPermissions ?? collect();
+    $isAdmin = ($user_type ?? '') == 'Admin';
+    
+    // Hierarchy: If you have modify permissions, you inherently have view permissions
+    $canViewExams = $isAdmin || $perms->intersect([
+        'examination_read_only', 'examination_create', 'examination_update', 'examination_delete', 
+        'manage_exam', 'view_exams'
+    ])->isNotEmpty();
+    
+    $canCreateExam = $isAdmin || $perms->intersect(['examination_create', 'create_exam'])->isNotEmpty();
+    $canEditExam = $isAdmin || $perms->intersect(['examination_update', 'edit_exam', 'update_exam'])->isNotEmpty();
+    $canDeleteExam = $isAdmin || $perms->intersect(['examination_delete', 'delete_exam'])->isNotEmpty();
+    
+    // For individual exam actions, the hierarchy already covers them through the global variables
+@endphp
+
 <div class="container-fluid mt-4 manage-exam-wrapper">
     <div class="row">
         <div class="col-12">
@@ -399,11 +416,7 @@
                             </small>
                             @endif
                         </h4>
-                        @php
-                            // Check examination permissions - New format: examination_create, examination_update, examination_delete, examination_read_only
-                            $canCreate = ($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('examination_create');
-                        @endphp
-                        @if($canCreate)
+                        @if($canCreateExam)
                         <button class="btn btn-light text-primary-custom fw-bold mt-2 mt-md-0 d-flex align-items-center justify-content-center" type="button" data-toggle="modal" data-target="#createExamModal">
                             <i class="bi bi-plus-circle me-2"></i> Create New Examination
                         </button>

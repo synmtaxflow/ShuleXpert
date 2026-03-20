@@ -649,6 +649,7 @@ class ManageExaminationController extends Controller
             ->get();
 
         // Get closed terms for current year
+        // Get closed terms for current year
         $closedTerms = DB::table('terms')
             ->where('schoolID', $schoolID)
             ->where('year', $currentYear)
@@ -656,7 +657,7 @@ class ManageExaminationController extends Controller
             ->pluck('term_number')
             ->toArray();
 
-        return view('Admin.manage_exam', compact('examinations', 'examinationsGrouped', 'subclasses', 'classSubjects', 'classes', 'currentYear', 'availableYears', 'totalExams', 'search', 'yearFilter', 'statusFilter', 'termFilter', 'examCategoryFilter', 'teacherPermissions', 'roles', 'closedTerms'));
+        return view('Admin.manage_exam', compact('examinations', 'examinationsGrouped', 'subclasses', 'classSubjects', 'classes', 'currentYear', 'availableYears', 'totalExams', 'search', 'yearFilter', 'statusFilter', 'termFilter', 'examCategoryFilter', 'roles', 'closedTerms'));
     }
 
     public function searchExaminations(Request $request)
@@ -890,7 +891,7 @@ class ManageExaminationController extends Controller
                 'hall_class_id' => 'nullable|array',
                 'hall_class_id.*' => 'nullable|integer|exists:classes,classID',
                 'hall_capacity' => 'nullable|array',
-                'hall_capacity.*' => 'nullable|integer|min:1',
+                'hall_capacity.*' => 'nullable|integer',
                 'hall_gender' => 'nullable|array',
                 'hall_gender.*' => 'nullable|in:male,female,both',
             ], [
@@ -911,12 +912,10 @@ class ManageExaminationController extends Controller
                 'approval_role_ids.required_if' => 'Please select roles for result approval.',
                 'approval_role_ids.*.required' => 'Please select a role for each approval step.',
                 'approval_role_ids.*.distinct' => 'Each role can only be selected once.',
-                'hall_name.required' => 'Please add at least one hall.',
-                'hall_name.*.required' => 'Hall name is required.',
-                'hall_class_id.*.required' => 'Please select class for each hall.',
-                'hall_capacity.*.required' => 'Please provide capacity for each hall.',
+                // Halls (Optional) - No required messages needed as fields are now nullable
+                'hall_name.*.string' => 'Hall name must be a string.',
+                'hall_capacity.*.integer' => 'Hall capacity must be a number.',
                 'hall_capacity.*.min' => 'Hall capacity must be at least 1.',
-                'hall_gender.*.required' => 'Please select gender for each hall.',
             ]);
 
             if ($validator->fails()) {
@@ -2055,7 +2054,9 @@ class ManageExaminationController extends Controller
 
             // Rebuild halls: clear old, insert new, then allocate students
             DB::table('student_exam_halls')->where('examID', $examID)->delete();
-            DB::table('exam_hall_supervisors')->where('examID', $examID)->delete();            // Re-build and re-store exam halls (if provided)
+            DB::table('exam_hall_supervisors')->where('examID', $examID)->delete();
+
+            // Re-build and re-store exam halls (if provided)
             if ($request->has('edit_hall_name') && is_array($request->edit_hall_name) && count($request->edit_hall_name) > 0) {
                 // Remove old halls first
                 DB::table('exam_halls')->where('examID', $examID)->delete();

@@ -264,6 +264,10 @@
             padding: 0.4rem 0.2rem;
         }
     }
+    /* Ensure SweetAlert2 appears above all modals */
+    .swal2-container {
+        z-index: 2000 !important;
+    }
 </style>
 
 <!-- Bootstrap Icons -->
@@ -308,6 +312,30 @@
     }
 </style>
 
+@php
+    $perms = $teacherPermissions ?? collect();
+    $isAdmin = ($user_type ?? '') == 'Admin';
+    
+    // Hierarchy: If you have modify permissions, you inherently have view permissions
+    $canViewClasses = $isAdmin || $perms->intersect([
+        'view_all_class', 'classes_read_only', 'view_class_details',
+        'classes_create', 'classes_update', 'classes_delete',
+        'create_class', 'edit_class', 'delete_class'
+    ])->isNotEmpty();
+    
+    $canCreateClass = $isAdmin || $perms->intersect(['create_class', 'classes_create'])->isNotEmpty();
+    $canEditClass = $isAdmin || $perms->intersect(['edit_class', 'update_class', 'classes_update'])->isNotEmpty();
+    $canDeleteClass = $isAdmin || $perms->intersect(['delete_class', 'classes_delete'])->isNotEmpty();
+    $canActivateClass = $isAdmin || $perms->intersect(['activate_class', 'update_class', 'classes_update'])->isNotEmpty();
+    
+    $canCreateSubclass = $isAdmin || $perms->intersect(['create_subclass', 'classes_create'])->isNotEmpty();
+    $canViewStudents = $isAdmin || $perms->intersect(['view_students', 'student_read_only', 'student_create', 'student_update'])->isNotEmpty();
+    $canViewClassGrading = $isAdmin || $perms->intersect(['view_grading', 'classes_read_only', 'classes_update'])->isNotEmpty();
+    
+    $canViewCombies = $isAdmin || $perms->intersect(['view_combies', 'classes_read_only', 'classes_create', 'classes_update'])->isNotEmpty();
+    $canCreateCombie = $isAdmin || $perms->intersect(['create_combie', 'classes_create'])->isNotEmpty();
+@endphp
+
 <div class="container-fluid mt-4">
     <!-- Success/Error Messages -->
     @if(session('success'))
@@ -350,34 +378,34 @@
                     <i class="bi bi-building"></i> <span class="d-none d-sm-inline">Manage Classes & Subclasses</span><span class="d-sm-none">Classes</span>
                 </h4>
                 <div class="d-flex flex-row flex-wrap gap-2 page-header-buttons">
-                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('view_all_class'))
+                    @if($canViewClasses)
                     <button class="btn btn-light text-primary-custom fw-bold btn-sm page-header-action-btn" id="viewClassesBtn" type="button">
                         <i class="bi bi-grid-3x3-gap"></i> <span class="d-none d-md-inline">View Classes</span><span class="d-md-none">Classes</span>
                     </button>
                     @endif
-                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('view_students'))
+                    @if($canViewClassGrading)
                     <button class="btn btn-light text-primary-custom fw-bold btn-sm page-header-action-btn" id="viewClassGradingBtn" type="button">
                         <i class="bi bi-award"></i> <span class="d-none d-md-inline">View Class Grading</span><span class="d-md-none">Grading</span>
                     </button>
                     @endif
-                    @if($school_details->school_type == 'Secondary')
-                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('view_combies'))
+                    @if(isset($school_details) && $school_details->school_type == 'Secondary')
+                    @if($canViewCombies)
                     <button class="btn btn-light text-primary-custom fw-bold btn-sm page-header-action-btn" id="viewCombiesBtn" type="button" data-toggle="modal" data-target="#viewCombiesModal">
                         <i class="bi bi-eye"></i> <span class="d-none d-md-inline">View Combies</span><span class="d-md-none">Combies</span>
                     </button>
                     @endif
-                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('create_combie'))
+                    @if($canCreateCombie)
                     <button class="btn btn-light text-primary-custom fw-bold btn-sm page-header-action-btn" id="addCombieBtn" type="button" data-toggle="modal" data-target="#addCombieModal">
                         <i class="bi bi-layers"></i> <span class="d-none d-md-inline">Add Combies</span><span class="d-md-none">Add</span>
                     </button>
                     @endif
                     @endif
-                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('create_subclass'))
+                    @if($canCreateSubclass)
                     <button class="btn btn-light text-primary-custom fw-bold btn-sm page-header-action-btn" id="addSubclassBtn" type="button" data-toggle="modal" data-target="#addSubclassModal">
                         <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">Add Subclass</span><span class="d-md-none">Subclass</span>
                     </button>
                     @endif
-                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('create_class'))
+                    @if($canCreateClass)
                     <button class="btn btn-light text-primary-custom fw-bold btn-sm page-header-action-btn" id="addClassBtn" type="button" data-toggle="modal" data-target="#addClassModal">
                         <i class="bi bi-plus-square"></i> <span class="d-none d-md-inline">Add Class</span><span class="d-md-none">Class</span>
                     </button>
@@ -460,14 +488,14 @@
 
                                 <!-- Action Buttons -->
                                 <div class="d-flex flex-row gap-1 action-buttons-group">
-                                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('edit_class'))
+                                    @if($canEditClass)
                                     <button class="btn btn-sm btn-warning text-dark edit-class-btn action-btn-icon"
                                             data-class-id="{{ $class['classID'] }}"
                                             title="Edit Class">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
                                     @endif
-                                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('activate_class'))
+                                    @if($canActivateClass)
                                     <button class="btn btn-sm {{ ($class['status'] ?? 'Inactive') == 'Active' ? 'btn-secondary' : 'btn-success' }} text-white activate-class-btn action-btn-icon"
                                             data-class-id="{{ $class['classID'] }}"
                                             data-class-name="{{ $class['class_name'] }}"
@@ -476,7 +504,7 @@
                                         <i class="bi bi-{{ ($class['status'] ?? 'Inactive') == 'Active' ? 'x-circle' : 'check-circle' }}-fill"></i>
                                     </button>
                                     @endif
-                                    @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('delete_class'))
+                                    @if($canDeleteClass)
                                     <button class="btn btn-sm btn-danger text-white delete-class-btn action-btn-icon"
                                             data-class-id="{{ $class['classID'] }}"
                                             data-class-name="{{ $class['class_name'] }}"
@@ -1969,11 +1997,28 @@
         var existingClassNames = @json($existingClassNames ?? []);
 
         // Helper function to check permission
+        // Helper function to check permission with hierarchy support
         function hasPermission(permissionName) {
             if (userType === 'Admin') {
                 return true;
             }
-            return userPermissions.includes(permissionName);
+            
+            // Exact match
+            if (userPermissions.includes(permissionName)) {
+                return true;
+            }
+            
+            // Hierarchy for Classes: any modify permission grants view
+            if (permissionName === 'view_classes' || permissionName === 'manage_classes') {
+                const classModifyPerms = [
+                    'classes_create', 'classes_update', 'classes_delete', 
+                    'create_class', 'edit_class', 'delete_class',
+                    'manage_classes', 'update_class'
+                ];
+                return userPermissions.some(p => classModifyPerms.includes(p));
+            }
+            
+            return false;
         }
 
         // Check if forms exist

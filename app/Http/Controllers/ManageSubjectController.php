@@ -51,10 +51,28 @@ class ManageSubjectController extends Controller
             
             $roleIds = $roles->pluck('roleID')->toArray();
             
-            // Check if any role has this permission
+            // Define permission aliases for backward compatibility and consistency
+            $aliases = [
+                'create_subject' => ['create_subject', 'subject_create'],
+                'edit_subject' => ['edit_subject', 'update_subject', 'subject_update'],
+                'delete_subject' => ['delete_subject', 'subject_delete'],
+                'activate_subject' => ['activate_subject', 'update_subject', 'subject_update'],
+                'view_class_subjects' => ['view_class_subjects', 'subject_read_only', 'subject_create', 'subject_update', 'subject_delete', 'create_class_subject', 'update_class_subject', 'delete_class_subject', 'create_subject', 'edit_subject', 'update_subject', 'delete_subject'],
+                'create_class_subject' => ['create_class_subject', 'subject_create'],
+                'update_class_subject' => ['update_class_subject', 'subject_update'],
+                'delete_class_subject' => ['delete_class_subject', 'subject_delete'],
+                'approve_created_subject' => ['approve_created_subject', 'subject_update'],
+            ];
+
+            $checkPermissions = [$permissionName];
+            if (isset($aliases[$permissionName])) {
+                $checkPermissions = array_unique(array_merge($checkPermissions, $aliases[$permissionName]));
+            }
+
+            // Check if any role has any of these permissions
             $hasPermission = DB::table('permissions')
                 ->whereIn('role_id', $roleIds)
-                ->where('name', $permissionName)
+                ->whereIn('name', $checkPermissions)
                 ->exists();
             
             return $hasPermission;

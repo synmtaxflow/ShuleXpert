@@ -132,9 +132,19 @@
             </div>
         </div>
 
+        {{-- Remember Me --}}
+        <div class="col-md-12">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="remember_me" id="remember_me">
+                <label class="form-check-label" for="remember_me">
+                    Remember Me
+                </label>
+            </div>
+        </div>
 
+        <div class="col-md-12 d-grid gap-2">
             <button type="submit" class="btn btn-brand">
-                <i class="bi bi-save me-1"></i>Login
+                <i class="bi bi-box-arrow-in-right me-1"></i>Login
             </button>
         </div>
     </div>
@@ -212,6 +222,7 @@
                 phone: v => !v || /^[+0-9\s-]{7,20}$/.test(v),
                 established_year: v => !v || (+v >= 1900 && +v <= new Date().getFullYear()),
                 agree: v => !!v,
+                remember_me: v => true,
             };
 
             const setValidity = (el, valid) => {

@@ -83,26 +83,40 @@
     #viewSubclassSubjectsModal .modal-backdrop {
         z-index: 1069 !important;
     }
-    /* Scrollbar for Add Class Subject Modal */
+    /* Scrollbar for View Class/Subclass Subjects Modals */
+    #viewClassSubjectsModal .modal-body,
+    #viewSubclassSubjectsModal .modal-body,
     #addClassSubjectModal .modal-body {
-        overflow-y: scroll !important;
-        max-height: 70vh;
+        overflow-y: auto !important;
+        max-height: 80vh;
         scrollbar-width: thin;
         -ms-overflow-style: scrollbar;
     }
+    #viewClassSubjectsModal .modal-body::-webkit-scrollbar,
+    #viewSubclassSubjectsModal .modal-body::-webkit-scrollbar,
     #addClassSubjectModal .modal-body::-webkit-scrollbar {
-        width: 12px;
+        width: 8px;
         display: block !important;
     }
+    #viewClassSubjectsModal .modal-body::-webkit-scrollbar-track,
+    #viewSubclassSubjectsModal .modal-body::-webkit-scrollbar-track,
     #addClassSubjectModal .modal-body::-webkit-scrollbar-track {
         background: #f1f1f1;
     }
+    #viewClassSubjectsModal .modal-body::-webkit-scrollbar-thumb,
+    #viewSubclassSubjectsModal .modal-body::-webkit-scrollbar-thumb,
     #addClassSubjectModal .modal-body::-webkit-scrollbar-thumb {
-        background: #888;
-        border-radius: 6px;
+        background: #940000;
+        border-radius: 4px;
     }
+    #viewClassSubjectsModal .modal-body::-webkit-scrollbar-thumb:hover,
+    #viewSubclassSubjectsModal .modal-body::-webkit-scrollbar-thumb:hover,
     #addClassSubjectModal .modal-body::-webkit-scrollbar-thumb:hover {
-        background: #555;
+        background: #b30000;
+    }
+    /* Ensure SweetAlert2 appears above all modals */
+    .swal2-container {
+        z-index: 2000 !important;
     }
 </style>
 
@@ -137,18 +151,36 @@
                         <h4 class="mb-0 w-100 text-center text-md-start">
                             <i class="bi bi-book"></i> Manage Subjects
                         </h4>
+                        @php
+                            $perms = $teacherPermissions ?? collect();
+                            $isAdmin = ($user_type ?? '') == 'Admin';
+                            
+                            // Hierarchy: If you have modify permissions, you inherently have view permissions
+                            $canViewClassSubjects = $isAdmin || $perms->intersect([
+                                'view_class_subjects', 'subject_read_only', 
+                                'subject_create', 'subject_update', 'subject_delete',
+                                'create_class_subject', 'update_class_subject', 'delete_class_subject',
+                                'create_subject', 'edit_subject', 'update_subject', 'delete_subject'
+                            ])->isNotEmpty();
+
+                            $canCreateClassSubject = $isAdmin || $perms->contains('create_class_subject') || $perms->contains('subject_create');
+                            $canCreateSubject = $isAdmin || $perms->contains('create_subject') || $perms->contains('subject_create');
+                            $canEditSubject = $isAdmin || $perms->contains('edit_subject') || $perms->contains('update_subject') || $perms->contains('subject_update');
+                            $canDeleteSubject = $isAdmin || $perms->contains('delete_subject') || $perms->contains('subject_delete');
+                            $canActivateSubject = $isAdmin || $perms->contains('activate_subject') || $perms->contains('subject_update');
+                        @endphp
                         <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-end w-100">
-                            @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('view_class_subjects'))
+                            @if($canViewClassSubjects)
                             <button class="btn btn-light text-primary-custom fw-bold flex-fill" id="viewClassSubjectsBtn" type="button">
                                 <i class="bi bi-eye"></i> View Class Subjects
                             </button>
                             @endif
-                            @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('create_class_subject'))
+                            @if($canCreateClassSubject)
                             <button class="btn btn-light text-primary-custom fw-bold flex-fill" id="addClassSubjectBtn" type="button" data-toggle="modal" data-target="#addClassSubjectModal">
                                 <i class="bi bi-plus-circle"></i> Add Class Subject
                             </button>
                             @endif
-                            @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('create_subject'))
+                            @if($canCreateSubject)
                             <button class="btn btn-light text-primary-custom fw-bold flex-fill" id="addSchoolSubjectBtn" type="button" data-toggle="modal" data-target="#addSchoolSubjectModal">
                                 <i class="bi bi-plus-square"></i> Add School Subject
                             </button>
@@ -198,9 +230,10 @@
                                                     </span>
                                                 </div>
                                             </div>
-                                            @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('activate_subject'))
+                                            
+                                            @if($canEditSubject || $canDeleteSubject)
                                             <div class="mt-3 d-flex flex-column flex-sm-row gap-2">
-                                                @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('edit_subject'))
+                                                @if($canEditSubject)
                                                 <button class="btn btn-sm btn-warning text-dark edit-school-subject-btn flex-fill w-100"
                                                         data-subject-id="{{ $subject->subjectID }}"
                                                         data-subject-name="{{ $subject->subject_name }}"
@@ -209,7 +242,7 @@
                                                     <i class="bi bi-pencil-square"></i> Edit
                                                 </button>
                                                 @endif
-                                                @if(($user_type ?? '') == 'Admin' || ($teacherPermissions ?? collect())->contains('delete_subject'))
+                                                @if($canDeleteSubject)
                                                 <button class="btn btn-sm btn-danger delete-school-subject-btn flex-fill w-100"
                                                         data-subject-id="{{ $subject->subjectID }}"
                                                         data-subject-name="{{ $subject->subject_name }}"
@@ -218,6 +251,9 @@
                                                 </button>
                                                 @endif
                                             </div>
+                                            @endif
+
+                                            @if($canActivateSubject)
                                             <div class="mt-2 text-center">
                                                 <button class="btn btn-sm {{ $subject->status == 'Active' ? 'btn-secondary' : 'btn-success' }} text-white activate-subject-btn w-100"
                                                         data-subject-id="{{ $subject->subjectID }}"
@@ -723,12 +759,49 @@
             var userPermissions = @json($teacherPermissions ?? collect());
             var userType = @json($user_type ?? '');
 
-            // Helper function to check permission
+            // Helper function to check permission with hierarchy support
             function hasPermission(permissionName) {
                 if (userType === 'Admin') {
                     return true;
                 }
-                return userPermissions.includes(permissionName);
+                
+                // Exact match check
+                if (userPermissions.includes(permissionName)) {
+                    return true;
+                }
+                
+                // --- SUBJECT MANAGEMENT HIERARCHY ---
+                
+                // 1. Hierarchy for View Class Subjects: any modify or read_only permission grants view
+                if (permissionName === 'view_class_subjects' || permissionName === 'view_subject' || permissionName === 'subject_read_only') {
+                    const viewPerms = [
+                        'subject_create', 'subject_update', 'subject_delete', 'subject_read_only',
+                        'create_subject', 'edit_subject', 'update_subject', 'delete_subject',
+                        'create_class_subject', 'update_class_subject', 'delete_class_subject',
+                        'manage_class_subject'
+                    ];
+                    return userPermissions.some(p => viewPerms.includes(p));
+                }
+                
+                // 2. Hierarchy for Create: subject_create or any broad modify permission
+                if (permissionName === 'create_class_subject' || permissionName === 'create_subject' || permissionName === 'subject_create') {
+                    const createPerms = ['subject_create', 'subject_update', 'subject_delete'];
+                    return userPermissions.some(p => createPerms.includes(p));
+                }
+                
+                // 3. Hierarchy for Update: subject_update or higher delete permission
+                if (permissionName === 'update_class_subject' || permissionName === 'edit_subject' || permissionName === 'update_subject' || permissionName === 'subject_update' || permissionName === 'activate_class_subject') {
+                    const updatePerms = ['subject_update', 'subject_delete'];
+                    return userPermissions.some(p => updatePerms.includes(p));
+                }
+                
+                // 4. Hierarchy for Delete: subject_delete
+                if (permissionName === 'delete_class_subject' || permissionName === 'delete_subject' || permissionName === 'subject_delete') {
+                    const deletePerms = ['subject_delete'];
+                    return userPermissions.some(p => deletePerms.includes(p));
+                }
+                
+                return false;
             }
 
         // Add Another School Subject Row
@@ -892,6 +965,7 @@
                     console.log('Success Response:', response);
 
                     if (response && response.success) {
+                        $('#addSchoolSubjectModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Success!',
@@ -900,10 +974,9 @@
                             timer: 2000,
                             showConfirmButton: true
                         }).then(function() {
-                            $('#addSchoolSubjectModal').modal('hide');
                             setTimeout(function() {
                                 location.reload();
-                            }, 100);
+                            }, 1000);
                         });
                     } else {
                         Swal.fire({
@@ -1014,6 +1087,7 @@
                 },
                 success: function(response) {
                     if (response && response.success) {
+                        $('#editSchoolSubjectModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Success!',
@@ -1022,7 +1096,6 @@
                             timer: 2000,
                             showConfirmButton: true
                         }).then(function() {
-                            $('#editSchoolSubjectModal').modal('hide');
                             setTimeout(function() {
                                 location.reload();
                             }, 100);
@@ -1497,6 +1570,7 @@
                     console.log('Success Response:', response);
 
                     if (response && response.success) {
+                        $('#addClassSubjectModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Success!',
@@ -1505,10 +1579,7 @@
                             timer: 2000,
                             showConfirmButton: true
                         }).then(function() {
-                            $('#addClassSubjectModal').modal('hide');
-                            setTimeout(function() {
-                                location.reload();
-                            }, 100);
+                            location.reload();
                         });
                     } else {
                         Swal.fire({
@@ -2201,6 +2272,7 @@
                     $btn.prop('disabled', false).html(originalText);
 
                     if (response && response.success) {
+                        $('#subjectElectionModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Success!',
@@ -2208,7 +2280,6 @@
                             confirmButtonColor: '#940000',
                             timer: 2000
                         }).then(function() {
-                            $('#subjectElectionModal').modal('hide');
                             // Refresh view class subjects modal if open
                             if ($('#viewClassSubjectsModal').hasClass('show')) {
                                 $('#viewClassSubjectsBtn').click();
@@ -2419,6 +2490,7 @@
                     $submitBtn.prop('disabled', false).html(originalText);
 
                     if (response && response.success) {
+                        $('#editClassSubjectModal').modal('hide');
                         Swal.fire({
                             icon: 'success',
                             title: 'Success!',
@@ -2426,7 +2498,6 @@
                             confirmButtonColor: '#940000',
                             timer: 2000
                         }).then(function() {
-                            $('#editClassSubjectModal').modal('hide');
                             // Refresh the view class subjects modal if it's open
                             if ($('#viewClassSubjectsModal').hasClass('show')) {
                             $('#viewClassSubjectsBtn').click();

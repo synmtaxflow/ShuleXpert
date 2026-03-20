@@ -741,10 +741,26 @@
                                 if ($teacherPermissionsByCategory->has('examination')) {
                                     $hasExaminationPermission = $teacherPermissionsByCategory->get('examination')->count() > 0;
                                 }
+                                
+                                // Fallback: Check raw permissions for any examination keywords
+                                if (!$hasExaminationPermission && isset($teacherPermissions)) {
+                                    $hasExaminationPermission = $teacherPermissions->contains(function($p) {
+                                        $p = strtolower($p);
+                                        return strpos($p, 'exam') !== false || strpos($p, 'paper') !== false;
+                                    });
+                                }
 
                                 // Check subject category (note: 'subject' not 'subjects')
                                 if ($teacherPermissionsByCategory->has('subject')) {
                                     $hasSubjectPermission = $teacherPermissionsByCategory->get('subject')->count() > 0;
+                                }
+
+                                // Fallback: Check raw permissions for any subject keywords
+                                if (!$hasSubjectPermission && isset($teacherPermissions)) {
+                                    $hasSubjectPermission = $teacherPermissions->contains(function($p) {
+                                        $p = strtolower($p);
+                                        return strpos($p, 'subject') !== false || strpos($p, 'grading') !== false;
+                                    });
                                 }
 
                                 // Check classes category
@@ -752,9 +768,24 @@
                                     $hasClassesPermission = $teacherPermissionsByCategory->get('classes')->count() > 0;
                                 }
 
+                                // Fallback: Check raw permissions for any class keywords
+                                if (!$hasClassesPermission && isset($teacherPermissions)) {
+                                    $hasClassesPermission = $teacherPermissions->contains(function($p) {
+                                        $p = strtolower($p);
+                                        return strpos($p, 'class') !== false || strpos($p, 'combie') !== false;
+                                    });
+                                }
+
                                 // Check result category
                                 if ($teacherPermissionsByCategory->has('result')) {
                                     $hasResultPermission = $teacherPermissionsByCategory->get('result')->count() > 0;
+                                }
+
+                                // Fallback
+                                if (!$hasResultPermission && isset($teacherPermissions)) {
+                                    $hasResultPermission = $teacherPermissions->contains(function($p) {
+                                        return strpos(strtolower($p), 'result') !== false;
+                                    });
                                 }
 
                                 // Check attendance category
@@ -762,9 +793,23 @@
                                     $hasAttendancePermission = $teacherPermissionsByCategory->get('attendance')->count() > 0;
                                 }
 
+                                // Fallback
+                                if (!$hasAttendancePermission && isset($teacherPermissions)) {
+                                    $hasAttendancePermission = $teacherPermissions->contains(function($p) {
+                                        return strpos(strtolower($p), 'attendance') !== false;
+                                    });
+                                }
+
                                 // Check student category
                                 if ($teacherPermissionsByCategory->has('student')) {
                                     $hasStudentPermission = $teacherPermissionsByCategory->get('student')->count() > 0;
+                                }
+
+                                // Fallback
+                                if (!$hasStudentPermission && isset($teacherPermissions)) {
+                                    $hasStudentPermission = $teacherPermissions->contains(function($p) {
+                                        return strpos(strtolower($p), 'student') !== false;
+                                    });
                                 }
 
                                 // Check parent category
@@ -772,9 +817,23 @@
                                     $hasParentPermission = $teacherPermissionsByCategory->get('parent')->count() > 0;
                                 }
 
+                                // Fallback
+                                if (!$hasParentPermission && isset($teacherPermissions)) {
+                                    $hasParentPermission = $teacherPermissions->contains(function($p) {
+                                        return strpos(strtolower($p), 'parent') !== false;
+                                    });
+                                }
+
                                 // Check timetable category
                                 if ($teacherPermissionsByCategory->has('timetable')) {
                                     $hasTimetablePermission = $teacherPermissionsByCategory->get('timetable')->count() > 0;
+                                }
+
+                                // Fallback
+                                if (!$hasTimetablePermission && isset($teacherPermissions)) {
+                                    $hasTimetablePermission = $teacherPermissions->contains(function($p) {
+                                        return strpos(strtolower($p), 'timetable') !== false;
+                                    });
                                 }
 
                                 // Check teacher category
@@ -782,9 +841,23 @@
                                     $hasTeacherPermission = $teacherPermissionsByCategory->get('teacher')->count() > 0;
                                 }
 
+                                // Fallback
+                                if (!$hasTeacherPermission && isset($teacherPermissions)) {
+                                    $hasTeacherPermission = $teacherPermissions->contains(function($p) {
+                                        return strpos(strtolower($p), 'teacher') !== false;
+                                    });
+                                }
+
                                 // Check fees category
                                 if ($teacherPermissionsByCategory->has('fees')) {
                                     $hasFeesPermission = $teacherPermissionsByCategory->get('fees')->count() > 0;
+                                }
+
+                                // Fallback
+                                if (!$hasFeesPermission && isset($teacherPermissions)) {
+                                    $hasFeesPermission = $teacherPermissions->contains(function($p) {
+                                        return strpos(strtolower($p), 'fee') !== false || strpos(strtolower($p), 'payment') !== false;
+                                    });
                                 }
 
                                 // Check accommodation category
@@ -1552,7 +1625,7 @@ setTimeout(function() {
 
 <script>
 (function() {
-    const IDLE_MS = 60 * 1000;
+    const IDLE_MS = 270 * 1000;
     const WARN_SECONDS = 30;
     const LOGOUT_URL = '{{ route('logout') }}';
     const CSRF_TOKEN = '{{ csrf_token() }}';

@@ -54,10 +54,30 @@ class ManageClassessController extends Controller
 
             $roleIds = $roles->pluck('roleID')->toArray();
 
-            // Check if any role has this permission
+            // Define permission aliases and hierarchy
+            $aliases = [
+                'create_class' => ['create_class', 'classes_create'],
+                'edit_class' => ['edit_class', 'update_class', 'classes_update'],
+                'delete_class' => ['delete_class', 'classes_delete'],
+                'classes_read_only' => [
+                    'classes_read_only', 'classes_create', 'classes_update', 'classes_delete',
+                    'create_class', 'edit_class', 'delete_class'
+                ],
+                'view_class_details' => [
+                    'view_class_details', 'classes_read_only', 'classes_create', 'classes_update', 'classes_delete',
+                    'create_class', 'edit_class', 'delete_class'
+                ]
+            ];
+
+            $checkPermissions = [$permissionName];
+            if (isset($aliases[$permissionName])) {
+                $checkPermissions = array_unique(array_merge($checkPermissions, $aliases[$permissionName]));
+            }
+
+            // Check if any role has any of these permissions
             $hasPermission = DB::table('permissions')
                 ->whereIn('role_id', $roleIds)
-                ->where('name', $permissionName)
+                ->whereIn('name', $checkPermissions)
                 ->exists();
 
             return $hasPermission;
