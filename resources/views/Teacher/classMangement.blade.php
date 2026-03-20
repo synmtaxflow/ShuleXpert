@@ -54,6 +54,112 @@
             opacity: 0.5;
         }
     }
+    
+    /* Scrollbar for Modals */
+    #teacherSubjectElectionModal .modal-body,
+    #subjectManagementModal .modal-body {
+        overflow-y: auto !important;
+        max-height: 80vh;
+        scrollbar-width: thin;
+    }
+    #teacherSubjectElectionModal .modal-body::-webkit-scrollbar,
+    #subjectManagementModal .modal-body::-webkit-scrollbar {
+        width: 8px;
+        display: block !important;
+    }
+    #teacherSubjectElectionModal .modal-body::-webkit-scrollbar-track,
+    #subjectManagementModal .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    #teacherSubjectElectionModal .modal-body::-webkit-scrollbar-thumb,
+    #subjectManagementModal .modal-body::-webkit-scrollbar-thumb {
+        background: #940000;
+        border-radius: 4px;
+    }
+    
+    /* Responsive Table to Cards on Mobile */
+    @media (max-width: 767.98px) {
+        .mobile-card-table thead {
+            display: none !important;
+        }
+        .mobile-card-table tbody tr {
+            display: block;
+            background: #ffffff;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            position: relative;
+        }
+        .mobile-card-table tbody td {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8f9fa;
+        }
+        .mobile-card-table tbody td:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        /* Make the TD act like a row with label */
+        .mobile-card-table tbody td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: #6c757d;
+            margin-right: 15px;
+            flex-shrink: 0;
+            display: block;
+            min-width: 80px;
+        }
+        /* Full width for select dropdowns on mobile */
+        .mobile-card-table tbody td select.attendance-status, 
+        .mobile-card-table tbody td input[type="text"] {
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        /* Specific layout for the photo and name to look like a header */
+        .mobile-card-table tbody td.student-info-col {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            gap: 15px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 12px;
+            margin-bottom: 8px;
+        }
+        .mobile-card-table tbody td.student-info-col::before {
+            display: none;
+        }
+        .mobile-card-table tbody td.action-col {
+            display: block;
+            text-align: left;
+        }
+        .mobile-card-table tbody td.action-col::before {
+            margin-bottom: 8px;
+        }
+        .mobile-card-table .dataTables_wrapper .row {
+            margin-left: 0;
+            margin-right: 0;
+        }
+        /* Hide stuff on mobile to put them inside accordion */
+        .mobile-card-table tbody td.mobile-hide {
+            display: none;
+        }
+        .mobile-card-table tbody td.mobile-show {
+            display: block;
+        }
+        .mobile-card-table tbody td.mobile-action-bar {
+            padding: 0;
+            border: none;
+        }
+    }
+    @media (min-width: 768px) {
+        .desktop-hide {
+            display: none !important;
+        }
+    }
 </style>
 
 <!-- Bootstrap Icons -->
@@ -1172,8 +1278,8 @@
                                 <div class="col-md-6">
                                     <div class="form-group">
                                         <label for="attendance_date">Date <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control" id="attendance_date" name="attendance_date" required value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}" min="{{ date('Y-m-d') }}" readonly style="background-color: #e9ecef; cursor: not-allowed;">
-                                        <small class="form-text text-muted"><i class="bi bi-info-circle"></i> Only today's date ({{ date('Y-m-d') }}) is allowed for attendance collection</small>
+                                        <input type="date" class="form-control" id="attendance_date" name="attendance_date" required value="{{ date('Y-m-d') }}" max="{{ date('Y-m-d') }}">
+                                        <small class="form-text text-muted"><i class="bi bi-info-circle"></i> You can select today or any past date</small>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
@@ -1191,16 +1297,16 @@
                                 </div>
                             </div>
 
-                            <div class="table-responsive">
-                                <table class="table table-striped table-hover">
+                            <div class="table-responsive" style="overflow-x: hidden;">
+                                <table class="table table-striped table-hover w-100 mobile-card-table" id="attendanceCollectionTable">
                                     <thead class="bg-primary-custom text-white">
                                         <tr>
                                             <th>#</th>
-                                            <th>Photo</th>
-                                            <th>Admission No.</th>
-                                            <th>Student Name</th>
-                                            <th>Status</th>
-                                            <th>Remark</th>
+                                            <th>Student</th>
+                                            <th class="mobile-hide">Admission No.</th>
+                                            <th class="mobile-hide">Status</th>
+                                            <th class="mobile-hide">Remark</th>
+                                            <th class="desktop-hide">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody id="attendanceStudentsList">
@@ -6435,17 +6541,26 @@
                 return;
             }
 
-            // Set date to today and lock it
+            // Set max date to today
             var today = new Date().toISOString().split('T')[0];
-            $('#attendance_date').val(today).attr('max', today).attr('min', today);
+            $('#attendance_date').attr('max', today);
         });
 
-        // Prevent date change - always keep it as today
+        // Reload students when date changes
         $('#attendance_date').on('change', function() {
+            var selectedDate = $(this).val();
             var today = new Date().toISOString().split('T')[0];
-            if ($(this).val() !== today) {
+            if (selectedDate > today) {
                 $(this).val(today);
-                Swal.fire('Info', 'Only today\'s date is allowed for attendance collection', 'info');
+                Swal.fire('Error', 'Future dates are not allowed for attendance', 'error');
+            }
+            if (typeof isCoordinatorView !== 'undefined' && isCoordinatorView) {
+                var subclassSelector = $('#attendanceSubclassSelect').val();
+                if(subclassSelector) {
+                    loadStudentsForAttendance(subclassSelector);
+                }
+            } else {
+                loadStudentsForAttendance();
             }
         });
 
@@ -6519,6 +6634,9 @@
                 },
                 dataType: 'json',
                 success: function(response) {
+                    if ($.fn.DataTable && $.fn.DataTable.isDataTable('#attendanceCollectionTable')) {
+                        $('#attendanceCollectionTable').DataTable().destroy();
+                    }
                     var tbody = $('#attendanceStudentsList');
                     tbody.empty();
 
@@ -6550,31 +6668,63 @@
 
                             var status = student.attendance_status || 'Present';
                             var remark = student.attendance_remark || '';
+                            var studentName = (student.first_name || '') + ' ' + (student.middle_name || '') + ' ' + (student.last_name || '');
+                            var admissionNo = (student.admission_number || 'N/A');
 
                             var row = '<tr>' +
-                                '<td>' + (studentIndex + 1) + '</td>' +
-                                '<td>' + photoHtml + '</td>' +
-                                '<td><strong>' + (student.admission_number || 'N/A') + '</strong></td>' +
-                                '<td>' + (student.first_name || '') + ' ' + (student.middle_name || '') + ' ' + (student.last_name || '') + '</td>' +
-                                '<td>' +
-                                    '<select class="form-control form-control-sm attendance-status" name="attendance[' + student.studentID + '][status]" data-student-id="' + student.studentID + '">' +
+                                '<td data-label="#" class="mobile-hide">' + (studentIndex + 1) + '</td>' +
+                                '<td class="student-info-col" data-label="Student">' +
+                                    '<div class="d-flex align-items-center gap-2">' +
+                                        photoHtml + 
+                                        '<div><strong>' + studentName + '</strong></div>' +
+                                    '</div>' +
+                                '</td>' +
+                                '<td class="mobile-hide toggle-row-' + student.studentID + '" data-label="Adm No.">' + admissionNo + '</td>' +
+                                '<td class="action-col" data-label="Status">' +
+                                    '<select class="form-control form-control-sm attendance-status w-100" name="attendance[' + student.studentID + '][status]" data-student-id="' + student.studentID + '">' +
                                         '<option value="Present"' + (status === 'Present' ? ' selected' : '') + '>Present</option>' +
                                         '<option value="Absent"' + (status === 'Absent' ? ' selected' : '') + '>Absent</option>' +
                                         '<option value="Sick"' + (status === 'Sick' ? ' selected' : '') + '>Sick</option>' +
                                         '<option value="Excused"' + (status === 'Excused' ? ' selected' : '') + '>Permission</option>' +
                                     '</select>' +
                                 '</td>' +
-                                '<td>' +
-                                    '<input type="text" class="form-control form-control-sm" name="attendance[' + student.studentID + '][remark]" placeholder="Optional remark" value="' + remark + '">' +
+                                '<td class="mobile-hide toggle-row-' + student.studentID + '" data-label="Remark">' +
+                                    '<input type="text" class="form-control form-control-sm w-100" name="attendance[' + student.studentID + '][remark]" placeholder="Optional remark" value="' + remark + '">' +
                                     '<input type="hidden" name="attendance[' + student.studentID + '][studentID]" value="' + student.studentID + '">' +
+                                '</td>' +
+                                '<td class="desktop-hide mobile-action-bar">' +
+                                    '<button class="btn btn-sm btn-outline-secondary w-100 mt-2 toggler-btn" type="button" data-target=".toggle-row-' + student.studentID + '"><i class="bi bi-chevron-down"></i> More Info</button>' +
                                 '</td>' +
                             '</tr>';
                             tbody.append(row);
                             studentIndex++;
                         });
 
+                        // Add JS event for the mobile toggle button
+                        $('.toggler-btn').off('click').on('click', function() {
+                            var target = $(this).data('target');
+                            $(target).toggleClass('mobile-hide').toggleClass('mobile-show');
+                            var icon = $(this).find('i');
+                            if (icon.hasClass('bi-chevron-down')) {
+                                icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+                            } else {
+                                icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+                            }
+                        });
+
                         if (studentIndex === 0) {
                             tbody.append('<tr><td colspan="6" class="text-center text-muted">No active students found</td></tr>');
+                        } else {
+                            if ($.fn.DataTable) {
+                                $('#attendanceCollectionTable').DataTable({
+                                    "pageLength": 25,
+                                    "order": [[3, "asc"]],
+                                    "columnDefs": [
+                                        { "orderable": false, "targets": [1, 4, 5] },
+                                        { "searchable": false, "targets": [1, 4, 5] }
+                                    ]
+                                });
+                            }
                         }
                     } else {
                         tbody.append('<tr><td colspan="6" class="text-center text-muted">No active students found</td></tr>');
@@ -6597,12 +6747,22 @@
 
         // Mark All Present
         $('#markAllPresent').on('click', function() {
-            $('.attendance-status').val('Present');
+            if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#attendanceCollectionTable')) {
+                var table = $('#attendanceCollectionTable').DataTable();
+                table.$('.attendance-status').val('Present');
+            } else {
+                $('.attendance-status').val('Present');
+            }
         });
 
         // Mark All Absent
         $('#markAllAbsent').on('click', function() {
-            $('.attendance-status').val('Absent');
+            if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#attendanceCollectionTable')) {
+                var table = $('#attendanceCollectionTable').DataTable();
+                table.$('.attendance-status').val('Absent');
+            } else {
+                $('.attendance-status').val('Absent');
+            }
         });
 
         // Collect Attendance Form Submit
@@ -6618,7 +6778,14 @@
                 }
             }
 
+            // Build form data combining normal inputs and DataTable hidden rows to ensure full serialization
             var formData = $(this).serialize();
+            if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#attendanceCollectionTable')) {
+                var table = $('#attendanceCollectionTable').DataTable();
+                var data = table.$('input,select,textarea').serialize();
+                var nonTableInputs = $(this).find(':input').not('#attendanceCollectionTable :input').serialize();
+                formData = nonTableInputs + (nonTableInputs && data ? '&' : '') + data;
+            }
             var submitBtn = $(this).find('button[type="submit"]');
             var originalText = submitBtn.html();
 

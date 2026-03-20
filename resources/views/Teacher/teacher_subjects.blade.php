@@ -67,6 +67,24 @@
         border-radius: 20px;
         font-weight: 600;
     }
+    
+    /* Scrollbar for Election Modal */
+    #subjectElectionModal .modal-body {
+        overflow-y: auto !important;
+        max-height: 80vh;
+        scrollbar-width: thin;
+    }
+    #subjectElectionModal .modal-body::-webkit-scrollbar {
+        width: 8px;
+        display: block !important;
+    }
+    #subjectElectionModal .modal-body::-webkit-scrollbar-track {
+        background: #f1f1f1;
+    }
+    #subjectElectionModal .modal-body::-webkit-scrollbar-thumb {
+        background: #940000;
+        border-radius: 4px;
+    }
 </style>
 
 <!-- Bootstrap Icons -->
@@ -226,6 +244,13 @@
                                             <i class="bi bi-plus-circle-fill action-icon add-results" onclick="addResults({{ $classSubject->class_subjectID }})"></i>
                                             <small class="d-block text-muted mt-1">Add Result</small>
                                         </div>
+                                        @if($classSubject->student_status === 'Optional')
+                                            <div class="text-center mb-2" title="Subject Election">
+                                                <i class="bi bi-person-check action-icon" style="color: #007bff;" 
+                                                   onclick="openElectionModal({{ $classSubject->class_subjectID }}, '{{ $classSubject->subject->subject_name }}', {{ $classSubject->subclassID ?? 0 }})"></i>
+                                                <small class="d-block text-muted mt-1">Election</small>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -238,6 +263,53 @@
                         </div>
                     </div>
                 @endif
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Subject Election Modal -->
+<div class="modal fade" id="subjectElectionModal" tabindex="-1" aria-labelledby="subjectElectionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-xl" style="max-width: 95%; width: 95%;">
+        <div class="modal-content">
+            <div class="modal-header bg-primary-custom text-white">
+                <h5 class="modal-title" id="subjectElectionModalLabel">
+                    <i class="bi bi-person-check"></i> <span id="electionSubjectTitle">Subject Election</span>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-light rounded border">
+                    <div class="small text-muted">
+                        <i class="bi bi-info-circle"></i> Use buttons to bulk select/deselect students for this subject.
+                    </div>
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-sm btn-outline-success" id="electionSelectAllBtn">
+                            <i class="bi bi-check-all"></i> Select All
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" id="electionDeselectAllBtn">
+                            <i class="bi bi-dash-circle"></i> Deselect All
+                        </button>
+                    </div>
+                </div>
+                <div id="electionStudentsContainer">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary-custom" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading students...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> Cancel
+                </button>
+                <button type="button" class="btn btn-primary-custom" id="saveElectionBtn">
+                    <i class="bi bi-save"></i> Save Election
+                </button>
             </div>
         </div>
     </div>
@@ -2292,6 +2364,242 @@ function generatePeriods(examID, classSubjectID, testType) {
         $weekSelect.trigger('change');
     }
 }
+
+// Function to open Election Modal
+function openElectionModal(classSubjectID, subjectName, subclassID) {
+    if (!subclassID || subclassID === 0) {
+        Swal.fire('Error', 'This subject is assigned to the entire class. Election is only supported for specific subclasses.', 'warning');
+        return;
+    }
+
+    jQuery('#electionSubjectTitle').text(subjectName + ' Election');
+    jQuery('#electionStudentsContainer').html(
+        '<div class="text-center py-4">' +
+        '<div class="spinner-border text-primary-custom" role="status">' +
+        '<span class="visually-hidden">Loading...</span>' +
+        '</div>' +
+        '<p class="mt-2">Loading students...</p>' +
+        '</div>'
+    );
+
+    jQuery('#saveElectionBtn').data('class-subject-id', classSubjectID);
+    jQuery('#saveElectionBtn').data('subclass-id', subclassID);
+
+    jQuery('#subjectElectionModal').modal('show');
+
+    // Load students
+    loadStudentsForElection(classSubjectID, subclassID);
+}
+
+function loadStudentsForElection(classSubjectID, subclassID) {
+    jQuery.ajax({
+        url: "{{ url('get_subclass_students') }}/" + subclassID,
+        type: "GET",
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.students && response.students.length > 0) {
+                // Fetch already elected
+                jQuery.ajax({
+                    url: "{{ url('get_subject_electors') }}/" + classSubjectID,
+                    type: "GET",
+                    dataType: 'json',
+                    success: function(electorsResponse) {
+                        var electedStudentIDs = [];
+                        if (electorsResponse.success && electorsResponse.electors) {
+                            electedStudentIDs = electorsResponse.electors.map(function(e) {
+                                return e.studentID;
+                            });
+                        }
+
+                        var html = '<div class="table-responsive">';
+                        html += '<table class="table table-hover table-bordered" id="electionStudentsTable">';
+                        html += '<thead class="bg-primary-custom text-white">';
+                        html += '<tr>';
+                        html += '<th>#</th>';
+                        html += '<th>Student Name</th>';
+                        html += '<th>Admission No</th>';
+                        html += '<th style="text-align: center;">Election</th>';
+                        html += '</tr>';
+                        html += '</thead>';
+                        html += '<tbody>';
+
+                        response.students.forEach(function(student, index) {
+                            var isElected = electedStudentIDs.includes(student.studentID);
+                            html += '<tr data-student-id="' + student.studentID + '">';
+                            html += '<td>' + (index + 1) + '</td>';
+                            html += '<td>' + student.first_name + ' ' + (student.middle_name ? student.middle_name + ' ' : '') + student.last_name + '</td>';
+                            html += '<td>' + (student.admission_number || 'N/A') + '</td>';
+                            html += '<td style="text-align: center;">';
+                            if (isElected) {
+                                html += '<button class="btn btn-sm btn-danger deselect-student-btn" ';
+                                html += 'data-student-id="' + student.studentID + '" ';
+                                html += 'data-class-subject-id="' + classSubjectID + '" ';
+                                html += 'data-student-name="' + student.first_name + ' ' + student.last_name + '">';
+                                html += '<i class="bi bi-x-circle"></i> Deselect';
+                                html += '</button>';
+                            } else {
+                                html += '<input type="checkbox" class="form-check-input election-checkbox" ';
+                                html += 'data-student-id="' + student.studentID + '" ';
+                                html += 'value="' + student.studentID + '">';
+                            }
+                            html += '</td>';
+                            html += '</tr>';
+                        });
+
+                        html += '</tbody></table></div>';
+                        jQuery('#electionStudentsContainer').html(html);
+
+                        if ($.fn.DataTable) {
+                            $('#electionStudentsTable').DataTable({
+                                "pageLength": 25,
+                                "order": [[1, "asc"]]
+                            });
+                        }
+                    },
+                    error: function() {
+                        jQuery('#electionStudentsContainer').html('<div class="alert alert-danger">Error fetching electors data.</div>');
+                    }
+                });
+            } else {
+                jQuery('#electionStudentsContainer').html('<div class="alert alert-info">No students found in this subclass.</div>');
+            }
+        },
+        error: function() {
+            jQuery('#electionStudentsContainer').html('<div class="alert alert-danger">Failed to load students.</div>');
+        }
+    });
+}
+
+// Select All Handler
+jQuery(document).on('click', '#electionSelectAllBtn', function() {
+    if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#electionStudentsTable')) {
+        var table = $('#electionStudentsTable').DataTable();
+        table.rows().every(function() {
+            var $row = $(this.node());
+            $row.find('.election-checkbox').prop('checked', true);
+        });
+    }
+    $('.election-checkbox').prop('checked', true);
+    
+    Swal.fire({
+        icon: 'success',
+        title: 'Selected All',
+        timer: 1000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false
+    });
+});
+
+// Deselect All Handler
+jQuery(document).on('click', '#electionDeselectAllBtn', function() {
+    if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#electionStudentsTable')) {
+        var table = $('#electionStudentsTable').DataTable();
+        table.rows().every(function() {
+            var $row = $(this.node());
+            $row.find('.election-checkbox').prop('checked', false);
+        });
+    }
+    $('.election-checkbox').prop('checked', false);
+    
+    Swal.fire({
+        icon: 'info',
+        title: 'Deselected All',
+        timer: 1000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false
+    });
+});
+
+// Save Election Handler
+jQuery(document).on('click', '#saveElectionBtn', function() {
+    var classSubjectID = jQuery(this).data('class-subject-id');
+    var subclassID = jQuery(this).data('subclass-id');
+    var selectedStudents = [];
+    
+    if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#electionStudentsTable')) {
+        var table = $('#electionStudentsTable').DataTable();
+        table.rows().every(function() {
+            var $row = $(this.node());
+            var $checkbox = $row.find('.election-checkbox');
+            if ($checkbox.is(':checked') && $row.find('.deselect-student-btn').length === 0) {
+                selectedStudents.push($checkbox.val());
+            }
+        });
+    } else {
+        jQuery('.election-checkbox:checked').each(function() {
+            var $row = jQuery(this).closest('tr');
+            if ($row.find('.deselect-student-btn').length === 0) {
+                selectedStudents.push(jQuery(this).val());
+            }
+        });
+    }
+
+    var $btn = jQuery(this);
+    var originalText = $btn.html();
+    $btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Saving...');
+
+    jQuery.ajax({
+        url: "{{ route('save_subject_election') }}",
+        type: "POST",
+        data: {
+            classSubjectID: classSubjectID,
+            subclassID: subclassID,
+            selectedStudents: selectedStudents,
+            _token: jQuery('meta[name="csrf-token"]').attr('content')
+        },
+        success: function(response) {
+            $btn.prop('disabled', false).html(originalText);
+            if (response.success) {
+                jQuery('#subjectElectionModal').modal('hide');
+                Swal.fire('Success', response.success, 'success').then(() => {
+                    location.reload();
+                });
+            }
+        },
+        error: function(xhr) {
+            $btn.prop('disabled', false).html(originalText);
+            Swal.fire('Error', 'Failed to save election.', 'error');
+        }
+    });
+});
+
+// Deselect Individual Handler
+jQuery(document).on('click', '.deselect-student-btn', function() {
+    var $btn = jQuery(this);
+    var studentID = $btn.data('student-id');
+    var classSubjectID = $btn.data('class-subject-id');
+    var studentName = $btn.data('student-name');
+
+    Swal.fire({
+        title: 'Deselect Student?',
+        text: 'Remove ' + studentName + ' from this subject?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, remove!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            jQuery.ajax({
+                url: "{{ route('deselect_student') }}",
+                type: "POST",
+                data: {
+                    classSubjectID: classSubjectID,
+                    studentID: studentID,
+                    _token: jQuery('meta[name="csrf-token"]').attr('content')
+                },
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire('Removed', response.success, 'success').then(() => {
+                            loadStudentsForElection(classSubjectID, jQuery('#saveElectionBtn').data('subclass-id'));
+                        });
+                    }
+                }
+            });
+        }
+    });
+});
 </script>
 
 @include('includes.footer')
