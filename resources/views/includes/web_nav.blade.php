@@ -456,6 +456,7 @@
                 <a href="/" style="text-decoration: none;">
                     <h1 class="display-5 m-0" style="color: #940000 !important;">ShuleXpert</h1>
                 </a>
+                
             </div>
             <div class="col-lg-8 d-none d-lg-block">
                 <div class="row">

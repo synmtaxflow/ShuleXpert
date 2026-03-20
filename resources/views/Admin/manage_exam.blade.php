@@ -2226,6 +2226,7 @@ jQuery(document).ready(function($) {
                     });
                 },
                 error: function(xhr) {
+                    Swal.close();
                     submitBtn.prop('disabled', false).html(originalBtnText);
                     let errorMessage = '';
 

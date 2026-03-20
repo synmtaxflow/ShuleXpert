@@ -884,15 +884,15 @@ class ManageExaminationController extends Controller
                         }
                     },
                 ],
-                // Halls
-                'hall_name' => 'required|array|min:1',
-                'hall_name.*' => 'required|string|max:150',
-                'hall_class_id' => 'required|array|min:1',
-                'hall_class_id.*' => 'required|integer|exists:classes,classID',
-                'hall_capacity' => 'required|array|min:1',
-                'hall_capacity.*' => 'required|integer|min:1',
-                'hall_gender' => 'required|array|min:1',
-                'hall_gender.*' => 'required|in:male,female,both',
+                // Halls (Optional)
+                'hall_name' => 'nullable|array',
+                'hall_name.*' => 'nullable|string|max:150',
+                'hall_class_id' => 'nullable|array',
+                'hall_class_id.*' => 'nullable|integer|exists:classes,classID',
+                'hall_capacity' => 'nullable|array',
+                'hall_capacity.*' => 'nullable|integer|min:1',
+                'hall_gender' => 'nullable|array',
+                'hall_gender.*' => 'nullable|in:male,female,both',
             ], [
                 'exam_category.required' => 'Please select exam category.',
                 'exam_category.in' => 'Invalid exam category selected.',
@@ -1015,17 +1015,20 @@ class ManageExaminationController extends Controller
                 'created_by' => $userType === 'Teacher' ? $teacherID : null,
             ]);
 
-            // Build and store exam halls
-            $hallPayload = $this->buildHallPayload(
-                $request->hall_name,
-                $request->hall_class_id,
-                $request->hall_capacity,
-                $request->hall_gender,
-                $schoolID,
-                $request->exam_category,
-                $exceptClassIds,
-                $request->include_class_ids ?? []
-            );
+            // Build and store exam halls (if provided)
+            $hallPayload = [];
+            if ($request->has('hall_name') && is_array($request->hall_name) && count($request->hall_name) > 0) {
+                $hallPayload = $this->buildHallPayload(
+                    $request->hall_name,
+                    $request->hall_class_id,
+                    $request->hall_capacity,
+                    $request->hall_gender,
+                    $schoolID,
+                    $request->exam_category,
+                    $exceptClassIds,
+                    $request->include_class_ids ?? []
+                );
+            }
 
             foreach ($hallPayload as $hall) {
                 DB::table('exam_halls')->insert([
@@ -1946,15 +1949,15 @@ class ManageExaminationController extends Controller
                         }
                     },
                 ],
-                // Halls (edit prefix)
-                'edit_hall_name' => 'required|array|min:1',
-                'edit_hall_name.*' => 'required|string|max:150',
-                'edit_hall_class_id' => 'required|array|min:1',
-                'edit_hall_class_id.*' => 'required|integer|exists:classes,classID',
-                'edit_hall_capacity' => 'required|array|min:1',
-                'edit_hall_capacity.*' => 'required|integer|min:1',
-                'edit_hall_gender' => 'required|array|min:1',
-                'edit_hall_gender.*' => 'required|in:male,female,both',
+                // Halls (edit prefix) - Optional
+                'edit_hall_name' => 'nullable|array',
+                'edit_hall_name.*' => 'nullable|string|max:150',
+                'edit_hall_class_id' => 'nullable|array',
+                'edit_hall_class_id.*' => 'nullable|integer|exists:classes,classID',
+                'edit_hall_capacity' => 'nullable|array',
+                'edit_hall_capacity.*' => 'nullable|integer|min:1',
+                'edit_hall_gender' => 'nullable|array',
+                'edit_hall_gender.*' => 'nullable|in:male,female,both',
             ]);
 
             if ($validator->fails()) {
@@ -2052,31 +2055,34 @@ class ManageExaminationController extends Controller
 
             // Rebuild halls: clear old, insert new, then allocate students
             DB::table('student_exam_halls')->where('examID', $examID)->delete();
-            DB::table('exam_hall_supervisors')->where('examID', $examID)->delete();
-            DB::table('exam_halls')->where('examID', $examID)->delete();
+            DB::table('exam_hall_supervisors')->where('examID', $examID)->delete();            // Re-build and re-store exam halls (if provided)
+            if ($request->has('edit_hall_name') && is_array($request->edit_hall_name) && count($request->edit_hall_name) > 0) {
+                // Remove old halls first
+                DB::table('exam_halls')->where('examID', $examID)->delete();
 
-            $hallPayload = $this->buildHallPayload(
-                $request->edit_hall_name,
-                $request->edit_hall_class_id,
-                $request->edit_hall_capacity,
-                $request->edit_hall_gender,
-                $schoolID,
-                $examCategory,
-                $exceptClassIds,
-                $includeClassIds
-            );
+                $hallPayload = $this->buildHallPayload(
+                    $request->edit_hall_name,
+                    $request->edit_hall_class_id,
+                    $request->edit_hall_capacity,
+                    $request->edit_hall_gender,
+                    $schoolID,
+                    $exam->exam_category,
+                    $exceptClassIds,
+                    $request->edit_include_class_ids ?? []
+                );
 
-            foreach ($hallPayload as $hall) {
-                DB::table('exam_halls')->insert([
-                    'schoolID' => $schoolID,
-                    'examID' => $examID,
-                    'classID' => $hall['classID'],
-                    'hall_name' => $hall['hall_name'],
-                    'capacity' => $hall['capacity'],
-                    'gender_allowed' => $hall['gender_allowed'],
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                foreach ($hallPayload as $hall) {
+                    DB::table('exam_halls')->insert([
+                        'schoolID' => $schoolID,
+                        'examID' => $examID,
+                        'classID' => $hall['classID'],
+                        'hall_name' => $hall['hall_name'],
+                        'capacity' => $hall['capacity'],
+                        'gender_allowed' => $hall['gender_allowed'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
             }
 
             $examHalls = DB::table('exam_halls')
@@ -6121,7 +6127,12 @@ class ManageExaminationController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if ($userType !== 'Admin' || ! $schoolID) {
+        // Allow Admin or users with specific exam paper permissions
+        if (!$this->hasPermission('view_exam_papers') && !$this->hasPermission('examination_read_only') && $userType !== 'Admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$schoolID) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -6137,7 +6148,12 @@ class ManageExaminationController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if ($userType !== 'Admin' || ! $schoolID) {
+        // Allow Admin or users with specific exam paper permissions
+        if (!$this->hasPermission('view_exam_papers') && !$this->hasPermission('examination_read_only') && $userType !== 'Admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$schoolID) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -6159,7 +6175,12 @@ class ManageExaminationController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if ($userType !== 'Admin' || ! $schoolID) {
+        // Allow Admin or users with specific exam paper permissions
+        if (!$this->hasPermission('view_exam_papers') && !$this->hasPermission('examination_read_only') && $userType !== 'Admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$schoolID) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -6219,7 +6240,12 @@ class ManageExaminationController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if ($userType !== 'Admin' || ! $schoolID) {
+        // Allow Admin or users with specific exam paper permissions
+        if (!$this->hasPermission('view_exam_papers') && !$this->hasPermission('examination_read_only') && $userType !== 'Admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$schoolID) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -6243,7 +6269,12 @@ class ManageExaminationController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if ($userType !== 'Admin' || ! $schoolID) {
+        // Allow Admin or users with specific exam paper permissions
+        if (!$this->hasPermission('view_exam_papers') && !$this->hasPermission('examination_read_only') && $userType !== 'Admin') {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        if (!$schoolID) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
