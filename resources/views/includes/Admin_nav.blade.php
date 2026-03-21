@@ -542,8 +542,8 @@
             <a href="{{ route('AdminDashboard') }}" class="admin-sidebar-title" style="text-decoration:none;">
                 <img src="{{ asset('images/shuleXpert.jpg') }}" alt="ShuleXpert" class="admin-brand-logo" onerror="this.onerror=null; this.src='{{ asset('images/logo.png') }}';">
                 <span class="admin-brand-block">
-                    <span class="admin-brand-text">User Type</span>
-                    <span class="admin-brand-subtitle">Administrator</span>
+                    <span class="admin-brand-text">USER TYPE</span>
+                    <span class="admin-brand-subtitle">HEAD TEACHER</span>
                 </span>
             </a>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#main-menu" aria-controls="main-menu" aria-expanded="false" aria-label="Toggle navigation">

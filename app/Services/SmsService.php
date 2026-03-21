@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Services;
+use Illuminate\Support\Facades\Log;
 
 class SmsService
 {
@@ -22,9 +23,16 @@ class SmsService
             // Remove any spaces or special characters from phone number
             $phoneNumber = preg_replace('/[^0-9]/', '', $phoneNumber);
 
-            // Ensure phone number starts with 255 (Tanzania country code)
-            if (!str_starts_with($phoneNumber, '255')) {
-                $phoneNumber = '255' . ltrim($phoneNumber, '0');
+            // Standardize format: should be 255... (no leading 0, no 2550...)
+            if (str_starts_with($phoneNumber, '0')) {
+                // e.g. 0764... -> 255764...
+                $phoneNumber = '255' . substr($phoneNumber, 1);
+            } elseif (str_starts_with($phoneNumber, '2550')) {
+                // e.g. 2550764... -> 255764...
+                $phoneNumber = '255' . substr($phoneNumber, 4);
+            } elseif (!str_starts_with($phoneNumber, '255')) {
+                // e.g. 764... -> 255764...
+                $phoneNumber = '255' . $phoneNumber;
             }
 
             $text = urlencode($message);
@@ -35,7 +43,6 @@ class SmsService
                    '&text=' . $text;
 
             $curl = curl_init();
-
             curl_setopt_array($curl, array(
                 CURLOPT_URL => $url,
                 CURLOPT_RETURNTRANSFER => true,
@@ -55,9 +62,12 @@ class SmsService
             curl_close($curl);
 
             if ($error) {
+                \Log::error("SmsService CURL Error: {$error}");
                 return [
                     'success' => false,
-                    'message' => 'SMS sending failed: ' . $error
+                    'message' => 'SMS sending failed: ' . $error,
+                    'response' => null,
+                    'http_code' => $httpCode
                 ];
             }
 

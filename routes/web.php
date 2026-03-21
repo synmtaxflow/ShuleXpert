@@ -663,6 +663,20 @@ Route::get('admin/subject-analysis', [ResultManagementController::class, 'subjec
 Route::get('admin/get-class-subjects', [ResultManagementController::class, 'getClassSubjectsForAnalysis'])->name('admin.get_class_subjects_for_analysis');
 Route::post('admin/send-subject-analysis-comment', [ResultManagementController::class, 'sendSubjectAnalysisComment'])->name('admin.send_subject_analysis_comment');
 Route::post('admin/send-result-sms', [ResultManagementController::class, 'sendResultSms'])->name('admin.send_result_sms');
+Route::get('admin/download-results-pdf', [ResultManagementController::class, 'downloadPdf'])->name('admin.download_results_pdf');
+Route::get('admin/download-results-excel', [ResultManagementController::class, 'downloadExcel'])->name('admin.download_results_excel');
+Route::post('save_report_definition', [ResultManagementController::class, 'saveReportDefinition'])->name('save_report_definition');
+Route::get('get_report_definitions', [ResultManagementController::class, 'getReportDefinitions'])->name('get_report_definitions');
+Route::delete('delete_report_definition/{id}', [ResultManagementController::class, 'deleteReportDefinition'])->name('delete_report_definition');
+Route::get('get_exams_for_term_list', [ResultManagementController::class, 'getExamsForTerm'])->name('get_exams_for_term_list');
+
+// CA Definitions
+Route::post('save_ca_definition', [ResultManagementController::class, 'saveCaDefinition'])->name('save_ca_definition');
+Route::get('get_ca_definitions', [ResultManagementController::class, 'getCaDefinitions'])->name('get_ca_definitions');
+Route::delete('delete_ca_definition/{id}', [ResultManagementController::class, 'deleteCaDefinition'])->name('delete_ca_definition');
+Route::get('get_school_exams_for_term_list', [ResultManagementController::class, 'getSchoolExamsForTermList'])->name('get_school_exams_for_term_list');
+Route::get('get_tests_for_term_list', [ResultManagementController::class, 'getTestsForTermList'])->name('get_tests_for_term_list');
+Route::get('check_exam_ca_exists', [ResultManagementController::class, 'checkExamCaExists'])->name('check_exam_ca_exists');
 
 // Exam Papers Routes
 Route::post('store_exam_paper', [ManageExaminationController::class, 'storeExamPaper'])->name('store_exam_paper');

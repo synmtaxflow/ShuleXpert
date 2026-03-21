@@ -17,6 +17,8 @@ use App\Models\ExamPaperQuestion;
 use App\Models\ExamPaperQuestionMark;
 use App\Models\ExamPaperOptionalRange;
 use App\Models\Teacher;
+use App\Models\TermReportDefinition;
+use App\Models\CaDefinition;
 use App\Services\SmsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -95,6 +97,41 @@ class ResultManagementController extends Controller
 
         // BROAD PERMISSION CHECK: If teacher has broad result view permissions, don't restrict to "assigned class"
         $hasBroadResultPermission = $this->hasPermission('view_results');
+
+        // Allow any user with 'result' menu permission to view all classes like Admin
+        if (!$hasBroadResultPermission && $userType !== 'Admin') {
+            $hasResultPermission = false;
+            
+            if ($userType === 'Teacher') {
+                $teacherID = Session::get('teacherID');
+                if ($teacherID) {
+                    $roles = DB::table('role_user')->where('teacher_id', $teacherID)->pluck('role_id');
+                    $perms = DB::table('permissions')->whereIn('role_id', $roles)->get();
+                    if ($perms->where('permission_category', 'result')->count() > 0) {
+                        $hasResultPermission = true;
+                    } elseif ($perms->contains(function($p) { return strpos(strtolower($p->name), 'result') !== false; })) {
+                        $hasResultPermission = true;
+                    }
+                }
+            } elseif ($userType === 'Staff') {
+                $staffID = Session::get('staffID');
+                if ($staffID) {
+                    $profId = DB::table('other_staff')->where('id', $staffID)->value('profession_id');
+                    if ($profId) {
+                        $perms = DB::table('staff_permissions')->where('profession_id', $profId)->get();
+                        if ($perms->where('permission_category', 'result')->count() > 0) {
+                            $hasResultPermission = true;
+                        } elseif ($perms->contains(function($p) { return strpos(strtolower($p->name), 'result') !== false; })) {
+                            $hasResultPermission = true;
+                        }
+                    }
+                }
+            }
+            
+            if ($hasResultPermission) {
+                $hasBroadResultPermission = true;
+            }
+        }
 
         // Check if coordinator view is requested
         $isCoordinatorResultsView = false;
@@ -327,11 +364,21 @@ class ResultManagementController extends Controller
             
             // Get results for this student
             if ($typeFilterForDetails === 'report') {
-                // For term report: get all exams in the term
+                // For term report: get only exams defined in TermReportDefinition if available
+                $reportDefinition = TermReportDefinition::where('schoolID', $schoolID)
+                    ->where('year', $yearFilter)
+                    ->where('term', $termFilter)
+                    ->first();
+
                 $examinationsQuery = Examination::where('schoolID', $schoolID)
                     ->where('year', $yearFilter)
                     ->where('term', $termFilter)
                     ->orderBy('start_date');
+
+                if ($reportDefinition && !empty($reportDefinition->exam_ids)) {
+                    $examinationsQuery->whereIn('examID', $reportDefinition->exam_ids);
+                }
+
                 $examinations = $examinationsQuery->get();
                 $examIDs = $examinations->pluck('examID')->toArray();
 
@@ -365,14 +412,29 @@ class ResultManagementController extends Controller
 
             // Process results differently for exam vs term report
             $examsData = []; // Initialize outside if block for use in response
+            $caDefinition = null;
+            if ($typeFilterForDetails === 'exam' && $examFilter) {
+                $caDefinition = CaDefinition::where('examID', $examFilter)->where('schoolID', $schoolID)->first();
+            }
+
             if ($typeFilterForDetails === 'report') {
                 // For term report: group by subject and collect exam results
                 $subjectData = [];
 
-                // Get all exams for the term (Unblock for Admin/Broad Permission)
+                // Check for report definition to filter exams
+                $reportDefinition = TermReportDefinition::where('schoolID', $schoolID)
+                    ->where('year', $yearFilter)
+                    ->where('term', $termFilter)
+                    ->first();
+
+                // Get only exams for the term that are in the definition (if exists)
                 $examinationsQuery = Examination::where('schoolID', $schoolID)
                     ->where('year', $yearFilter)
                     ->where('term', $termFilter);
+                
+                if ($reportDefinition && !empty($reportDefinition->exam_ids)) {
+                    $examinationsQuery->whereIn('examID', $reportDefinition->exam_ids);
+                }
                 
                 // For regular teachers without broad permission, only show approved exams
                 if ($userType !== 'Admin' && !$hasBroadResultPermission) {
@@ -452,9 +514,10 @@ class ResultManagementController extends Controller
 
                     $subjects[] = [
                         'subject_name' => $subjectName,
-                        'exams' => array_values($data['exams']),
+                        'exams' => $data['exams'], // Associative array keyed by examID
                         'average' => $average,
-                        'grade' => $overallGrade
+                        'grade' => $overallGrade,
+                        'is_term_report' => true
                     ];
 
                     $totalMarks += $data['marks_sum'];
@@ -470,6 +533,79 @@ class ResultManagementController extends Controller
                     }
                 }
 
+                $averageMarks = $subjectCount > 0 ? $totalMarks / $subjectCount : 0;
+            } elseif ($caDefinition) {
+                // For school exam with CA: Group by subject and calculate average from Tests + Exam
+                $subjectData = [];
+                $allInvolvedExams = array_merge([$examFilter], $caDefinition->test_ids);
+                $involvedExams = Examination::whereIn('examID', $allInvolvedExams)->orderBy('end_date')->get()->keyBy('examID');
+                
+                $caResults = Result::where('studentID', $studentIDFilter)
+                    ->whereIn('examID', $allInvolvedExams)
+                    ->with(['classSubject.subject', 'examination'])
+                    ->get();
+                
+                foreach ($caResults as $result) {
+                    $subjectName = $result->classSubject->subject->subject_name ?? 'N/A';
+                    $examID = $result->examID;
+                    $examModel = $involvedExams[$examID] ?? null;
+                    $examName = $examModel ? $examModel->exam_name : 'Unknown';
+                    if ($examModel && $examModel->exam_category === 'test') {
+                        $examName .= " (CA)";
+                    }
+
+                    if (!isset($subjectData[$subjectName])) {
+                        $subjectData[$subjectName] = [
+                            'subject_name' => $subjectName,
+                            'exams' => [],
+                            'marks_sum' => 0,
+                            'marks_count' => 0
+                        ];
+                    }
+
+                    if ($result->marks !== null && $result->marks !== '') {
+                        $marks = (float)$result->marks;
+                        $gradePoints = $this->calculateGradePoints($marks, $schoolType, $className, $classID);
+                        
+                        $subjectData[$subjectName]['exams'][] = [
+                            'marks' => $marks,
+                            'grade' => $result->grade ?? $gradePoints['grade'],
+                            'exam_name' => $examName
+                        ];
+                        $subjectData[$subjectName]['marks_sum'] += $marks;
+                        $subjectData[$subjectName]['marks_count']++;
+                    }
+                }
+
+                $subjects = [];
+                $totalMarks = 0;
+                $subjectCount = 0;
+                $subjectPoints = [];
+
+                foreach ($subjectData as $subjectName => $data) {
+                    $average = $data['marks_count'] > 0 ? $data['marks_sum'] / $data['marks_count'] : 0;
+                    $gradeResult = $classID ? $this->getGradeFromDefinition($average, $classID) : null;
+                    $overallGrade = $gradeResult ? $gradeResult['grade'] : null;
+
+                    $subjects[] = [
+                        'subject_name' => $subjectName,
+                        'exams' => $data['exams'], // Shows breakdown in View More
+                        'marks' => $average,
+                        'grade' => $overallGrade,
+                        'is_ca_averaged' => true
+                    ];
+
+                    $totalMarks += $average;
+                    $subjectCount++;
+
+                    if ($schoolType === 'Secondary' && $average > 0) {
+                        $avgGradePoints = $this->calculateGradePoints($average, $schoolType, $className, $classID);
+                        $subjectPoints[] = [
+                            'points' => $avgGradePoints['points'] ?? 5,
+                            'marks' => $average
+                        ];
+                    }
+                }
                 $averageMarks = $subjectCount > 0 ? $totalMarks / $subjectCount : 0;
             } else {
                 // For exam: original logic
@@ -538,6 +674,18 @@ class ResultManagementController extends Controller
             $gradeDivision = ['grade' => null, 'division' => null];
             if (!$weekFilter || $weekFilter === 'all') {
                 $gradeDivision = $this->calculateGradeDivision($totalMarks, $averageMarks, $subjectCount, $schoolType, $className, $totalPoints, $classID);
+            }
+
+            // Always calculate a literal grade (A,B,C,D,F) for the overall average to avoid nulls
+            $overallGradeResult = $classID ? $this->getGradeFromDefinition($averageMarks, $classID) : null;
+            $calculatedOverallGrade = $overallGradeResult ? $overallGradeResult['grade'] : null;
+            
+            if (!$calculatedOverallGrade) {
+                if ($averageMarks >= 75) $calculatedOverallGrade = 'A';
+                elseif ($averageMarks >= 65) $calculatedOverallGrade = 'B';
+                elseif ($averageMarks >= 45) $calculatedOverallGrade = 'C';
+                elseif ($averageMarks >= 30) $calculatedOverallGrade = 'D';
+                else $calculatedOverallGrade = 'F';
             }
 
             // Get total students count and position for this student in their class
@@ -764,6 +912,7 @@ class ResultManagementController extends Controller
                         break;
                     }
                 }
+                $totalStudentsCount = count($classStudentsWithResults);
             }
 
             // Get student photo path or placeholder
@@ -792,7 +941,7 @@ class ResultManagementController extends Controller
                 'totalMarks' => $totalMarks,
                 'averageMarks' => $averageMarks,
                 'subjectCount' => $subjectCount,
-                'grade' => $gradeDivision['grade'] ?? null,
+                'grade' => $calculatedOverallGrade,
                 'division' => $gradeDivision['division'] ?? null,
                 'totalStudentsCount' => $totalStudentsCount,
                 'position' => $studentPosition
@@ -1426,7 +1575,7 @@ class ResultManagementController extends Controller
         \Illuminate\Support\Facades\Log::info("sendResultSms method reached", $request->all());
         $schoolID = Session::get('schoolID');
         if (!$schoolID) {
-            \Log::error("sendResultSms: Access denied - No schoolID in session");
+            \Illuminate\Support\Facades\Log::error("sendResultSms: Access denied - No schoolID in session");
             return response()->json(['success' => false, 'error' => 'Access denied'], 403);
         }
 
@@ -1439,7 +1588,7 @@ class ResultManagementController extends Controller
 
         $student = Student::with(['parent', 'subclass.class', 'oldSubclass.class'])->find($studentID);
         if (!$student) {
-            \Log::warning("sendResultSms: Student not found for ID {$studentID}");
+            \Illuminate\Support\Facades\Log::warning("sendResultSms: Student not found for ID {$studentID}");
             return response()->json(['success' => false, 'error' => 'Student not found']);
         }
 
@@ -1449,7 +1598,7 @@ class ResultManagementController extends Controller
         }
 
         if (empty($parentPhone) || $parentPhone === 'null' || $parentPhone === 'undefined') {
-            \Log::warning("sendResultSms: No valid phone for student {$studentID}");
+            \Illuminate\Support\Facades\Log::warning("sendResultSms: No valid phone for student {$studentID}");
             return response()->json(['success' => false, 'error' => 'No valid contact phone found for student or parent']);
         }
 
@@ -1463,28 +1612,33 @@ class ResultManagementController extends Controller
             $className = $student->oldSubclass->class->class_name;
         }
 
-        // Initialize message parts
-        // Initialize results collection to prevent undefined variable error later
-        $resultsString = "";
-        $results = collect();
-
         $type = $request->input('type', 'exam');
         $term = $request->input('term');
         $year = $request->input('year', date('Y'));
+        $userType = Session::get('user_type');
+
+        $totalSum = 0;
+        $formattedResults = [];
+        $classID = $student->subclass->classID ?? ($student->oldSubclass->classID ?? null);
 
         if ($subject) {
-            // Single subject mode (existing)
-            $resultsString = "{$subject}-({$marks})-({$grade})";
+            // Single subject mode
+            $totalSum = (float)$marks;
+            $formattedResults[] = "{$subject}-(".round($marks).")-({$grade})";
+            $resultsString = $formattedResults[0];
         } elseif ($type === 'report') {
-            // Term report: Average across all exams in term
+            // Term report: Average across exams in TermReportDefinition if available
+            $reportDefinition = TermReportDefinition::where('schoolID', $schoolID)
+                ->where('year', $year)
+                ->where('term', $term)
+                ->first();
+
             $examinationsQuery = Examination::where('schoolID', $schoolID)
                 ->where('year', $year)
                 ->where('term', $term);
             
-            // For regular users, only show approved exams for SMS
-            $hasBroadResultPermission = $this->hasPermission('view_results');
-            if ($userType !== 'Admin' && !$hasBroadResultPermission) {
-                $examinationsQuery->where('approval_status', 'Approved');
+            if ($reportDefinition && !empty($reportDefinition->exam_ids)) {
+                $examinationsQuery->whereIn('examID', $reportDefinition->exam_ids);
             }
             
             $examinations = $examinationsQuery->pluck('examID');
@@ -1495,6 +1649,7 @@ class ResultManagementController extends Controller
                 ->get();
             
             if ($results->isEmpty()) {
+            \Illuminate\Support\Facades\Log::warning("sendResultSms: No results found for student {$studentID} in term {$term} / year {$year}");
                 return response()->json(['success' => false, 'error' => 'No results found for this term']);
             }
 
@@ -1510,47 +1665,74 @@ class ResultManagementController extends Controller
                 }
             }
 
-            $formattedResults = [];
-            $classID = $student->subclass->classID ?? ($student->oldSubclass->classID ?? null);
             foreach ($subjectData as $sName => $data) {
                 $avgMarks = $data['count'] > 0 ? $data['total'] / $data['count'] : 0;
+                $totalSum += $avgMarks;
                 $gradeRes = $this->getGradeFromDefinition($avgMarks, $classID);
                 $sGrade = $gradeRes['grade'] ?? '-';
                 $formattedResults[] = "{$sName}-(".round($avgMarks).")-({$sGrade})";
             }
-            $resultsString = implode(", ", $formattedResults);
+            $resultsString = implode("\n", $formattedResults);
         } else {
             // Multi-subject mode (Exam level)
-            $allResultsQuery = Result::where('studentID', $studentID);
+            // Check if this exam has CA defined
+            $caDefinition = \App\Models\CaDefinition::where('schoolID', $schoolID)
+                ->where('examID', $examID)
+                ->first();
             
-            // For regular users, only show allowed results for SMS
-            $hasBroadResultPermission = $this->hasPermission('view_results');
-            if ($userType !== 'Admin' && !$hasBroadResultPermission) {
-                $allResultsQuery->where('status', 'allowed');
+            $allExamIds = [$examID];
+            if ($caDefinition && !empty($caDefinition->test_ids)) {
+                $allExamIds = array_unique(array_merge([$examID], $caDefinition->test_ids));
             }
+
+            $allResultsQuery = Result::where('studentID', $studentID)
+                ->whereIn('examID', $allExamIds);
             
-            if ($examID && $examID !== 'null' && $examID !== 'undefined' && $examID !== '1') {
-                $allResultsQuery->where('examID', $examID);
-            }
-            
-            if ($week && $week !== 'all') {
+            if ($week && $week !== 'all' && (!$caDefinition || empty($caDefinition->test_ids))) {
                 $allResultsQuery->where('test_week', $week);
             }
             
             $results = $allResultsQuery->with('classSubject.subject')->get();
             
             if ($results->isEmpty()) {
+                \Log::warning("sendResultSms: No results found for student {$studentID}. ExamID: {$examID}, Week: {$week}, UserType: {$userType}");
                 return response()->json(['success' => false, 'error' => 'No results found for this student']);
             }
+            
+            \Log::info("sendResultSms: Found " . $results->count() . " subjects for student {$studentID}");
 
-            $formattedResults = [];
-            foreach ($results as $res) {
-                $sName = $res->classSubject->subject->subject_name ?? 'N/A';
-                $sMarks = $res->marks ?? 'Incomplete';
-                $sGrade = $res->grade ?? '-';
-                $formattedResults[] = "{$sName}-({$sMarks})-({$sGrade})";
+            if ($caDefinition && !empty($caDefinition->test_ids)) {
+                // Group by subject and average (CA support)
+                $subjectData = [];
+                foreach ($results as $res) {
+                    $sName = $res->classSubject->subject->subject_name ?? 'N/A';
+                    if (!isset($subjectData[$sName])) {
+                        $subjectData[$sName] = ['total' => 0, 'count' => 0];
+                    }
+                    if ($res->marks !== null && $res->marks !== '') {
+                        $subjectData[$sName]['total'] += (float)$res->marks;
+                        $subjectData[$sName]['count']++;
+                    }
+                }
+                
+                foreach ($subjectData as $sName => $data) {
+                    $avgMarks = $data['count'] > 0 ? $data['total'] / $data['count'] : 0;
+                    $totalSum += $avgMarks;
+                    $gradeRes = $this->getGradeFromDefinition($avgMarks, $classID);
+                    $sGrade = $gradeRes['grade'] ?? '-';
+                    $formattedResults[] = "{$sName}-(".round($avgMarks).")-({$sGrade})";
+                }
+            } else {
+                // Standard mode
+                foreach ($results as $res) {
+                    $sName = $res->classSubject->subject->subject_name ?? 'N/A';
+                    $sMarks = $res->marks ?? 0;
+                    $sGrade = $res->grade ?? '-';
+                    $totalSum += (float)$sMarks;
+                    $formattedResults[] = "{$sName}-(".round((float)$sMarks).")-({$sGrade})";
+                }
             }
-            $resultsString = implode(", ", $formattedResults);
+            $resultsString = implode("\n", $formattedResults);
         }
 
         // Get week range
@@ -1596,25 +1778,50 @@ class ResultManagementController extends Controller
         $position = $request->input('position', '');
         $totalStudentsCount = $request->input('totalStudentsCount', '');
 
-        $posInfo = ($position && $totalStudentsCount) ? "Nafasi: {$position}/{$totalStudentsCount}. " : "";
-        $divInfo = $division ? " Div: {$division}." : "";
+        // Determine Exam Context Name
+        $examNameContext = ($examID && $actualExamID) ? Examination::where('examID', $actualExamID)->value('exam_name') : ($weekLabel ?: 'MTIHANI');
+        if ($type === 'report') {
+            $termLabel = ($term === 'first_term') ? 'TERM 1' : 'TERM 2';
+            $examNameContext = "RIPOTI YA {$termLabel} {$year}";
+        }
+
+        $schoolType = $school ? $school->school_type : 'Secondary';
+
+        // Construct Premium SMS Format
+        $msg = "{$schoolName}\n";
+        $msg .= "MZAZI WA {$studentName},\n";
+        $msg .= "YAFUATAYO NI MATOKEO YA {$studentName} KATIKA {$examNameContext}.\n";
         
-        $periodInfo = $weekLabel ? " kwa {$weekLabel}" : "";
-        $message = "{$schoolName}: Matokeo ya {$studentFirstName} ({$className}){$periodInfo}. {$posInfo} {$resultsString}.{$divInfo}";
+        $summary = "JUMLA: " . round($totalSum);
+        if ($schoolType === 'Secondary' && $division) {
+            $summary .= " | DIV: {$division}";
+        }
+        if ($position && $totalStudentsCount) {
+            $summary .= " | NAFASI: {$position}/{$totalStudentsCount}";
+        }
+        $msg .= $summary . "\n";
+        
+        $msg .= "------------------------\n";
+        $msg .= "MASOMO YAFUATAYO:\n";
+        $msg .= $resultsString;
+
+        $message = $msg;
+        \Log::info("Preparing to send Result SMS to {$parentPhone} for student {$studentName}. Message Length: " . strlen($message));
 
         try {
             $smsService = new SmsService();
             $result = $smsService->sendSms($parentPhone, $message);
             
             if ($result['success']) {
-                \Log::info("Result SMS sent successfully to {$parentPhone} for student {$studentName}. Message: {$message}");
+                \Log::info("Result SMS sent successfully to {$parentPhone}. Student: {$studentName}.");
                 return response()->json(['success' => true]);
             } else {
-                \Log::error("Result SMS failed for {$parentPhone} (Student: {$studentName}): " . ($result['message'] ?? 'Unknown gateway error'));
+                \Log::error("Result SMS failed for {$parentPhone} (Student: {$studentName}). Gateway Error: " . ($result['message'] ?? 'Unknown gateway error'));
+                \Log::error("Gateway full response: " . ($result['response'] ?? 'N/A'));
                 return response()->json(['success' => false, 'error' => $result['message'] ?? 'Failed to send SMS']);
             }
         } catch (\Exception $e) {
-            \Log::error("Result SMS exception for student {$studentName}: " . $e->getMessage());
+            \Log::error("Result SMS exception for student {$studentName}: " . $e->getMessage() . "\n" . $e->getTraceAsString());
             return response()->json(['success' => false, 'error' => $e->getMessage()]);
         }
     }
@@ -1642,26 +1849,52 @@ class ResultManagementController extends Controller
                 $examinationsQuery->where('examID', $examID);
             }
 
-            $examinations = $examinationsQuery->orderBy('start_date')
-                ->get();
+            $examinations = $examinationsQuery->orderBy('start_date')->get();
+
+            // Check if selected exam has CA definition
+            $caDefinition = null;
+            if ($examID) {
+                $caDefinition = CaDefinition::where('examID', $examID)->where('schoolID', Session::get('schoolID'))->first();
+            }
 
             foreach ($examinations as $exam) {
-                // Get results for this student and exam
-                $resultsQuery = Result::where('studentID', $student->studentID)
-                    ->where('examID', $exam->examID);
-                
-                if ($exam->exam_name === 'Weekly Test' && $weekFilter && $weekFilter !== 'all') {
-                    $resultsQuery->where('test_week', $weekFilter);
-                }
+                // If CA is defined, we aggregate results from Tests + Main Exam
+                if ($caDefinition) {
+                    $allInvolvedExams = array_merge([$exam->examID], $caDefinition->test_ids);
+                    $results = Result::where('studentID', $student->studentID)
+                        ->whereIn('examID', $allInvolvedExams)
+                        ->with(['classSubject.subject', 'examination'])
+                        ->get();
+                    
+                    if ($results->isEmpty()) continue;
 
-                if ($subjectFilter) {
-                    $resultsQuery->whereHas('classSubject', function($q) use ($subjectFilter) {
-                        $q->where('subjectID', $subjectFilter);
+                    // Group by subject and average
+                    $results = $results->groupBy('class_subjectID')->map(function($group) {
+                        $marks = $group->filter(fn($r) => $r->marks !== null && $r->marks !== '');
+                        $avg = $marks->count() > 0 ? $marks->avg('marks') : null;
+                        $first = $group->first();
+                        $first->marks = $avg;
+                        $first->grade = null; // Re-calculate grade
+                        return $first;
                     });
-                }
+                } else {
+                    // Standard fetching
+                    $resultsQuery = Result::where('studentID', $student->studentID)
+                        ->where('examID', $exam->examID);
+                    
+                    if ($exam->exam_name === 'Weekly Test' && $weekFilter && $weekFilter !== 'all') {
+                        $resultsQuery->where('test_week', $weekFilter);
+                    }
 
-                $results = $resultsQuery->with(['classSubject.subject', 'examination'])
-                    ->get();
+                    if ($subjectFilter) {
+                        $resultsQuery->whereHas('classSubject', function($q) use ($subjectFilter) {
+                            $q->where('subjectID', $subjectFilter);
+                        });
+                    }
+
+                    $results = $resultsQuery->with(['classSubject.subject', 'examination'])
+                        ->get();
+                }
 
                 if ($results->isEmpty()) {
                     continue;
@@ -1751,8 +1984,9 @@ class ResultManagementController extends Controller
                         $totalMarks += (float) $result->marks;
                         $subjectCount++;
 
-                        // Calculate points for this subject
-                        $gradePoints = $this->calculateGradePoints($result->marks, $schoolType, $className, $classID);
+                        // Calculate points for this subject (Round averaged marks for grading consistency)
+                        $roundedMarks = round((float)$result->marks, 0);
+                        $gradePoints = $this->calculateGradePoints($roundedMarks, $schoolType, $className, $classID);
                         if ($gradePoints['points'] !== null) {
                             $subjectPoints[] = $gradePoints['points'];
                         }
@@ -1760,7 +1994,7 @@ class ResultManagementController extends Controller
                         // Include incomplete subjects in the count to allow viewing
                         $subjectCount++;
                     }
-                    $gradePointsForSubject = $this->calculateGradePoints($result->marks, $schoolType, $className, $classID);
+                    $gradePointsForSubject = $this->calculateGradePoints(round((float)$result->marks, 0), $schoolType, $className, $classID);
                     $subjectsData[] = [
                         'subject_name' => $result->classSubject->subject->subject_name ?? 'N/A',
                         'marks' => $result->marks ?? 'incomplete',
@@ -1781,14 +2015,17 @@ class ResultManagementController extends Controller
                 $totalPoints = 0;
                 $bestSevenTotalMarks = 0;
 
-                if ($schoolType === 'Secondary' && in_array(strtolower(preg_replace('/[\s\-]+/', '_', $className)), ['form_one', 'form_two', 'form_three', 'form_four'])) {
+                if ($schoolType === 'Secondary' && (
+                    in_array(strtolower(preg_replace('/[\s\-]+/', '_', $className)), ['form_one', 'form_two', 'form_three', 'form_four', 'form_1', 'form_2', 'form_3', 'form_4']) ||
+                    preg_match('/form\s*(one|two|three|four|1|2|3|4)/i', $className)
+                )) {
                     // O-Level: Use 7 best subjects (lowest points = best performance)
                     // Sort ascending (lowest points first = best performance)
                     if (count($subjectPoints) > 0) {
                         // Create array with marks and points for sorting
                         $marksPointsArray = [];
                         foreach ($subjectsData as $subject) {
-                            if ($subject['marks'] !== null && $subject['marks'] !== '' && $subject['points'] !== null) {
+                            if ($subject['marks'] !== null && $subject['marks'] !== 'incomplete' && $subject['marks'] !== '' && $subject['points'] !== null) {
                                 $marksPointsArray[] = [
                                     'marks' => (float)$subject['marks'],
                                     'points' => $subject['points']
@@ -1814,7 +2051,10 @@ class ResultManagementController extends Controller
                         // Calculate total marks for best 7 subjects
                         $bestSevenTotalMarks = array_sum(array_column($bestSeven, 'marks'));
                     }
-                } elseif ($schoolType === 'Secondary' && in_array(strtolower(preg_replace('/[\s\-]+/', '_', $className)), ['form_five', 'form_six'])) {
+                } elseif ($schoolType === 'Secondary' && (
+                    in_array(strtolower(preg_replace('/[\s\-]+/', '_', $className)), ['form_five', 'form_six', 'form_5', 'form_6']) ||
+                    preg_match('/form\s*(five|six|5|6)/i', $className)
+                )) {
                     // A-Level: Use 3 best principal subjects (highest points)
                     if (count($subjectPoints) > 0) {
                         rsort($subjectPoints); // Sort descending (highest first)
@@ -1858,9 +2098,22 @@ class ResultManagementController extends Controller
         $resultsData = [];
         $schoolID = Session::get('schoolID');
 
-        // OPTIMIZATION: Query examinations once for all students instead of inside the loop
+        // Check if there's a custom report definition for this term
+        $reportDefinition = TermReportDefinition::where('schoolID', $schoolID)
+            ->where('year', $year)
+            ->where('term', $term)
+            ->first();
+
+        // OPTIMIZATION: Query examinations
         $examinationsQuery = Examination::where('schoolID', $schoolID)
-            ->where('year', $year);
+            ->where('year', $year)
+            ->where('term', $term);
+
+        // If definition exists and has exams, restrict to those exams
+        if ($reportDefinition && !empty($reportDefinition->exam_ids)) {
+            $examinationsQuery->whereIn('examID', $reportDefinition->exam_ids);
+        }
+
         $examinations = $examinationsQuery->orderBy('start_date')->get();
 
         // No longer filtering by ended status
@@ -2029,13 +2282,18 @@ class ResultManagementController extends Controller
                 // OPTIMIZATION: Skip position calculation here - it's very expensive and will be calculated in the view per class
                 // Position will be calculated in the Blade template where it's actually needed
 
+                $displayGrade = $overallGrade;
+                if ($schoolType === 'Secondary' && !empty($gradeDivision['division'])) {
+                    $displayGrade = $gradeDivision['division'];
+                }
+
                 $resultsData[$student->studentID] = [
                     'exams' => $allExamResults,
                     'total_marks' => $totalMarksAllExams,
                     'average_marks' => $overallAverage,
                     'subject_count' => $totalSubjectCount,
                     'exam_count' => count($allExamResults),
-                    'grade' => $overallGrade,
+                    'grade' => $displayGrade,
                     'division' => $gradeDivision['division'] ?? null,
                     'position' => null, // Will be calculated in view per class
                     'total_points' => $totalPoints,
@@ -2153,7 +2411,7 @@ class ResultManagementController extends Controller
     {
         $classNameLower = strtolower(preg_replace('/[\s\-]+/', '_', $className));
 
-        if ($schoolType === 'Secondary' && in_array($classNameLower, ['form_one', 'form_two', 'form_three', 'form_four'])) {
+        if ($schoolType === 'Secondary' && (in_array($classNameLower, ['form_one', 'form_two', 'form_three', 'form_four', 'form_1', 'form_2', 'form_3', 'form_4']) || preg_match('/form\s*(one|two|three|four|1|2|3|4)/i', $className))) {
             // O-Level: Calculate division based on total points (7 best subjects)
             // 7-17: I
             // 18-21: II
@@ -2174,7 +2432,7 @@ class ResultManagementController extends Controller
                 // If total points is less than 7, still assign Division 0
                 return ['grade' => null, 'division' => '0.' . $totalPoints];
             }
-        } elseif ($schoolType === 'Secondary' && in_array($classNameLower, ['form_five', 'form_six'])) {
+        } elseif ($schoolType === 'Secondary' && (in_array($classNameLower, ['form_five', 'form_six', 'form_5', 'form_6']) || preg_match('/form\s*(five|six|5|6)/i', $className))) {
             // A-Level: Calculate division based on total points
             if ($totalPoints >= 12 && $totalPoints <= 15) {
                 return ['grade' => null, 'division' => 'I.' . $totalPoints];
@@ -2312,7 +2570,8 @@ class ResultManagementController extends Controller
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
-        if (($userType !== 'Admin' && !$this->hasPermission('view_results')) || !$schoolID) {
+        // Allow any logged-in user with a valid school session to download PDF
+        if (!$schoolID) {
             return redirect()->route('login')->with('error', 'Access denied');
         }
 
@@ -2358,17 +2617,44 @@ class ResultManagementController extends Controller
                 ->orderBy('first_name')
                 ->get();
         } else {
-            // All students based on filters
+            // All students — respect optional class/subclass/gender filters
+            $classFilterID    = $request->get('classID', '');
+            $subclassFilterID = $request->get('subclassID', '');
+            $genderFilter     = $request->get('gender', '');
+
             $studentQuery = Student::where('schoolID', $schoolID);
+
             if ($statusFilter === 'active') {
                 $studentQuery->where('status', 'Active');
             } elseif ($statusFilter === 'history') {
                 $studentQuery->whereNotNull('old_subclassID');
             }
-            $students = $studentQuery->with(['subclass.class', 'subclass.combie', 'parent', 'oldSubclass.class'])
+
+            // Filter by subclass if provided
+            if ($subclassFilterID) {
+                $studentQuery->where('subclassID', $subclassFilterID);
+            // Filter by class if provided (no subclass)
+            } elseif ($classFilterID) {
+                $studentQuery->where(function($q) use ($classFilterID) {
+                    $q->whereHas('subclass', function($sq) use ($classFilterID) {
+                        $sq->where('classID', $classFilterID);
+                    })->orWhereHas('oldSubclass', function($sq) use ($classFilterID) {
+                        $sq->where('classID', $classFilterID);
+                    });
+                });
+            }
+
+            // Filter by gender if provided
+            if ($genderFilter) {
+                $studentQuery->where('gender', $genderFilter);
+            }
+
+            $students = $studentQuery
+                ->with(['subclass.class', 'subclass.combie', 'parent', 'oldSubclass.class'])
                 ->orderBy('first_name')
                 ->get();
         }
+
 
         // Get results data
         $resultsData = [];
@@ -2379,6 +2665,18 @@ class ResultManagementController extends Controller
                 $resultsData = $this->getTermReport($students, $termFilter, $yearFilter, $schoolType);
             }
         }
+
+        // Fetch detailed data for single student (CAs and Exam breakdowns)
+        $detailedSingleData = null;
+        if ($option === 'single' && count($students) > 0) {
+            $reqClone = $request->duplicate();
+            $reqClone->merge(['getSubjectDetails' => true, 'studentID' => $studentID]);
+            $res = $this->index($reqClone);
+            if ($res instanceof \Illuminate\Http\JsonResponse) {
+                $detailedSingleData = json_decode($res->content(), true);
+            }
+        }
+
 
         // Filter students to only those with results
         $students = $students->filter(function($student) use ($resultsData) {
@@ -2410,6 +2708,7 @@ class ResultManagementController extends Controller
             'schoolType' => $schoolType,
             'students' => $students,
             'resultsData' => $resultsData,
+            'detailedSingleData' => $detailedSingleData,
             'filters' => [
                 'term' => $termFilter,
                 'year' => $yearFilter,
@@ -2672,6 +2971,224 @@ class ResultManagementController extends Controller
         header('Cache-Control: max-age=0');
         $writer->save('php://output');
         exit;
+    }
+    /**
+     * Save term report definition
+     */
+    public function saveReportDefinition(Request $request)
+    {
+        $schoolID = Session::get('schoolID');
+        if (!$schoolID) {
+            return response()->json(['success' => false, 'message' => 'School ID not found in session']);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'year' => 'required|integer',
+            'term' => 'required|string',
+            'exam_ids' => 'required|array',
+            'exam_ids.*' => 'integer'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()]);
+        }
+
+        try {
+            TermReportDefinition::updateOrCreate(
+                [
+                    'schoolID' => $schoolID,
+                    'year' => $request->year,
+                    'term' => $request->term
+                ],
+                [
+                    'exam_ids' => $request->exam_ids,
+                    'created_by' => Session::get('teacherID') ?? auth()->id() ?? 1
+                ]
+            );
+
+            return response()->json(['success' => true, 'message' => 'Report definition saved successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get all report definitions for the school
+     */
+    public function getReportDefinitions(Request $request)
+    {
+        $schoolID = Session::get('schoolID');
+        $year = $request->query('year');
+        $term = $request->query('term');
+
+        $query = TermReportDefinition::where('schoolID', $schoolID);
+
+        if ($year) {
+            $query->where('year', $year);
+        }
+        if ($term && $term !== '') {
+            $query->where('term', $term);
+        }
+
+        $definitions = $query->orderBy('year', 'desc')
+            ->orderBy('term', 'asc')
+            ->get();
+
+        // Get names for exams in each definition
+        foreach ($definitions as $def) {
+            if (!empty($def->exam_ids)) {
+                $def->exam_names = Examination::whereIn('examID', $def->exam_ids)
+                    ->pluck('exam_name')
+                    ->toArray();
+            } else {
+                $def->exam_names = [];
+            }
+        }
+            
+        return response()->json(['success' => true, 'data' => $definitions]);
+    }
+
+    /**
+     * Delete report definition
+     */
+    public function deleteReportDefinition($id)
+    {
+        $schoolID = Session::get('schoolID');
+        TermReportDefinition::where('id', $id)
+            ->where('schoolID', $schoolID)
+            ->delete();
+            
+        return response()->json(['success' => true, 'message' => 'Definition deleted successfully']);
+    }
+
+    /**
+     * Get exams for a specific term and year
+     */
+    public function getExamsForTerm(Request $request)
+    {
+        $schoolID = Session::get('schoolID');
+        $term = $request->term;
+        $year = $request->year;
+
+        $exams = Examination::where('schoolID', $schoolID)
+            ->where('year', $year)
+            ->where('term', $term)
+            ->orderBy('start_date', 'asc')
+            ->get(['examID', 'exam_name']);
+
+        return response()->json(['success' => true, 'data' => $exams]);
+    }
+
+    // ==========================================
+    // CA Definition Methods
+    // ==========================================
+
+    public function getSchoolExamsForTermList(Request $request)
+    {
+        $schoolID = Session::get('schoolID');
+        $year = $request->year;
+        $term = $request->term;
+
+        $exams = Examination::where('schoolID', $schoolID)
+            ->where('year', $year)
+            ->where('term', $term)
+            ->where('exam_category', 'school_exams')
+            ->orderBy('start_date', 'asc')
+            ->get(['examID', 'exam_name']);
+
+        return response()->json(['success' => true, 'data' => $exams]);
+    }
+
+    public function getTestsForTermList(Request $request)
+    {
+        $schoolID = Session::get('schoolID');
+        $year = $request->year;
+        $term = $request->term;
+
+        $exams = Examination::where('schoolID', $schoolID)
+            ->where('year', $year)
+            ->where('term', $term)
+            ->where('exam_category', 'test')
+            ->orderBy('start_date', 'asc')
+            ->get(['examID', 'exam_name', 'end_date']);
+
+        return response()->json(['success' => true, 'data' => $exams]);
+    }
+
+    public function checkExamCaExists(Request $request)
+    {
+        $examID = $request->examID;
+        $schoolID = Session::get('schoolID');
+
+        $exists = CaDefinition::where('examID', $examID)->where('schoolID', $schoolID)->exists();
+
+        return response()->json(['success' => true, 'exists' => $exists]);
+    }
+
+    public function saveCaDefinition(Request $request)
+    {
+        $schoolID = Session::get('schoolID');
+        if (!$schoolID) return response()->json(['success' => false, 'message' => 'Session expired']);
+
+        $validator = Validator::make($request->all(), [
+            'year' => 'required|integer',
+            'term' => 'required|string',
+            'examID' => 'required|integer',
+            'test_ids' => 'required|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => 'All fields are required.']);
+        }
+
+        CaDefinition::updateOrCreate(
+            [
+                'schoolID' => $schoolID,
+                'examID' => $request->examID
+            ],
+            [
+                'year' => $request->year,
+                'term' => $request->term,
+                'test_ids' => $request->test_ids,
+                'created_by' => Session::get('teacherID') ?? Session::get('staffID') ?? 0
+            ]
+        );
+
+        return response()->json(['success' => true, 'message' => 'CA Definition saved successfully.']);
+    }
+
+    public function getCaDefinitions(Request $request)
+    {
+        $schoolID = Session::get('schoolID');
+        $year = $request->year;
+        $term = $request->term;
+
+        $query = CaDefinition::where('schoolID', $schoolID)->with('mainExam');
+        
+        if ($year) $query->where('year', $year);
+        if ($term) $query->where('term', $term);
+        if ($request->examID) $query->where('examID', $request->examID);
+
+        $defs = $query->orderBy('created_at', 'desc')->get()->map(function($def) {
+            $testNames = Examination::whereIn('examID', $def->test_ids)->pluck('exam_name')->toArray();
+            $def->test_names = $testNames;
+            return $def;
+        });
+
+        return response()->json(['success' => true, 'data' => $defs]);
+    }
+
+    public function deleteCaDefinition($id)
+    {
+        $schoolID = Session::get('schoolID');
+        $def = CaDefinition::where('id', $id)->where('schoolID', $schoolID)->first();
+
+        if ($def) {
+            $def->delete();
+            return response()->json(['success' => true, 'message' => 'CA Definition deleted.']);
+        }
+
+        return response()->json(['success' => false, 'message' => 'Definition not found.']);
     }
 }
 

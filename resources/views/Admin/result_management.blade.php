@@ -9,38 +9,129 @@
 <meta name="csrf-token" content="{{ csrf_token() }}">
 
 <style>
-    .bg-primary-custom {
-        background-color: #940000 !important;
+    /* 1. Global Font and Base Rule */
+    body, .card, .modal-content, .table, h1, h2, h3, h4, h5, h6, p, div, span, button, input, select {
+        font-family: 'Century Gothic', Muli, sans-serif !important;
     }
-    .text-primary-custom {
+
+    /* 2. No Box Shadows ANYWHERE */
+    * {
+        box-shadow: none !important;
+    }
+
+    /* 3. Primary Background: #FFFFFF */
+    body, .card, .card-body, .modal-content, .main-panel, select option {
+        background-color: #FFFFFF !important;
+    }
+
+    /* 4. Corporate Red: #940000 */
+    .bg-primary-custom, .btn-primary-custom, .bg-primary, .bg-info, .bg-success, .bg-warning, .btn-primary, .btn-info, .btn-success, .btn-warning, .btn-dark, .badge-primary, .badge-info, .badge-success {
+        background-color: #940000 !important;
+        border-color: #940000 !important;
+        color: #FFFFFF !important;
+    }
+
+    .text-primary-custom, .text-primary, .text-info, h1, h2, h3, h4, h5, h6, .text-success, .text-muted, .text-dark, .text-danger {
         color: #940000 !important;
     }
-    .btn-primary-custom {
-        background-color: #940000;
-        border-color: #940000;
-        color: #ffffff;
+
+    /* Border assignments */
+    .border, .border-bottom, .border-top, .border-right, .border-left, .card, .table-bordered th, .table-bordered td, .form-control, .form-select {
+        border-color: rgba(148, 0, 0, 0.2) !important;
     }
-    .btn-primary-custom:hover {
-        background-color: #b30000;
-        border-color: #b30000;
-        color: #ffffff;
+
+    /* 5. Secondary Pale Gradient: linear-gradient(135deg, #FFF5F5 0%, #FFFFFF 100%) */
+    .card-header, .modal-header, table thead, table thead th, .nav-tabs .nav-link.active, .bg-light {
+        background: linear-gradient(135deg, #FFF5F5 0%, #FFFFFF 100%) !important;
+        background-color: transparent !important;
+        color: #940000 !important;
+        border-bottom: 2px solid #940000 !important;
     }
-    .form-control:focus, .form-select:focus {
-        border-color: #940000;
-        box-shadow: 0 0 0 0.2rem rgba(148, 0, 0, 0.25);
+
+    /* 6. Accent Soft Red: #FFF5F5 */
+    /* Hover effects and stat cards */
+    .bg-info-light, .bg-warning-light, .bg-success-light, .bg-danger-light, .alert, .list-group-item, .card-body.bg-light {
+        background: #FFF5F5 !important;
+        background-color: #FFF5F5 !important;
+        color: #940000 !important;
+        border: 1px solid rgba(148, 0, 0, 0.2) !important;
     }
+
+    tbody tr:hover, table.table-hover tbody tr:hover td {
+        background-color: #FFF5F5 !important;
+        color: #940000 !important;
+    }
+
+    /* Buttons Hover */
+    .btn:hover {
+        background-color: #FFF5F5 !important;
+        color: #940000 !important;
+        border-color: #940000 !important;
+    }
+
+    /* Outline Buttons */
+    .btn-outline-primary, .btn-outline-info, .btn-outline-danger {
+        color: #940000 !important;
+        background-color: #FFFFFF !important;
+        border-color: #940000 !important;
+    }
+
+    .btn-outline-primary:hover, .btn-outline-info:hover, .btn-outline-danger:hover {
+        background-color: #FFF5F5 !important;
+        color: #940000 !important;
+    }
+
+    /* Inactive Tabs */
+    .nav-tabs .nav-link {
+        color: #940000 !important;
+        opacity: 0.7;
+    }
+    .nav-tabs .nav-link.active {
+        opacity: 1;
+        font-weight: bold;
+    }
+
+    /* Overrides for specific UI elements */
     .result-card {
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(148, 0, 0, 0.1) !important;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(148, 0, 0, 0.2) !important;
     }
     .result-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 12px rgba(148, 0, 0, 0.15);
+        transform: translateY(-2px);
+        background-color: #FFF5F5 !important;
     }
     .table-responsive {
         max-height: 600px;
         overflow-y: auto;
+    }
+    .status-marker i {
+        margin-right: 4px;
+    }
+    
+    /* Ensure inputs have active red focus */
+    .form-control:focus, .form-select:focus {
+        border-color: #940000 !important;
+        outline: 0;
+        box-shadow: none !important;
+    }
+    
+    /* Card Title Background Fix */
+    .card-body.bg-primary-custom {
+        background: linear-gradient(135deg, #FFF5F5 0%, #FFFFFF 100%) !important;
+        border-color: #940000 !important;
+        border-left: 4px solid #940000 !important;
+    }
+    
+    /* Dropdown Menus */
+    .dropdown-menu {
+        background-color: #FFFFFF !important;
+        border: 1px solid rgba(148, 0, 0, 0.2) !important;
+    }
+    .dropdown-item {
+        color: #940000 !important;
+    }
+    .dropdown-item:hover {
+        background-color: #FFF5F5 !important;
     }
 </style>
 
@@ -105,9 +196,17 @@
                             <i class="bi bi-trophy"></i> Result Management
                         </h4>
                         @if(!isset($isTeacherView) || !$isTeacherView)
-                        <button type="button" class="btn btn-light btn-sm" data-toggle="modal" data-target="#gradeDefinitionModal">
-                            <i class="bi bi-bookmark-star"></i> Define Grades
-                        </button>
+                        <div class="d-flex btn-group flex-wrap">
+                            <button type="button" class="btn btn-light btn-sm mr-2" data-toggle="modal" data-target="#gradeDefinitionModal">
+                                <i class="bi bi-bookmark-star"></i> Define Grades
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold mr-2" data-toggle="modal" data-target="#reportDefinitionModal" id="btnDefineReport">
+                                <i class="bi bi-file-earmark-ruled"></i> Define Report
+                            </button>
+                            <button type="button" class="btn btn-info btn-sm font-weight-bold" data-toggle="modal" data-target="#caDefinitionModal" id="btnDefineCA">
+                                <i class="bi bi-calculator"></i> Define CA
+                            </button>
+                        </div>
                         @endif
                     </div>
                 </div>
@@ -118,6 +217,33 @@
                 <div class="card-body">
                     <form id="filterForm" method="GET" action="{{ route('manageResults') }}">
                         <!-- Filtering Description Display -->
+                        <div id="filteringText" class="mb-3 text-dark font-weight-bold border-bottom pb-2">
+                            @if(isset($filteringDescription))
+                                {!! $filteringDescription !!}
+                            @else
+                                <i class="bi bi-funnel"></i> Filtering: All active results for current year
+                            @endif
+                            
+                            @php
+                                $schoolID = Session::get('schoolID');
+                                $currentYear = date('Y');
+                                $currentTerm = $filters['term'] ?? 'first_term'; // Use $filters['term'] if available, otherwise default
+                                
+                                $reportDef = \App\Models\TermReportDefinition::where('schoolID', $schoolID)
+                                    ->where('year', $filters['year'] ?? $currentYear) // Use $filters['year'] if available
+                                    ->where('term', $currentTerm)
+                                    ->first();
+                            @endphp
+                            
+                            @if($reportDef && !empty($reportDef->exam_ids))
+                                <div class="mt-2">
+                                    <span class="badge badge-warning text-dark p-2">
+                                        <i class="bi bi-info-circle-fill"></i> 
+                                        Note: This report is calculated based on <strong>{{ count($reportDef->exam_ids) }} defined exams</strong> only.
+                                    </span>
+                                </div>
+                            @endif
+                        </div>
                         <div class="alert alert-info mb-3" id="filteringDescription" style="display: none;">
                             <i class="bi bi-info-circle"></i> <strong>Filtering:</strong> <span id="filteringText"></span>
                         </div>
@@ -1611,10 +1737,12 @@
                                                             <table class="table table-sm table-bordered">
                                                                 <thead class="bg-light">
                                                                     <tr>
-                                                                        <th>Pos</th>
+                                                                        <th>Position</th>
                                                                         <th>Student Name</th>
-                                                                        <th>Marks</th>
-                                                                        <th>Grade</th>
+                                                                        <th>Examinations</th>
+                                                                        <th>Average</th>
+                                                                        <th>Div/Grade</th>
+                                                                        <th>Actions</th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
@@ -2068,34 +2196,52 @@
                                         }
                                     }
                                     
-                                    // Calculate gradeStats and Male/Female per Grade for report view (both Primary and Secondary use grades)
+                                    // Calculate gradeStats, divisionStats and Male/Female stats for report view
                                     $gradeStats = [];
                                     $maleGradeStats = [];
                                     $femaleGradeStats = [];
+                                    $divisionStats = [];
+                                    $maleDivisionStats = [];
+                                    $femaleDivisionStats = [];
                                     
                                     foreach ($reportStudents as $reportStudent) {
                                         $gender = $reportStudent['student']->gender ?? '';
                                         $grade = $reportStudent['grade'] ?? null;
+                                        $fullDivision = $reportStudent['division'] ?? null;
                                         
-                                        // For report view, always use grade (not division)
-                                        if ($grade) {
-                                            // Count grades
-                                            if (!isset($gradeStats[$grade])) {
-                                                $gradeStats[$grade] = 0;
+                                        // Extract main division part (e.g., "III" from "III.21")
+                                        $division = '';
+                                        if ($fullDivision) {
+                                            if (preg_match('/^([IVX0]+)\./', $fullDivision, $matches)) {
+                                                $division = $matches[1];
+                                            } else {
+                                                $division = $fullDivision;
                                             }
+                                        }
+
+                                        // Count grades
+                                        if ($grade && in_array($grade, ['A', 'B', 'C', 'D', 'E', 'F'])) {
+                                            if (!isset($gradeStats[$grade])) $gradeStats[$grade] = 0;
                                             $gradeStats[$grade]++;
-                                            
-                                            // Count by gender
                                             if ($gender === 'Male') {
-                                                if (!isset($maleGradeStats[$grade])) {
-                                                    $maleGradeStats[$grade] = 0;
-                                                }
+                                                if (!isset($maleGradeStats[$grade])) $maleGradeStats[$grade] = 0;
                                                 $maleGradeStats[$grade]++;
                                             } elseif ($gender === 'Female') {
-                                                if (!isset($femaleGradeStats[$grade])) {
-                                                    $femaleGradeStats[$grade] = 0;
-                                                }
+                                                if (!isset($femaleGradeStats[$grade])) $femaleGradeStats[$grade] = 0;
                                                 $femaleGradeStats[$grade]++;
+                                            }
+                                        }
+
+                                        // Count divisions
+                                        if ($division && in_array($division, ['I', 'II', 'III', 'IV', '0'])) {
+                                            if (!isset($divisionStats[$division])) $divisionStats[$division] = 0;
+                                            $divisionStats[$division]++;
+                                            if ($gender === 'Male') {
+                                                if (!isset($maleDivisionStats[$division])) $maleDivisionStats[$division] = 0;
+                                                $maleDivisionStats[$division]++;
+                                            } elseif ($gender === 'Female') {
+                                                if (!isset($femaleDivisionStats[$division])) $femaleDivisionStats[$division] = 0;
+                                                $femaleDivisionStats[$division]++;
                                             }
                                         }
                                     }
@@ -2205,16 +2351,29 @@
                                         // Sort students in this class
                                         if ($schoolType === 'Secondary') {
                                             usort($classStudents, function($a, $b) {
-                                                // Sort by grade order (A is best)
-                                                $gradeOrder = ['A' => 1, 'B' => 2, 'C' => 3, 'D' => 4, 'E' => 5, 'F' => 6];
-                                                $gradeA = $gradeOrder[strtoupper($a['grade'] ?? 'F')] ?? 999;
-                                                $gradeB = $gradeOrder[strtoupper($b['grade'] ?? 'F')] ?? 999;
-                                                
-                                                if ($gradeA != $gradeB) {
-                                                    return $gradeA <=> $gradeB; // Lower number = better grade
+                                                // For Secondary, sort by division points first (from division string like 'I.9')
+                                                $divA = $a['division'] ?? null;
+                                                $divB = $b['division'] ?? null;
+
+                                                // Extract Roman numeral prefix from division e.g. 'I.9' => 'I', 'IV.29' => 'IV'
+                                                $divOrder = ['I' => 1, 'II' => 2, 'III' => 3, 'IV' => 4, '0' => 5];
+                                                preg_match('/^([0IVX]+)\./', $divA ?? '', $mA);
+                                                preg_match('/^([0IVX]+)\./', $divB ?? '', $mB);
+                                                $rankA = $divOrder[$mA[1] ?? ''] ?? 999;
+                                                $rankB = $divOrder[$mB[1] ?? ''] ?? 999;
+
+                                                if ($rankA != $rankB) {
+                                                    return $rankA <=> $rankB;
                                                 }
-                                                
-                                                // If same grade, sort by average (descending)
+
+                                                // Same division: sort by total_points ascending (lower = better for O-Level)
+                                                $ptA = $a['report']['total_points'] ?? 9999;
+                                                $ptB = $b['report']['total_points'] ?? 9999;
+                                                if ($ptA != $ptB) {
+                                                    return $ptA <=> $ptB;
+                                                }
+
+                                                // Fallback: average descending
                                                 return $b['average_marks'] <=> $a['average_marks'];
                                             });
                                         } else {
@@ -2323,12 +2482,80 @@
                                         }
                                     }
                                     
-                                    // Determine which grades to show (for report view, always use grades, not divisions)
+                                    // Determine which grades to show
                                     $gradesToShow = ['A', 'B', 'C', 'D', 'E', 'F'];
                                     if (!empty($filters['grade']) && $filters['grade'] != '') {
                                         $gradesToShow = [strtoupper($filters['grade'])];
                                     }
+                                    
+                                    // Determine which divisions to show
+                                    $divisionsToShow = ['I', 'II', 'III', 'IV', '0'];
+
+                                    // Prepare detailed view data for PDF export (Advanced PDF format)
+                                    $detailedReportData = [
+                                        'className' => $allClassesSelected ? 'ALL CLASSES' : ($subclassDisplayName ?: ($selectedClass ? $selectedClass->class_name : 'N/A')),
+                                        'examName' => 'Term Report (' . $termName . ')',
+                                        'year' => $filters['year'] ?? date('Y'),
+                                        'totalStudents' => $totalStudents,
+                                        'maleCount' => $maleCount,
+                                        'femaleCount' => $femaleCount,
+                                        'averageMarks' => number_format($classAverage, 1),
+                                        'averageGrade' => $classAverageGrade,
+                                        'maleAverage' => $maleAverage > 0 ? number_format($maleAverage, 1) : '0.0',
+                                        'femaleAverage' => $femaleAverage > 0 ? number_format($femaleAverage, 1) : '0.0',
+                                        'gradeStats' => $gradeStats,
+                                        'divisionStats' => $divisionStats ?? [],
+                                        'maleDivisionStats' => $maleDivisionStats ?? [],
+                                        'femaleDivisionStats' => $femaleDivisionStats ?? [],
+                                        'maleGradeStats' => $maleGradeStats,
+                                        'femaleGradeStats' => $femaleGradeStats,
+                                        'subjectStats' => $subjectStats,
+                                        'passRate' => number_format($passRate, 1),
+                                        'failRate' => number_format($failRate, 1),
+                                        'performanceRemark' => $performanceRemark,
+                                        'performanceComment' => $performanceComment,
+                                        'top5Students' => array_map(function($s) {
+                                            return [
+                                                'position' => $s['position'] ?? 'N/A',
+                                                'studentName' => ($s['student']->first_name ?? '') . ' ' . ($s['student']->middle_name ?? '') . ' ' . ($s['student']->last_name ?? ''),
+                                                'divisionOrGrade' => $s['division'] ?? $s['grade'] ?? 'N/A'
+                                            ];
+                                        }, array_slice($reportStudents, 0, 5)),
+                                        'allStudents' => array_map(function($s) {
+                                            $st = $s['student'];
+                                            
+                                            // Format exams summary as a single subject for the PDF table
+                                            $examsSummary = '';
+                                            if (isset($s['exams']) && count($s['exams']) > 0) {
+                                                $eParts = [];
+                                                foreach ($s['exams'] as $ex) {
+                                                    $eName = strtoupper($ex['exam']->exam_name ?? 'N/A');
+                                                    $eAvg = number_format($ex['average'] ?? 0, 1);
+                                                    $eGrade = $ex['grade'] ?? 'N/A';
+                                                    $eParts[] = $eName . ': ' . $eAvg . '-' . $eGrade;
+                                                }
+                                                $examsSummary = implode('; ', $eParts);
+                                            }
+
+                                            return [
+                                                'studentID' => $st->studentID,
+                                                'studentName' => trim($st->first_name . ' ' . ($st->middle_name ?? '') . ' ' . $st->last_name),
+                                                'className' => $s['class_name'] ?? 'N/A',
+                                                'totalMarks' => number_format($s['average_marks'], 1), // In report view, total shows average
+                                                'grade' => $s['grade'] ?? null,
+                                                'division' => $s['division'] ?? null,
+                                                'subjects' => [['subject_name' => 'EXAMS', 'marks' => '', 'grade' => $examsSummary]], // Store summary in grade
+                                                'position' => $s['position'] ?? null
+                                            ];
+                                        }, $reportStudents),
+                                        'schoolName' => $school->school_name ?? Session::get('school_name', 'ShuleXpert')
+                                    ];
                                 @endphp
+                                
+                                <script>
+                                    window.detailedViewData = @json($detailedReportData);
+                                    console.log('Detailed Report Data Loaded:', window.detailedViewData);
+                                </script>
                                 
                                 <!-- Title -->
                                 <h4 class="mb-4 text-center">
@@ -2386,62 +2613,121 @@
                                             </div>
                                         </div>
                                         
-                                        <!-- Grade Distribution -->
-                                        <div class="col-12 mt-3">
-                                            <h6 class="mb-2"><i class="bi bi-award"></i> Grade Distribution</h6>
-                                            <div class="row">
-                                                @foreach($gradesToShow as $grade)
-                                                    <div class="col-md-2 mb-2">
-                                                        <div class="card bg-light">
-                                                            <div class="card-body text-center p-2">
-                                                                <strong class="text-primary-custom">{{ $gradeStats[$grade] ?? 0 }}</strong>
-                                                                <br><small class="text-muted">Grade {{ $grade }}</small>
+                                        @if($schoolType === 'Primary')
+                                            <!-- Grade Distribution -->
+                                            <div class="col-12 mt-3">
+                                                <h6 class="mb-2"><i class="bi bi-award"></i> Grade Distribution</h6>
+                                                <div class="row">
+                                                    @foreach($gradesToShow as $grade)
+                                                        <div class="col-md-2 mb-2">
+                                                            <div class="card bg-light">
+                                                                <div class="card-body text-center p-2">
+                                                                    <strong class="text-primary-custom">{{ $gradeStats[$grade] ?? 0 }}</strong>
+                                                                    <br><small class="text-muted">Grade {{ $grade }}</small>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                @endforeach
+                                                    @endforeach
+                                                </div>
                                             </div>
-                                        </div>
-                                        
-                                        <!-- Male/Female per Grade -->
-                                        <div class="col-12 mt-4">
-                                            <h6 class="mb-3"><i class="bi bi-gender-ambiguous"></i> Male/Female per Grade</h6>
-                                            <div class="table-responsive">
-                                                <table class="table table-bordered table-sm">
-                                                    <thead class="bg-primary-custom text-white">
-                                                        <tr>
-                                                            <th>Grade</th>
-                                                            @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Male')
-                                                                <th>Male</th>
-                                                            @endif
-                                                            @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Female')
-                                                                <th>Female</th>
-                                                            @endif
-                                                            <th>Total</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach($gradesToShow as $grade)
-                                                            @php
-                                                                $maleCountGrade = $maleGradeStats[$grade] ?? 0;
-                                                                $femaleCountGrade = $femaleGradeStats[$grade] ?? 0;
-                                                                $totalGrade = $maleCountGrade + $femaleCountGrade;
-                                                            @endphp
+                                            
+                                            <!-- Male/Female per Grade -->
+                                            <div class="col-12 mt-4">
+                                                <h6 class="mb-3"><i class="bi bi-gender-ambiguous"></i> Male/Female per Grade</h6>
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered table-sm">
+                                                        <thead class="bg-primary-custom text-white">
                                                             <tr>
-                                                                <td><strong>Grade {{ $grade }}</strong></td>
+                                                                <th>Grade</th>
                                                                 @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Male')
-                                                                    <td>{{ $maleCountGrade }}</td>
+                                                                    <th>Male</th>
                                                                 @endif
                                                                 @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Female')
-                                                                    <td>{{ $femaleCountGrade }}</td>
+                                                                    <th>Female</th>
                                                                 @endif
-                                                                <td><strong>{{ $totalGrade }}</strong></td>
+                                                                <th>Total</th>
                                                             </tr>
-                                                        @endforeach
-                                                    </tbody>
-                                                </table>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($gradesToShow as $grade)
+                                                                @php
+                                                                    $maleCountGrade = $maleGradeStats[$grade] ?? 0;
+                                                                    $femaleCountGrade = $femaleGradeStats[$grade] ?? 0;
+                                                                    $totalGrade = $maleCountGrade + $femaleCountGrade;
+                                                                @endphp
+                                                                <tr>
+                                                                    <td><strong>Grade {{ $grade }}</strong></td>
+                                                                    @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Male')
+                                                                        <td>{{ $maleCountGrade }}</td>
+                                                                    @endif
+                                                                    @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Female')
+                                                                        <td>{{ $femaleCountGrade }}</td>
+                                                                    @endif
+                                                                    <td><strong>{{ $totalGrade }}</strong></td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
-                                        </div>
+                                        @else
+                                            <!-- Division Distribution -->
+                                            <div class="col-12 mt-3">
+                                                <h6 class="mb-2"><i class="bi bi-trophy"></i> Division Distribution</h6>
+                                                <div class="row">
+                                                    @foreach($divisionsToShow as $div)
+                                                        <div class="col-md-2 mb-2">
+                                                            <div class="card bg-light">
+                                                                <div class="card-body text-center p-2">
+                                                                    <strong class="text-primary-custom">{{ $divisionStats[$div] ?? 0 }}</strong>
+                                                                    <br><small class="text-muted">Division {{ $div }}</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Male/Female per Division -->
+                                            <div class="col-12 mt-4">
+                                                <h6 class="mb-3"><i class="bi bi-gender-ambiguous"></i> Male/Female per Division</h6>
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered table-sm">
+                                                        <thead class="bg-primary-custom text-white">
+                                                            <tr>
+                                                                <th>Division</th>
+                                                                @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Male')
+                                                                    <th>Male</th>
+                                                                @endif
+                                                                @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Female')
+                                                                    <th>Female</th>
+                                                                @endif
+                                                                <th>Total</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($divisionsToShow as $div)
+                                                                @php
+                                                                    $maleCountDiv = $maleDivisionStats[$div] ?? 0;
+                                                                    $femaleCountDiv = $femaleDivisionStats[$div] ?? 0;
+                                                                    $totalDiv = $maleCountDiv + $femaleCountDiv;
+                                                                @endphp
+                                                                <tr>
+                                                                    <td><strong>Division {{ $div }}</strong></td>
+                                                                    @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Male')
+                                                                        <td>{{ $maleCountDiv }}</td>
+                                                                    @endif
+                                                                    @if(empty($filters['gender']) || ucfirst(strtolower($filters['gender'])) === 'Female')
+                                                                        <td>{{ $femaleCountDiv }}</td>
+                                                                    @endif
+                                                                    <td><strong>{{ $totalDiv }}</strong></td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        @endif
                                         
                                         <!-- Class Overview Statistics -->
                                         <div class="col-12 mt-4">
@@ -2587,7 +2873,7 @@
                                                             <th>Student Name</th>
                                                             <th>Examinations</th>
                                                             <th>Average</th>
-                                                            <th>Grade</th>
+                                                            <th>Div/Grade</th>
                                                             <th>Actions</th>
                                                         </tr>
                                                     </thead>
@@ -3169,9 +3455,7 @@ $(document).ready(function() {
                         
                         // Add marks for each exam
                         response.exams.forEach(function(exam) {
-                            const examResult = subject.exams.find(function(e) {
-                                return e.exam_name === exam.exam_name;
-                            });
+                            const examResult = (subject.exams && subject.exams[exam.examID]) ? subject.exams[exam.examID] : null;
                             
                             if (examResult && examResult.marks !== null && examResult.marks !== '') {
                                 const marks = parseFloat(examResult.marks).toFixed(0);
@@ -3302,7 +3586,7 @@ $(document).ready(function() {
             data: {
                 term: $('#term').val(),
                 year: $('#year').val(),
-                type: 'exam',
+                type: $('#type').val() || 'exam',
                 examID: examID,
                 class: $('#class').val(),
                 studentID: studentID,
@@ -3321,8 +3605,6 @@ $(document).ready(function() {
                 
                 if (typeof response === 'object' && response.subjects) {
                     // JSON response with subject details
-                    // Store student data for PDF export
-                    // Use position from response if available (per class), otherwise use position from table
                     const studentPosition = response.position || position;
                     window.currentStudentData = {
                         studentID: response.student.studentID,
@@ -3352,43 +3634,124 @@ $(document).ready(function() {
                     }
                     
                     if (response.subjects && response.subjects.length > 0) {
-                        subjectsHtml = `
-                            <div class="card">
-                                <div class="card-header bg-primary-custom text-white">
-                                    <h6 class="mb-0"><i class="bi bi-book"></i> Subject Details</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="table-responsive">
-                                        <table class="table table-sm table-bordered">
-                                            <thead class="bg-light">
-                                                <tr>
-                                                    <th>Subject</th>
-                                                    <th>Marks</th>
-                                                    <th>Grade</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                        `;
+                        const isTermReport = response.subjects[0].is_term_report;
                         
-                        response.subjects.forEach(function(subject) {
-                            const marks = subject.marks !== null && subject.marks !== '' ? 
-                                parseFloat(subject.marks).toFixed(0) : 'N/A';
-                            subjectsHtml += `
-                                <tr>
-                                    <td>${subject.subject_name || 'N/A'}</td>
-                                    <td>${marks}</td>
-                                    <td>${subject.grade || 'N/A'}</td>
-                                </tr>
+                        if (isTermReport && response.exams) {
+                            // TERM REPORT MULTI-COLUMN VIEW
+                            let examHeaders = '';
+                            response.exams.forEach(ex => {
+                                examHeaders += `<th class="text-center">${ex.exam_name}</th>`;
+                            });
+                            
+                            subjectsHtml = `
+                                <div class="card">
+                                    <div class="card-header bg-primary-custom text-white">
+                                        <h6 class="mb-0"><i class="bi bi-book"></i> Subject Results Breakdown</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered table-striped">
+                                                <thead class="bg-light">
+                                                    <tr>
+                                                        <th>Subject</th>
+                                                        ${examHeaders}
+                                                        <th class="text-center">Average</th>
+                                                        <th class="text-center">Grade</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
                             `;
-                        });
-                        
-                        subjectsHtml += `
-                                            </tbody>
-                                        </table>
+                            
+                            response.subjects.forEach(function(subject) {
+                                let examCells = '';
+                                response.exams.forEach(ex => {
+                                    const res = (subject.exams && subject.exams[ex.examID]) ? subject.exams[ex.examID] : null;
+                                    if (res) {
+                                        examCells += `<td class="text-center">${res.marks !== null ? parseFloat(res.marks).toFixed(0) : '-'}<br><small class="text-muted">${res.grade || '-'}</small></td>`;
+                                    } else {
+                                        examCells += `<td class="text-center text-muted">-</td>`;
+                                    }
+                                });
+                                
+                                subjectsHtml += `
+                                    <tr>
+                                        <td><strong>${subject.subject_name}</strong></td>
+                                        ${examCells}
+                                        <td class="text-center align-middle font-weight-bold">${parseFloat(subject.average).toFixed(1)}</td>
+                                        <td class="text-center align-middle"><span class="badge badge-info">${subject.grade ?? 'N/A'}</span></td>
+                                    </tr>
+                                `;
+                            });
+                            
+                            subjectsHtml += `
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        `;
+                            `;
+                        } else {
+                            // ORIGINAL CA OR SINGLE EXAM VIEW
+                            subjectsHtml = `
+                                <div class="card">
+                                    <div class="card-header bg-primary-custom text-white">
+                                        <h6 class="mb-0"><i class="bi bi-book"></i> Subject Details</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-sm table-bordered">
+                                                <thead class="bg-light">
+                                                    <tr>
+                                                        <th>Subject</th>
+                                                        <th>Marks</th>
+                                                        <th>Grade</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                            `;
+                            
+                            response.subjects.forEach(function(subject) {
+                                if (subject.is_ca_averaged) {
+                                    // CA Averaged View
+                                    subjectsHtml += `<tr class="bg-light-info">
+                                        <td>
+                                            <div class="font-weight-bold text-dark">${subject.subject_name}</div>
+                                            <div class="small text-muted mt-1 px-2 border-left">
+                                    `;
+                                    
+                                    if (subject.exams && subject.exams.length > 0) {
+                                        subject.exams.forEach(function(ex) {
+                                            subjectsHtml += `<div class="d-flex justify-content-between mb-1">
+                                                <span>${ex.exam_name}:</span>
+                                                <span class="font-italic">${ex.marks ?? '-'} (${ex.grade ?? '-'})</span>
+                                            </div>`;
+                                        });
+                                    }
+                                    
+                                    subjectsHtml += `</div></td>
+                                        <td class="text-center align-middle h5"><strong>${parseFloat(subject.marks).toFixed(1)}</strong></td>
+                                        <td class="text-center align-middle font-weight-bold h5 text-primary"><strong>${subject.grade ?? 'N/A'}</strong></td>
+                                    </tr>`;
+                                } else {
+                                    // Single Exam View
+                                    const marks = subject.marks !== null && subject.marks !== '' ? 
+                                        parseFloat(subject.marks).toFixed(0) : 'N/A';
+                                    subjectsHtml += `<tr>
+                                        <td>${subject.subject_name}</td>
+                                        <td class="text-center">${marks}</td>
+                                        <td class="text-center font-weight-bold">${subject.grade ?? 'N/A'}</td>
+                                    </tr>`;
+                                }
+                            });
+                            
+                            subjectsHtml += `
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
                     }
                 } else {
                     // HTML response - try to extract from original view structure
@@ -4064,44 +4427,108 @@ $(document).ready(function() {
         window.jsPDF = window.jspdf.jsPDF;
     }
 
-    // Handle export from modal
+    // =========================================================
+    // SERVER-SIDE PDF DOWNLOAD HELPER (DomPDF - direct link)
+    // Uses <a> tag click with href URL - same result as duty book
+    // fetch() approach had session cookie issues, direct link works
+    // =========================================================
+    function serverDownloadPDF(params, filename) {
+        const btn = params._btn;
+        const originalHtml = btn ? btn.html() : null;
+        if (btn) btn.prop('disabled', true).html('<i class="bi bi-hourglass-split"></i> Generating PDF...');
+
+        // Build clean params WITHOUT btn jQuery object
+        const cleanParams = {};
+        Object.keys(params).forEach(function(k) {
+            if (k !== '_btn' && params[k] !== null && params[k] !== undefined && params[k] !== '') {
+                cleanParams[k] = params[k];
+            }
+        });
+
+        const queryString = new URLSearchParams(cleanParams).toString();
+        const url = '{{ route("admin.download_results_pdf") }}?' + queryString;
+
+        // Use direct anchor download - avoids fetch() session issues
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename || 'Result.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+        // Re-enable button after short delay
+        setTimeout(function() {
+            if (btn && originalHtml) btn.prop('disabled', false).html(originalHtml);
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({ title: 'Downloading!', text: 'PDF is being generated...', icon: 'success', timer: 2000, showConfirmButton: false });
+            }
+        }, 1500);
+    }
+
+    // Handle export from exam-result modal (single student)
     $(document).on('click', '.export-student-pdf-btn', function(e) {
         e.preventDefault();
         const studentID = $(this).data('student-id');
         const examID = $(this).data('exam-id');
-        
-        if (!window.currentStudentData) {
-            alert('Student data not available. Please view student details first.');
-            return;
-        }
-        
-        downloadStudentPDFFromModal(window.currentStudentData);
+        const $btn = $(this);
+
+        const params = {
+            option: 'single',
+            studentID: studentID,
+            term: $('#term').val(),
+            year: $('#year').val(),
+            type: $('#type').val() || 'exam',
+            status: $('#status').val() || 'active',
+            examID: examID || $('#examID').val() || '',
+            _btn: $btn
+        };
+
+        const studentName = (window.currentStudentData && window.currentStudentData.studentName)
+            ? window.currentStudentData.studentName.replace(/\s+/g, '_')
+            : 'Student';
+        const examName = (window.currentStudentData && window.currentStudentData.examName)
+            ? window.currentStudentData.examName.replace(/\s+/g, '_')
+            : 'Exam';
+
+        serverDownloadPDF(params, studentName + '_' + examName + '.pdf');
     });
-    
+
     $(document).on('click', '.export-student-excel-btn', function(e) {
         e.preventDefault();
         const studentID = $(this).data('student-id');
         const examID = $(this).data('exam-id');
-        
+
         if (!window.currentStudentData) {
             alert('Student data not available. Please view student details first.');
             return;
         }
-        
+
         downloadStudentExcelFromModal(window.currentStudentData);
     });
-    
-    // Handle export from term report modal
+
+    // Handle export from term report modal (single student)
     $(document).on('click', '.export-report-student-pdf-btn', function(e) {
         e.preventDefault();
         const studentID = $(this).data('student-id');
-        
-        if (!window.currentReportStudentData) {
-            alert('Student data not available. Please view student details first.');
-            return;
-        }
-        
-        downloadReportStudentPDFFromModal(window.currentReportStudentData);
+        const $btn = $(this);
+
+        const params = {
+            option: 'single',
+            studentID: studentID,
+            term: $('#term').val(),
+            year: $('#year').val(),
+            type: 'report',
+            status: $('#status').val() || 'active',
+            examID: $('#examID').val() || '',
+            _btn: $btn
+        };
+
+        const studentName = (window.currentReportStudentData && window.currentReportStudentData.studentName)
+            ? window.currentReportStudentData.studentName.replace(/\s+/g, '_')
+            : 'Student';
+
+        serverDownloadPDF(params, studentName + '_Term_Report.pdf');
     });
     
     $(document).on('click', '.export-report-student-excel-btn', function(e) {
@@ -4574,28 +5001,45 @@ $(document).ready(function() {
         XLSX.writeFile(wb, filename);
     }
 
-    // Export All Students based on filters - Use event delegation to handle dynamically loaded buttons
+    // Export All Students PDF
+    // If detailed view (class/subclass with stats) is showing → use jsPDF rich export
+    // Otherwise → use server-side DomPDF (simple table)
     $(document).on('click', '#exportAllPdf', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Export All PDF button clicked');
-        console.log('Button element:', this);
-        console.log('jQuery object:', $(this));
-        
-        // Verify button exists
-        if ($(this).length === 0) {
-            console.error('Export PDF button not found in DOM');
-            alert('Export button not found. Please refresh the page.');
-            return;
-        }
-        
-        try {
-            exportAllStudentsPDF();
-        } catch (error) {
-            console.error('Error exporting PDF:', error);
-            console.error('Error stack:', error.stack);
-            alert('Error exporting PDF: ' + error.message);
-        }
+
+        const $btn = $(this);
+
+        // No detailed view — use server-side DomPDF natively
+        console.log('Using server-side DomPDF export for class');
+        const classVal    = $('#class').val() || '';
+        const subclassVal = $('#subclass').val() || '';
+
+        // Determine right option based on filters selected
+        let option = 'all';
+        if (subclassVal) option = 'subclass';
+        else if (classVal) option = 'class';
+
+        const params = {
+            option: option,
+            term: $('#term').val(),
+            year: $('#year').val(),
+            type: $('#type').val() || 'exam',
+            status: $('#status').val() || 'active',
+            examID: $('#examID').val() || '',
+            classID:    classVal,
+            subclassID: subclassVal,
+            grade:  $('#grade').val() || '',
+            gender: $('#gender').val() || '',
+            _btn: $btn
+        };
+
+        const term = params.term ? params.term.replace('_', '') : '';
+        const year = params.year;
+        const typeName = params.type === 'report' ? 'Term_Report' : 'Exam_Results';
+        const filename = 'Students_' + typeName + '_' + (term ? term + '_' : '') + year + '.pdf';
+
+        serverDownloadPDF(params, filename);
     });
 
     // Function to export detailed view PDF
@@ -5174,27 +5618,14 @@ $(document).ready(function() {
     });
 
     function exportAllStudentsPDF() {
-        console.log('exportAllStudentsPDF called');
-        // Check if detailed view exists
-        const $detailedView = $('.detailed-exam-results');
-        console.log('Detailed view found:', $detailedView.length);
-        
-        if ($detailedView.length > 0) {
-            // Use new detailed view PDF format
-            console.log('Using detailed view PDF export');
-            exportDetailedViewPDF();
-            return;
-        }
-        
-        // Original export function for non-detailed views
-        console.log('Using standard PDF export');
-        
-        // Check if jsPDF is available
-        if (!window.jspdf || !window.jspdf.jsPDF) {
-            alert('PDF library not loaded. Please refresh the page and try again.');
-            console.error('jsPDF not available');
-            return;
-        }
+        // Legacy fallback — now main export is handled by #exportAllPdf click handler above
+        // using server-side DomPDF via fetch blob. This function is kept for any direct calls.
+        $('#exportAllPdf').trigger('click');
+    }
+
+    // NOTE: exportDetailedViewPDF (jsPDF) kept below for detailed stats view
+    // which is a different complex view not covered by server-side simple table PDF
+    if (false) {
         
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l', 'mm', 'a4'); // Landscape for wide table
@@ -5263,6 +5694,7 @@ $(document).ready(function() {
 
         // Get all school subjects
         const schoolSubjects = @json($schoolSubjects ?? []);
+        const schoolType = '{{ $schoolType ?? "Secondary" }}';
         
         // Build headers: #, Student Name, Class, [All Subjects], Division/Grade
         const headers = ['#', 'Student Name', 'Class'];
@@ -5285,9 +5717,13 @@ $(document).ready(function() {
             let className = '';
             
             if ($('#resultsTable').length > 0) {
-                // Term Report
+                // Term Report (Standard)
                 studentName = row.find('td').eq(1).text().trim();
                 className = row.find('td').eq(2).text().trim();
+            } else if ($('#reportStudentsTable').length > 0) {
+                // Term Report (Detailed/Report Students Table)
+                studentName = row.find('td').eq(1).text().trim();
+                className = '{{ $subclassDisplayName ?? ($selectedClass->class_name ?? "N/A") }}';
             } else {
                 // Exam Results
                 studentName = row.find('.card-header h6 strong').text().trim();
@@ -5295,6 +5731,8 @@ $(document).ready(function() {
                 // Get class from data attribute
                 className = row.data('main-class') || 'N/A';
             }
+
+            const mainClass = className;  // alias used later
 
             const rowData = [index + 1, studentName, className];
             
@@ -5711,6 +6149,9 @@ $(document).ready(function() {
             
             // Subjects Table
             if (studentData.subjects && studentData.subjects.length > 0) {
+                const hasCA = studentData.subjects.some(s => s.is_ca_averaged && s.exams && s.exams.length > 1);
+                const headers = hasCA ? [['Subject', 'CA', 'Exam', 'Total', 'Grade']] : [['Subject', 'Marks', 'Grade']];
+                
                 const subjectData = [];
                 studentData.subjects.forEach(function(subject) {
                     let marks = 'N/A';
@@ -5719,20 +6160,58 @@ $(document).ready(function() {
                     } else if (subject.marks !== null && subject.marks !== '') {
                         marks = parseFloat(subject.marks).toFixed(0);
                     }
-                    subjectData.push([
-                        subject.subject_name || 'N/A',
-                        marks,
-                        subject.grade || 'N/A'
-                    ]);
+
+                    if (hasCA) {
+                        let caMarks = '-';
+                        let examMarks = '-';
+                        if (subject.exams) {
+                            let caSum = 0;
+                            let caCount = 0;
+                            subject.exams.forEach(ex => {
+                                if (ex.exam_name.includes('(CA)')) {
+                                    caSum += parseFloat(ex.marks) || 0;
+                                    caCount++;
+                                } else {
+                                    examMarks = (ex.marks !== null && ex.marks !== '') ? parseFloat(ex.marks).toFixed(0) : '-';
+                                }
+                            });
+                            if (caCount > 0) caMarks = (caSum / caCount).toFixed(0);
+                        }
+                        subjectData.push([
+                            subject.subject_name || 'N/A',
+                            caMarks,
+                            examMarks,
+                            marks,
+                            subject.grade || 'N/A'
+                        ]);
+                    } else {
+                        subjectData.push([
+                            subject.subject_name || 'N/A',
+                            marks,
+                            subject.grade || 'N/A'
+                        ]);
+                    }
                 });
                 
+                const columnStyles = hasCA ? {
+                    0: { cellWidth: tableWidth * 0.4 },
+                    1: { cellWidth: tableWidth * 0.15, halign: 'center' },
+                    2: { cellWidth: tableWidth * 0.15, halign: 'center' },
+                    3: { cellWidth: tableWidth * 0.15, halign: 'center' },
+                    4: { cellWidth: tableWidth * 0.15, halign: 'center' }
+                } : {
+                    0: { cellWidth: tableWidth * 0.6 },
+                    1: { cellWidth: tableWidth * 0.2, halign: 'right' },
+                    2: { cellWidth: tableWidth * 0.2, halign: 'center' }
+                };
+
                 doc.autoTable({
                     startY: yPos,
-                    head: [['Subject', 'Marks', 'Grade']],
+                    head: headers,
                     body: subjectData,
                     theme: 'striped',
                     headStyles: { fillColor: [148, 0, 0], textColor: 255, fontStyle: 'bold' },
-                    styles: { fontSize: 10 },
+                    styles: { fontSize: 9 },
                     margin: { 
                         left: tableMargin, 
                         right: tableMargin,
@@ -5740,11 +6219,7 @@ $(document).ready(function() {
                         bottom: 10
                     },
                     tableWidth: tableWidth,
-                    columnStyles: {
-                        0: { cellWidth: tableWidth * 0.6 },
-                        1: { cellWidth: tableWidth * 0.2, halign: 'right' },
-                        2: { cellWidth: tableWidth * 0.2, halign: 'center' }
-                    }
+                    columnStyles: columnStyles
                 });
             }
             
@@ -5823,6 +6298,13 @@ $(document).ready(function() {
         data.push(['Subject', 'Marks', 'Grade']);
         
         if (studentData.subjects && studentData.subjects.length > 0) {
+            const hasCA = studentData.subjects.some(s => s.is_ca_averaged && s.exams && s.exams.length > 1);
+            if (hasCA) {
+                // Remove the standard header and add CA headers
+                data.pop();
+                data.push(['Subject', 'CA', 'Exam', 'Total', 'Grade']);
+            }
+
             studentData.subjects.forEach(function(subject) {
                 let marks = 'N/A';
                 if (subject.marks === 'incomplete') {
@@ -5830,11 +6312,37 @@ $(document).ready(function() {
                 } else if (subject.marks !== null && subject.marks !== '') {
                     marks = parseFloat(subject.marks).toFixed(0);
                 }
-                data.push([
-                    subject.subject_name || 'N/A',
-                    marks,
-                    subject.grade || 'N/A'
-                ]);
+
+                if (hasCA) {
+                    let caMarks = '-';
+                    let examMarks = '-';
+                    if (subject.exams) {
+                        let caSum = 0;
+                        let caCount = 0;
+                        subject.exams.forEach(ex => {
+                            if (ex.exam_name.includes('(CA)')) {
+                                caSum += parseFloat(ex.marks) || 0;
+                                caCount++;
+                            } else {
+                                examMarks = (ex.marks !== null && ex.marks !== '') ? parseFloat(ex.marks).toFixed(0) : '-';
+                            }
+                        });
+                        if (caCount > 0) caMarks = (caSum / caCount).toFixed(0);
+                    }
+                    data.push([
+                        subject.subject_name || 'N/A',
+                        caMarks,
+                        examMarks,
+                        marks,
+                        subject.grade || 'N/A'
+                    ]);
+                } else {
+                    data.push([
+                        subject.subject_name || 'N/A',
+                        marks,
+                        subject.grade || 'N/A'
+                    ]);
+                }
             });
         }
         
@@ -5986,9 +6494,7 @@ $(document).ready(function() {
                     
                     // Add marks for each exam (format: "marks-grade")
                     reportStudentData.exams.forEach(function(exam) {
-                        const examResult = subject.exams.find(function(e) {
-                            return e.exam_name === exam.exam_name;
-                        });
+                        const examResult = (subject.exams && subject.exams[exam.examID]) ? subject.exams[exam.examID] : null;
                         
                         if (examResult && examResult.marks !== null && examResult.marks !== '') {
                             let marks = 'N/A';
@@ -6137,9 +6643,7 @@ $(document).ready(function() {
                 
                 // Add marks for each exam
                 reportStudentData.exams.forEach(function(exam) {
-                    const examResult = subject.exams.find(function(e) {
-                        return e.exam_name === exam.exam_name;
-                    });
+                    const examResult = (subject.exams && subject.exams[exam.examID]) ? subject.exams[exam.examID] : null;
                     
                     if (examResult && examResult.marks !== null && examResult.marks !== '') {
                         let marks = 'N/A';
@@ -6688,6 +7192,283 @@ $(document).ready(function() {
     </div>
 </div>
 
+<!-- Term Report Definition Modal -->
+<div class="modal fade" id="reportDefinitionModal" tabindex="-1" aria-labelledby="reportDefinitionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark border-0">
+                <h5 class="modal-title font-weight-bold" id="reportDefinitionModalLabel">
+                    <i class="bi bi-file-earmark-ruled"></i> Term Report Definition
+                </h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <i class="bi bi-info-circle-fill"></i> <strong>How it works:</strong> Use this to select which specific exams should be included when calculating the <strong>Term Report</strong>. If no definition exists for a term, the system will automatically include all exams for that term.
+                </div>
+
+                <!-- Tabbed interface for Report Definition -->
+                <ul class="nav nav-tabs nav-fill mb-4" id="reportTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active font-weight-bold" id="define-report-tab" data-toggle="tab" href="#define-report" role="tab"><i class="bi bi-plus-circle"></i> Define New</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold" id="view-report-tab" data-toggle="tab" href="#view-report" role="tab"><i class="bi bi-list-ul"></i> View/Filter Reports</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="reportTabContent">
+                    <!-- Tab 1: Define Report -->
+                    <div class="tab-pane fade show active" id="define-report" role="tabpanel">
+                        <form id="reportDefinitionForm">
+                            @csrf
+                            <input type="hidden" name="id" id="reportDefID">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label font-weight-bold">Select Year <span class="text-danger">*</span></label>
+                                    <select class="form-control" name="year" id="defYear" required>
+                                        @for($i = date('Y'); $i >= 2020; $i--)
+                                            <option value="{{ $i }}" {{ $i == date('Y') ? 'selected' : '' }}>{{ $i }}</option>
+                                        @endfor
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label font-weight-bold">Select Term <span class="text-danger">*</span></label>
+                                    <select class="form-control" name="term" id="defTerm" required>
+                                        <option value="first_term">First Term</option>
+                                        <option value="second_term">Second Term</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="card mb-4 border-warning">
+                                <div class="card-header bg-warning-light d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0 font-weight-bold text-dark">Choose Exams to Calculate Report</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-dark" id="btnRefreshExams">
+                                        <i class="bi bi-arrow-clockwise"></i> Refresh Exams
+                                    </button>
+                                </div>
+                                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                                    <div id="examsListContainer" class="exams-list-grid">
+                                        <div class="text-center py-4 text-muted">
+                                            <i class="bi bi-search d-block mb-2" style="font-size: 2rem;"></i>
+                                            Please select year and term to load exams
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-right">
+                                <button type="button" class="btn btn-secondary mr-2 d-none" id="btnCancelEditReport">Cancel Edit</button>
+                                <button type="submit" class="btn btn-warning font-weight-bold px-4 shadow-sm" id="btnSaveReportDef">
+                                    <i class="bi bi-save"></i> Save Definition
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tab 2: View/Filter Reports -->
+                    <div class="tab-pane fade" id="view-report" role="tabpanel">
+                        <div class="row mb-3 bg-light p-2 rounded mx-0 border">
+                            <div class="col-md-4 px-1">
+                                <select class="form-control form-control-sm" id="filterReportYear">
+                                    <option value="">All Years</option>
+                                    @for($i = date('Y'); $i >= 2020; $i--)
+                                        <option value="{{ $i }}">{{ $i }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-4 px-1">
+                                <select class="form-control form-control-sm" id="filterReportTerm">
+                                    <option value="">All Terms</option>
+                                    <option value="first_term">First Term</option>
+                                    <option value="second_term">Second Term</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 px-1">
+                                <button type="button" class="btn btn-sm btn-warning btn-block font-weight-bold" id="btnApplyReportFilter">
+                                    <i class="bi bi-funnel"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover border">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th width="30"></th>
+                                        <th>Year</th>
+                                        <th>Term</th>
+                                        <th>Exams</th>
+                                        <th width="120">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportDefinitionsList">
+                                    <tr>
+                                        <td colspan="5" class="text-center py-3 text-muted">Loading definitions...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .exams-list-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+    }
+    .exam-checkbox-item {
+        background: #FFFFFF;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(148, 0, 0, 0.2);
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .exam-checkbox-item:hover {
+        border-color: #940000;
+        background: #FFF5F5;
+    }
+</style>
+
+<!-- CA Definition Modal -->
+<div class="modal fade" id="caDefinitionModal" tabindex="-1" aria-labelledby="caDefinitionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white border-0">
+                <h5 class="modal-title font-weight-bold" id="caDefinitionModalLabel">
+                    <i class="bi bi-calculator"></i> Continuous Assessment (CA) Definition
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <i class="bi bi-info-circle-fill"></i> <strong>How it works:</strong> Define which <strong>Tests</strong> should be combined with a <strong>School Exam</strong> (like Midterm) to get an average score. 
+                    Calculated as: <code>(Exam Marks + Test1 Marks + Test2 Marks...) / Total Exams</code>
+                </div>
+
+                <ul class="nav nav-tabs nav-fill mb-4" id="caTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active font-weight-bold" id="define-ca-tab" data-toggle="tab" href="#define-ca" role="tab"><i class="bi bi-plus-circle"></i> Define New</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link font-weight-bold" id="view-ca-tab" data-toggle="tab" href="#view-ca" role="tab"><i class="bi bi-list-ul"></i> View/Filter CA</a>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="caTabContent">
+                    <!-- Tab 1: Define CA -->
+                    <div class="tab-pane fade show active" id="define-ca" role="tabpanel">
+                        <form id="caDefinitionForm">
+                            @csrf
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label font-weight-bold">Year</label>
+                                    <select class="form-control" name="year" id="caYear" required>
+                                        @for($i = date('Y'); $i >= 2020; $i--)
+                                            <option value="{{ $i }}" {{ $i == date('Y') ? 'selected' : '' }}>{{ $i }}</option>
+                                        @endfor
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label font-weight-bold">Term</label>
+                                    <select class="form-control" name="term" id="caTerm" required>
+                                        <option value="first_term">First Term</option>
+                                        <option value="second_term">Second Term</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <label class="form-label font-weight-bold">Select School Exam <span class="text-danger">*</span></label>
+                                    <select class="form-control" name="examID" id="caMainExam" required>
+                                        <option value="">-- Choose Exam --</option>
+                                    </select>
+                                    <div id="caStatusFeedback" class="mt-1 small"></div>
+                                </div>
+                            </div>
+
+                            <div id="caTestsContainer" style="display: none;">
+                                <div class="card mb-4 border-info">
+                                    <div class="card-header bg-info-light d-flex justify-content-between align-items-center">
+                                        <h6 class="mb-0 font-weight-bold text-info"><i class="bi bi-check2-square"></i> Choose Tests for CA</h6>
+                                    </div>
+                                    <div class="card-body" style="max-height: 250px; overflow-y: auto;">
+                                        <div id="caTestsList" class="exams-list-grid">
+                                            <!-- populated via ajax -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-right">
+                                    <button type="submit" class="btn btn-info font-weight-bold px-4 shadow-sm" id="btnSaveCaDef">
+                                        <i class="bi bi-save"></i> Save CA Definition
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tab 2: View CA -->
+                    <div class="tab-pane fade" id="view-ca" role="tabpanel">
+                        <div class="row mb-3 bg-light p-2 rounded mx-0 border">
+                            <div class="col-md-4 px-1">
+                                <select class="form-control form-control-sm" id="filterCaYear">
+                                    <option value="">All Years</option>
+                                    @for($i = date('Y'); $i >= 2020; $i--)
+                                        <option value="{{ $i }}">{{ $i }}</option>
+                                    @endfor
+                                </select>
+                            </div>
+                            <div class="col-md-4 px-1">
+                                <select class="form-control form-control-sm" id="filterCaTerm">
+                                    <option value="">All Terms</option>
+                                    <option value="first_term">First Term</option>
+                                    <option value="second_term">Second Term</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 px-1">
+                                <button type="button" class="btn btn-sm btn-info btn-block" id="btnApplyCaFilter">
+                                    <i class="bi bi-funnel"></i> Filter
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover border">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th>Exam</th>
+                                        <th>CA</th>
+                                        <th width="80">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="caDefinitionsList">
+                                    <tr>
+                                        <td colspan="3" class="text-center py-3 text-muted">Use filter or click view to load</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Cleaned up rogue inline styles */
+</style>    
+
 <!-- SweetAlert2 Library Check and Validation Error Handler -->
 <script>
 $(document).ready(function() {
@@ -6931,8 +7712,8 @@ $(document).ready(function() {
                 const checkboxId = `check_${studentId}_${randomId}`;
                 const disabledAttr = phone ? '' : 'disabled="disabled"';
                 const statusHtml = phone 
-                    ? '<span class="status-marker text-muted small">Pending</span>' 
-                    : '<span class="text-danger small">No Phone</span>';
+                    ? '<span class="status-marker text-muted small"><i class="bi bi-hourglass"></i> Pending...</span>' 
+                    : '<span class="text-danger small"><i class="bi bi-telephone-x"></i> No Phone</span>';
                 
                 // Construct data attributes
                 let dataAttrs = `data-student-id="${studentId}" data-phone="${phone}" `;
@@ -7074,7 +7855,8 @@ $(document).ready(function() {
             
             const row = $(selectedRows[i]);
             const statusCol = row.find('.status-col');
-            statusCol.html('<div class="spinner-border spinner-border-sm text-primary" role="status"></div>');
+            row.addClass('bg-warning-light'); // Highlight the active row
+            statusCol.html('<div class="spinner-border spinner-border-sm text-primary" role="status"></div> <span class="small text-primary font-weight-bold">Sending...</span>');
             
             const data = {
                 studentID: row.data('student-id'),
@@ -7099,15 +7881,19 @@ $(document).ready(function() {
                     data: data
                 });
 
+                row.removeClass('bg-warning-light');
                 if (response.success) {
-                    statusCol.html('<i class="bi bi-check-circle-fill text-success"></i>');
+                    statusCol.html('<span class="text-success small font-weight-bold"><i class="bi bi-check-circle-fill"></i> Delivered</span>');
                     delivered++;
+                    row.addClass('bg-success-light');
                 } else {
-                    statusCol.html('<i class="bi bi-exclamation-circle-fill text-danger" title="'+(response.error || 'Failed')+'"></i>');
+                    statusCol.html('<span class="text-danger small font-weight-bold" title="'+(response.error || 'Failed')+'"><i class="bi bi-exclamation-circle-fill"></i> Failed</span>');
                     failed++;
+                    row.addClass('bg-danger-light');
                 }
             } catch (err) {
-                statusCol.html('<i class="bi bi-exclamation-circle-fill text-danger" title="Network Error"></i>');
+                row.removeClass('bg-warning-light').addClass('bg-danger-light');
+                statusCol.html('<span class="text-danger small font-weight-bold"><i class="bi bi-exclamation-triangle-fill"></i> Error</span>');
                 failed++;
             }
 
@@ -7236,6 +8022,501 @@ $(document).ready(function() {
         if (isSendingSms) {
             stopSmsRequest = true;
         }
+    });
+
+    // ==========================================
+    // Term Report Definition Module
+    // ==========================================
+
+    // Store definitions in JS for easy edit/expand
+    let termReportDefinitions = [];
+
+    // Open Modal
+    $('#btnDefineReport').on('click', function() {
+        $('#reportDefinitionModal').modal('show');
+        resetReportForm();
+        loadReportDefinitions();
+        loadExamsForDefinition();
+    });
+
+    // Handle Year/Term change in modal
+    $('#defYear, #defTerm').on('change', function() {
+        loadExamsForDefinition();
+    });
+
+    // Filter Apply
+    $('#btnApplyReportFilter').on('click', loadReportDefinitions);
+
+    // Refresh button
+    $('#btnRefreshExams').on('click', function() {
+        loadExamsForDefinition();
+    });
+
+    function resetReportForm() {
+        $('#reportDefID').val('');
+        $('#reportDefinitionForm')[0].reset();
+        $('#defYear').val(new Date().getFullYear());
+        $('#defTerm').val('first_term');
+        $('#btnCancelEditReport').addClass('d-none');
+        $('#btnSaveReportDef').html('<i class="bi bi-save"></i> Save Definition');
+    }
+
+    $('#btnCancelEditReport').on('click', resetReportForm);
+
+    // Load available exams
+    function loadExamsForDefinition(selectedIds = []) {
+        const year = $('#defYear').val();
+        const term = $('#defTerm').val();
+        const container = $('#examsListContainer');
+        
+        container.html('<div class="text-center py-4"><div class="spinner-border spinner-border-sm text-warning" role="status"></div> Loading exams...</div>');
+        
+        $.ajax({
+            url: "{{ route('get_exams_for_term_list') }}",
+            type: 'GET',
+            data: { year: year, term: term },
+            success: function(response) {
+                if (response.success && response.data.length > 0) {
+                    let html = '';
+                    response.data.forEach(function(exam) {
+                        const isChecked = selectedIds.includes(String(exam.examID)) || selectedIds.includes(Number(exam.examID)) ? 'checked' : '';
+                        html += `
+                            <label class="exam-checkbox-item d-flex align-items-center mb-0">
+                                <input type="checkbox" name="exam_ids[]" value="${exam.examID}" class="mr-2 exam-id-checkbox" ${isChecked}>
+                                <span class="text-dark small font-weight-bold">${exam.exam_name}</span>
+                            </label>
+                        `;
+                    });
+                    container.html(html);
+                } else {
+                    container.html('<div class="text-center py-4 text-muted">No exams found for this term.</div>');
+                }
+            }
+        });
+    }
+
+    // Save
+    $('#reportDefinitionForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const examIds = [];
+        $('.exam-id-checkbox:checked').each(function() {
+            examIds.push($(this).val());
+        });
+        
+        if (examIds.length === 0) {
+            Swal.fire('Selection Required', 'Please choose at least one exam.', 'warning');
+            return;
+        }
+        
+        const btn = $('#btnSaveReportDef');
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
+        
+        $.ajax({
+            url: "{{ route('save_report_definition') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                id: $('#reportDefID').val(),
+                year: $('#defYear').val(),
+                term: $('#defTerm').val(),
+                exam_ids: examIds
+            },
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire('Success!', response.message, 'success');
+                    resetReportForm();
+                    loadReportDefinitions();
+                    $('#view-report-tab').tab('show');
+                } else {
+                    Swal.fire('Error', response.message, 'error');
+                }
+            },
+            complete: function() {
+                btn.prop('disabled', false).html('<i class="bi bi-save"></i> Save Definition');
+            }
+        });
+    });
+
+    // Load List
+    function loadReportDefinitions() {
+        const tbody = $('#reportDefinitionsList');
+        const filterYear = $('#filterReportYear').val();
+        const filterTerm = $('#filterReportTerm').val();
+        
+        tbody.html('<tr><td colspan="5" class="text-center py-3"><div class="spinner-border spinner-border-sm"></div> Loading...</td></tr>');
+
+        $.ajax({
+            url: "{{ route('get_report_definitions') }}",
+            type: 'GET',
+            data: { year: filterYear, term: filterTerm },
+            success: function(response) {
+                if (response.success && response.data.length > 0) {
+                    termReportDefinitions = response.data;
+                    let html = '';
+                    response.data.forEach(function(def, index) {
+                        const termLabel = def.term === 'first_term' ? 'First Term' : 'Second Term';
+                        const count = Array.isArray(def.exam_ids) ? def.exam_ids.length : 0;
+                        const examNamesStr = (def.exam_names || []).join(', ');
+                        
+                        html += `
+                            <tr>
+                                <td>
+                                    <button class="btn btn-sm btn-link p-0 btn-expand-def" data-index="${index}">
+                                        <i class="bi bi-chevron-right"></i>
+                                    </button>
+                                </td>
+                                <td class="font-weight-bold">${def.year}</td>
+                                <td><span class="badge badge-info">${termLabel}</span></td>
+                                <td><span class="badge badge-light border">${count} Exams</span></td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-xs btn-outline-primary btn-edit-def" data-index="${index}" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-xs btn-outline-danger btn-delete-def" data-id="${def.id}" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr class="def-details d-none bg-light" id="def-details-${index}">
+                                <td colspan="5">
+                                    <div class="p-2 small">
+                                        <strong>Selected Exams:</strong><br>
+                                        <span class="text-muted italic">${examNamesStr || 'No names found'}</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.html(html);
+                } else {
+                    tbody.html('<tr><td colspan="5" class="text-center py-3 text-muted">No report definitions found.</td></tr>');
+                }
+            }
+        });
+    }
+
+    // Toggle expand
+    $(document).on('click', '.btn-expand-def', function() {
+        const index = $(this).data('index');
+        const detailsRow = $('#def-details-' + index);
+        const icon = $(this).find('i');
+        
+        if (detailsRow.hasClass('d-none')) {
+            detailsRow.removeClass('d-none');
+            icon.removeClass('bi-chevron-right').addClass('bi-chevron-down');
+        } else {
+            detailsRow.addClass('d-none');
+            icon.removeClass('bi-chevron-down').addClass('bi-chevron-right');
+        }
+    });
+
+    // Edit
+    $(document).on('click', '.btn-edit-def', function() {
+        const index = $(this).data('index');
+        const def = termReportDefinitions[index];
+        
+        $('#reportDefID').val(def.id);
+        $('#defYear').val(def.year);
+        $('#defTerm').val(def.term);
+        $('#btnCancelEditReport').removeClass('d-none');
+        $('#btnSaveReportDef').html('<i class="bi bi-check-circle"></i> Update Definition');
+        
+        loadExamsForDefinition(def.exam_ids || []);
+        $('#define-report-tab').tab('show');
+    });
+
+    // Delete
+    $(document).on('click', '.btn-delete-def', function() {
+        const id = $(this).data('id');
+        Swal.fire({
+            title: 'Delete Definition?',
+            text: "This term report will revert to using all exams for calculation.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "{{ url('delete_report_definition') }}/" + id,
+                    type: 'DELETE',
+                    data: { _token: "{{ csrf_token() }}" },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire('Deleted!', '', 'success');
+                            loadReportDefinitions();
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    $('#btnReloadDefs').on('click', loadReportDefinitions);
+
+    $('#btnReloadDefs').on('click', loadReportDefinitions);
+
+    // ==========================================
+    // CA Definition Module
+    // ==========================================
+
+    // Open Modal
+    $('#btnDefineCA').on('click', function() {
+        $('#caDefinitionModal').modal('show');
+        loadSchoolExamsForCa();
+        loadCaDefinitions();
+    });
+
+    // Handle Year/Term change
+    $('#caYear, #caTerm').on('change', function() {
+        loadSchoolExamsForCa();
+    });
+
+    // Load school exams
+    function loadSchoolExamsForCa(selectedExamId = null, callback = null) {
+        const year = $('#caYear').val();
+        const term = $('#caTerm').val();
+        const select = $('#caMainExam');
+        
+        select.html('<option value="">Loading...</option>');
+        $('#caTestsContainer').hide();
+        
+        $.ajax({
+            url: "{{ route('get_school_exams_for_term_list') }}",
+            type: 'GET',
+            data: { year: year, term: term },
+            success: function(response) {
+                if (response.success && response.data.length > 0) {
+                    let html = '<option value="">-- Choose Exam --</option>';
+                    response.data.forEach(function(ex) {
+                        html += `<option value="${ex.examID}">${ex.exam_name}</option>`;
+                    });
+                    select.html(html);
+                    
+                    if (selectedExamId) {
+                        select.val(selectedExamId);
+                        if (callback) callback();
+                    }
+                } else {
+                    select.html('<option value="">No school exams found</option>');
+                }
+            }
+        });
+    }
+
+    // Handle Exam selection
+    $('#caMainExam').on('change', function() {
+        const examID = $(this).val();
+        if (!examID) {
+            $('#caTestsContainer').hide();
+            return;
+        }
+
+        // 1. Check if exists
+        $.ajax({
+            url: "{{ route('check_exam_ca_exists') }}",
+            type: 'GET',
+            data: { examID: examID },
+            success: function(response) {
+                if (response.success && response.exists) {
+                    $('#caStatusFeedback').html('<span class="text-danger font-weight-bold"><i class="bi bi-exclamation-triangle-fill"></i> This exam already defined CA. Saving will overwrite it.</span>');
+                } else {
+                    $('#caStatusFeedback').html('<span class="text-success small"><i class="bi bi-check-circle"></i> Exam available for CA definition</span>');
+                }
+            }
+        });
+
+        // 2. Load Tests for the term
+        loadTestsForCa();
+    });
+
+    function loadTestsForCa(selectedTestIds = null) {
+        const year = $('#caYear').val();
+        const term = $('#caTerm').val();
+        const container = $('#caTestsList');
+        
+        container.html('<div class="col-12 text-center py-3"><span class="spinner-border spinner-border-sm text-info"></span> Loading tests...</div>');
+        $('#caTestsContainer').show();
+
+        $.ajax({
+            url: "{{ route('get_tests_for_term_list') }}",
+            type: 'GET',
+            data: { year: year, term: term },
+            success: function(response) {
+                if (response.success && response.data.length > 0) {
+                    let html = '';
+                    response.data.forEach(function(test) {
+                        html += `
+                            <label class="exam-checkbox-item d-flex align-items-center mb-0 border-info-light">
+                                <input type="checkbox" name="test_ids[]" value="${test.examID}" class="mr-2 ca-test-checkbox">
+                                <div>
+                                    <div class="text-dark small font-weight-bold">${test.exam_name}</div>
+                                </div>
+                            </label>
+                        `;
+                    });
+                    container.html(html);
+                    
+                    if (selectedTestIds && selectedTestIds.length > 0) {
+                        $('.ca-test-checkbox').each(function() {
+                            if (selectedTestIds.includes(parseInt($(this).val()))) {
+                                $(this).prop('checked', true);
+                            }
+                        });
+                    }
+                } else {
+                    container.html('<div class="col-12 text-center py-3 text-muted">No tests found for this term.</div>');
+                }
+            }
+        });
+    }
+
+    // Save CA Definition
+    $('#caDefinitionForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const testIds = [];
+        $('.ca-test-checkbox:checked').each(function() {
+            testIds.push($(this).val());
+        });
+        
+        if (testIds.length === 0) {
+            Swal.fire('Required', 'Please choose at least one test to include in CA.', 'warning');
+            return;
+        }
+        
+        const btn = $('#btnSaveCaDef');
+        const oldHtml = btn.html();
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm"></span> Saving...');
+        
+        $.ajax({
+            url: "{{ route('save_ca_definition') }}",
+            type: 'POST',
+            data: {
+                _token: "{{ csrf_token() }}",
+                year: $('#caYear').val(),
+                term: $('#caTerm').val(),
+                examID: $('#caMainExam').val(),
+                test_ids: testIds
+            },
+            success: function(response) {
+                if (response.success) {
+                    Swal.fire('Success!', response.message, 'success');
+                    loadCaDefinitions();
+                    $('#view-ca-tab').tab('show');
+                } else {
+                    Swal.fire('Error', response.message, 'error');
+                }
+            },
+            complete: function() {
+                btn.prop('disabled', false).html(oldHtml);
+            }
+        });
+    });
+
+    // View/Filter CA
+    function loadCaDefinitions() {
+        const tbody = $('#caDefinitionsList');
+        const year = $('#filterCaYear').val();
+        const term = $('#filterCaTerm').val();
+        
+        tbody.html('<tr><td colspan="3" class="text-center py-3">Loading...</td></tr>');
+
+        $.ajax({
+            url: "{{ route('get_ca_definitions') }}",
+            type: 'GET',
+            data: { year: year, term: term },
+            success: function(response) {
+                if (response.success && response.data.length > 0) {
+                    let html = '';
+                    response.data.forEach(function(def) {
+                        const testList = def.test_names ? def.test_names.join(', ') : 'None';
+                        const defJson = encodeURIComponent(JSON.stringify(def));
+                        html += `
+                            <tr>
+                                <td>
+                                    <div class="font-weight-bold">${def.main_exam.exam_name}</div>
+                                    <small class="text-muted">${def.year} - ${def.term === 'first_term' ? 'Term 1' : 'Term 2'}</small>
+                                </td>
+                                <td><span class="small">${testList}</span></td>
+                                <td class="text-center">
+                                    <button class="btn btn-sm btn-outline-primary btn-edit-ca mr-1" data-def="${defJson}" title="Edit Form">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger btn-delete-ca" data-id="${def.id}" title="Delete Form">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    tbody.html(html);
+                } else {
+                    tbody.html('<tr><td colspan="3" class="text-center py-3 text-muted">No CA definitions found.</td></tr>');
+                }
+            }
+        });
+    }
+
+    $('#btnApplyCaFilter').on('click', loadCaDefinitions);
+    
+    // Switch to editing mode when Edit button is clicked
+    $(document).on('click', '.btn-edit-ca', function() {
+        const def = JSON.parse(decodeURIComponent($(this).data('def')));
+        if (!def) return;
+        
+        // Change to Define New tab
+        $('#define-ca-tab').tab('show');
+        
+        // Populate specific year and term from definition
+        $('#caYear').val(def.year);
+        $('#caTerm').val(def.term);
+        
+        $('#caStatusFeedback').html('<span class="text-info font-weight-bold"><i class="bi bi-pencil"></i> Editing CA definition...</span>');
+        
+        // Trigger select initialization but set exam once loaded
+        loadSchoolExamsForCa(def.examID, function() {
+            // Callback: load matching tests and auto-check those previously assigned
+            const testIds = def.test_ids.map(id => parseInt(id, 10));
+            loadTestsForCa(testIds);
+        });
+        
+        $('#btnSaveCaDef').html('<i class="bi bi-check2-circle"></i> Update Definition Form');
+        
+        // Scroll to form to give smooth UX
+        $('html, body').animate({
+            scrollTop: $("#define-ca").offset().top - 100
+        }, 500);
+    });
+
+    // Delete CA
+    $(document).on('click', '.btn-delete-ca', function() {
+        const id = $(this).data('id');
+        Swal.fire({
+            title: 'Delete CA Definition?',
+            text: "This exam result will revert to standard values without CA average.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'Yes, delete'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: "{{ url('delete_ca_definition') }}/" + id,
+                    type: 'DELETE',
+                    data: { _token: "{{ csrf_token() }}" },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire('Deleted', '', 'success');
+                            loadCaDefinitions();
+                        }
+                    }
+                });
+            }
+        });
     });
 });
 </script>
