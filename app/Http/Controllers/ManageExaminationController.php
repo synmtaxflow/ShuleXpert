@@ -834,6 +834,8 @@ class ManageExaminationController extends Controller
                 'term' => 'required_if:exam_category,school_exams|required_if:exam_category,test|required_if:exam_category,special_exams|in:first_term,second_term,all_terms',
                 'start_date' => 'required|date',
                 'end_date' => 'required|date|after_or_equal:start_date',
+                'allow_no_format' => 'nullable|boolean',
+                'allow_no_paper' => 'nullable|boolean',
                 'year' => 'required|integer|min:2000|max:2100',
                 'details' => 'nullable|string',
                 'student_shifting_status' => 'required_if:exam_category,school_exams|required_if:exam_category,test|in:none,internal,external',
@@ -999,6 +1001,8 @@ class ManageExaminationController extends Controller
                 'exam_name' => $request->exam_name,
                 'exam_category' => $request->exam_category,
                 'term' => ($request->exam_category === 'school_exams' || $request->exam_category === 'test' || $request->exam_category === 'special_exams') ? $request->term : null,
+                'allow_no_format' => $request->has('allow_no_format') ? 1 : 0,
+                'allow_no_paper' => $request->has('allow_no_paper') ? 1 : 0,
                 'except_class_ids' => $exceptClassIds,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
@@ -1675,7 +1679,7 @@ class ManageExaminationController extends Controller
                 });
             }
 
-            $examinations = $query->orderBy('year', 'desc')->orderBy('term', 'asc')->get(['examID', 'exam_name', 'year', 'term', 'exam_category']);
+            $examinations = $query->orderBy('year', 'desc')->orderBy('term', 'asc')->get(['examID', 'exam_name', 'year', 'term', 'exam_category', 'allow_no_format', 'allow_no_paper']);
 
             return response()->json([
                 'success' => true,
@@ -1899,6 +1903,8 @@ class ManageExaminationController extends Controller
                 'term' => 'required_if:exam_category,school_exams|required_if:exam_category,test|required_if:exam_category,special_exams|in:first_term,second_term,all_terms',
                 'start_date' => 'required|date',
                 'end_date' => 'required|date|after_or_equal:start_date',
+                'allow_no_format' => 'nullable|boolean',
+                'allow_no_paper' => 'nullable|boolean',
                 'year' => 'required|integer|min:2000|max:2100',
                 'details' => 'nullable|string',
                 'student_shifting_status' => 'required_if:exam_category,school_exams|required_if:exam_category,test|in:none,internal,external',
@@ -2044,6 +2050,8 @@ class ManageExaminationController extends Controller
                 'except_class_ids' => $exceptClassIds,
                 'start_date' => $request->start_date,
                 'end_date' => $request->end_date,
+                'allow_no_format' => $request->has('allow_no_format') ? 1 : 0,
+                'allow_no_paper' => $request->has('allow_no_paper') ? 1 : 0,
                 'exam_type' => 'school_wide_all_subjects',
                 'year' => $request->year,
                 'details' => $request->details,
@@ -4237,7 +4245,8 @@ class ManageExaminationController extends Controller
 
         $school = School::find(Session::get('schoolID'));
         $schoolType = $school && $school->school_type ? strtolower($school->school_type) : 'secondary';
-        $requiresQuestionFormat = $schoolType === 'secondary';
+        $exam = Examination::find($request->examID);
+        $requiresQuestionFormat = $schoolType === 'secondary' && (!$exam || $exam->allow_no_format != 1);
 
         if ($requiresQuestionFormat) {
             $validator->after(function ($validator) use ($request) {
@@ -7629,6 +7638,8 @@ class ManageExaminationController extends Controller
 
                 $assignment->start_date = $test->examination->start_date;
                 $assignment->end_date = $test->examination->end_date;
+                $assignment->use_question_format = $test->examination->use_question_format ?? 1; // Default to 1 if not set
+                $assignment->no_paper_required = $test->examination->no_paper_required ?? 0; // Default to 0 if not set
                 $assignment->term = $test->examination->term;
                 $assignment->exam_category = 'test';
                 $assignment->scope = $test->scope;

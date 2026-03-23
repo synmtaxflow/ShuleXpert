@@ -642,6 +642,28 @@
                         </small>
                     </div>
 
+                    <div class="form-group border-top pt-3 mt-3">
+                        <div class="custom-control custom-checkbox mb-2">
+                            <input type="checkbox" class="custom-control-input" id="allow_no_format" name="allow_no_format" value="1">
+                            <label class="custom-control-label" for="allow_no_format">
+                                <strong>Allow Create Exam Without Question Format</strong>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted d-block mb-3 ml-4">
+                            <i class="bi bi-info-circle"></i> Kama ikiwashwa, mwalimu ataingiza marks moja kwa moja bila kuhitaji kujaza question format kwanza.
+                        </small>
+
+                        <div class="custom-control custom-checkbox mb-2">
+                            <input type="checkbox" class="custom-control-input" id="allow_no_paper" name="allow_no_paper" value="1">
+                            <label class="custom-control-label" for="allow_no_paper">
+                                <strong>Create Exam Without Upload Paper</strong>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted d-block mb-3 ml-4">
+                            <i class="bi bi-info-circle"></i> Kama ikiwashwa, mwalimu ataweza kujaza matokeo hata kama hajawahi kupandisha (upload) karatasi ya mtihani.
+                        </small>
+                    </div>
+                    
                     <div class="row" id="date_fields_group">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -982,6 +1004,28 @@
                         </small>
                     </div>
 
+                    <div class="form-group border-top pt-3 mt-3">
+                        <div class="custom-control custom-checkbox mb-2">
+                            <input type="checkbox" class="custom-control-input" id="edit_allow_no_format" name="allow_no_format" value="1">
+                            <label class="custom-control-label" for="edit_allow_no_format">
+                                <strong>Allow Create Exam Without Question Format</strong>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted d-block mb-3 ml-4">
+                            <i class="bi bi-info-circle"></i> Kama ikiwashwa, mwalimu ataingiza marks moja kwa moja bila kuhitaji kujaza question format kwanza.
+                        </small>
+
+                        <div class="custom-control custom-checkbox mb-2">
+                            <input type="checkbox" class="custom-control-input" id="edit_allow_no_paper" name="allow_no_paper" value="1">
+                            <label class="custom-control-label" for="edit_allow_no_paper">
+                                <strong>Create Exam Without Upload Paper</strong>
+                            </label>
+                        </div>
+                        <small class="form-text text-muted d-block mb-3 ml-4">
+                            <i class="bi bi-info-circle"></i> Kama ikiwashwa, mwalimu ataweza kujaza matokeo hata kama hajawahi kupandisha (upload) karatasi ya mtihani.
+                        </small>
+                    </div>
+                    
                     <div class="row" id="edit_date_fields_group">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -3538,6 +3582,8 @@ jQuery(document).ready(function($) {
                     hallRowId = 0;
 
                     $('#edit_examID').val(exam.examID);
+                    $('#edit_allow_no_format').prop('checked', exam.allow_no_format == 1);
+                    $('#edit_allow_no_paper').prop('checked', exam.allow_no_paper == 1);
                     $('#edit_exam_category').val(exam.exam_category || '');
                     applyEditCategorySettings(exam.exam_category || '');
 

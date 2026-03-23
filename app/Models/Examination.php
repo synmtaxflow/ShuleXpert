@@ -32,6 +32,8 @@ class Examination extends Model
         'publish_result',
         'upload_paper',
         'use_paper_approval',
+        'allow_no_format',
+        'allow_no_paper',
         'no_approval_required',
     ];
 

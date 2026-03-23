@@ -467,19 +467,7 @@
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <div class="modal-body" id="addEditResultsModalBody" style="max-height: 80vh; overflow-y: scroll; overflow-x: hidden; scrollbar-width: none; -ms-overflow-style: none;">
-                <style>
-                    #addEditResultsModal .modal-body::-webkit-scrollbar {
-                        width: 0px;
-                        background: transparent;
-                    }
-                    #addEditResultsModal .modal-body::-webkit-scrollbar-track {
-                        background: transparent;
-                    }
-                    #addEditResultsModal .modal-body::-webkit-scrollbar-thumb {
-                        background: transparent;
-                    }
-                </style>
+            <div class="modal-body" id="addEditResultsModalBody" style="max-height: 75vh; overflow-y: auto; overflow-x: hidden;">
                 <div class="text-center">
                     <div class="spinner-border text-primary-custom" role="status">
                         <span class="sr-only">Loading...</span>
@@ -725,6 +713,12 @@ function loadExamQuestionData(classSubjectID, examID) {
             }
 
             if (examQuestionData.questions.length === 0 && isSecondarySchool) {
+                const exam = window.examDataCache[examID];
+                if (exam && exam.allow_no_format == 1) {
+                    jQuery('.question-detail-container').empty();
+                    return;
+                }
+                
                 jQuery('.question-detail-container').html(
                     '<div class="alert alert-warning mb-0">' +
                     '<i class="bi bi-exclamation-triangle"></i> ' + (response.message || 'No approved exam paper question formats found for this subject.') +
@@ -1342,7 +1336,7 @@ function editResults(classSubjectID) {
                                                     <th>#</th>
                                                     <th>Student Name</th>
                                                     <th>Admission No.</th>
-                                                    ${isSecondarySchool ? '<th class="text-center"><i class="bi bi-list-check"></i></th>' : ''}
+                                                    <th class="text-center questions-column-header" style="${isSecondarySchool ? '' : 'display:none;'}"><i class="bi bi-list-check"></i></th>
                                                     <th>Marks</th>
                                                     <th>Grade</th>
                                                     <th>Remark</th>
@@ -1358,13 +1352,11 @@ function editResults(classSubjectID) {
                                             <td>${index + 1}</td>
                                             <td>${student.first_name} ${student.middle_name || ''} ${student.last_name}</td>
                                             <td>${student.admission_number || 'N/A'}</td>
-                                            ${isSecondarySchool ? `
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary toggle-question-btn" data-student="${student.studentID}" title="Add result questions">
-                                                        <i class="bi bi-list-check"></i>
-                                                    </button>
-                                                </td>
-                                            ` : ''}
+                                            <td class="text-center questions-column-cell" style="${isSecondarySchool ? '' : 'display:none;'}">
+                                                <button type="button" class="btn btn-sm btn-outline-primary toggle-question-btn" data-student="${student.studentID}" title="Add result questions">
+                                                    <i class="bi bi-list-check"></i>
+                                                </button>
+                                            </td>
                                             <td>
                                                 <input type="number" class="form-control form-control-sm marks-input"
                                                        name="marks[${student.studentID}]"
@@ -1389,15 +1381,13 @@ function editResults(classSubjectID) {
                                                        placeholder="Remark" readonly>
                                             </td>
                                         </tr>
-                                        ${isSecondarySchool ? `
-                                            <tr class="question-details-row d-none" id="question_details_${student.studentID}" data-student="${student.studentID}">
-                                                <td colspan="${questionColspan}">
-                                                    <div class="question-detail-container" data-student="${student.studentID}">
-                                                        <div class="text-muted small">Select examination to load question formats.</div>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ` : ''}
+                                        <tr class="question-details-row questions-detail-row d-none" id="question_details_${student.studentID}" data-student="${student.studentID}">
+                                            <td colspan="${questionColspan}">
+                                                <div class="question-detail-container" data-student="${student.studentID}">
+                                                    <div class="text-muted small">Select examination to load question formats.</div>
+                                                </div>
+                                            </td>
+                                        </tr>
                                     `;
                                 });
                             }
@@ -1577,29 +1567,31 @@ function addResults(classSubjectID, isEdit = false) {
                                     <i class="bi bi-calendar-event"></i> Results will be recorded for the selected week.
                                 </small>
                             </div>
-                            ${isSecondarySchool ? `
-                                <div class="alert alert-warning mt-3">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                    Question-based results are enabled. Excel import/export is disabled.
-                                </div>
-                            ` : `
-                                <div class="alert alert-info mt-3">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <i class="bi bi-file-earmark-excel"></i>
-                                            <strong>Excel Import/Export:</strong> Download template, fill in results, then upload.
-                                        </div>
-                                        <div>
-                                            <button type="button" class="btn btn-sm btn-success" onclick="downloadExcelTemplate(${classSubjectID})" id="downloadExcelBtn" disabled>
-                                                <i class="bi bi-download"></i> Download Excel Template
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-primary" onclick="showUploadExcelModal(${classSubjectID})" id="uploadExcelBtn" disabled>
-                                                <i class="bi bi-upload"></i> Upload Excel
-                                            </button>
+                            <div id="results-alert-container">
+                                ${isSecondarySchool ? `
+                                    <div class="alert alert-warning mt-3 secondary-only-alert">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        Question-based results are enabled. Excel import/export is disabled.
+                                    </div>
+                                ` : `
+                                    <div class="alert alert-info mt-3 non-secondary-alert">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <i class="bi bi-file-earmark-excel"></i>
+                                                <strong>Excel Import/Export:</strong> Download template, fill in results, then upload.
+                                            </div>
+                                            <div>
+                                                <button type="button" class="btn btn-sm btn-success" onclick="downloadExcelTemplate(${classSubjectID})" id="downloadExcelBtn" disabled>
+                                                    <i class="bi bi-download"></i> Download Excel Template
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-primary ml-1" onclick="uploadExcelResults(${classSubjectID})" id="uploadExcelBtn" disabled>
+                                                    <i class="bi bi-upload"></i> Upload Results
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            `}
+                                `}
+                            </div>
                             <div class="table-responsive mt-3">
                                 <table class="table table-hover">
                                     <thead class="bg-primary-custom text-white">
@@ -1607,7 +1599,7 @@ function addResults(classSubjectID, isEdit = false) {
                                             <th>#</th>
                                             <th>Student Name</th>
                                             <th>Admission No.</th>
-                                            ${isSecondarySchool ? '<th class="text-center"><i class="bi bi-list-check"></i></th>' : ''}
+                                             <th class="text-center questions-column-header" style="${isSecondarySchool ? '' : 'display:none;'}"><i class="bi bi-list-check"></i></th>
                                             <th>Marks</th>
                                             <th>Grade</th>
                                             <th>Remark</th>
@@ -1623,13 +1615,11 @@ function addResults(classSubjectID, isEdit = false) {
                                     <td>${index + 1}</td>
                                     <td>${student.first_name} ${student.middle_name || ''} ${student.last_name}</td>
                                     <td>${student.admission_number || 'N/A'}</td>
-                                    ${isSecondarySchool ? `
-                                        <td class="text-center">
-                                            <button type="button" class="btn btn-sm btn-outline-primary toggle-question-btn" data-student="${student.studentID}" title="Add result questions">
-                                                <i class="bi bi-list-check"></i>
-                                            </button>
-                                        </td>
-                                    ` : ''}
+                                    <td class="text-center questions-column-cell" style="${isSecondarySchool ? '' : 'display:none;'}">
+                                        <button type="button" class="btn btn-sm btn-outline-primary toggle-question-btn" data-student="${student.studentID}" title="Add result questions">
+                                            <i class="bi bi-list-check"></i>
+                                        </button>
+                                    </td>
                                     <td>
                                         <input type="number" class="form-control form-control-sm marks-input"
                                                name="marks[${student.studentID}]"
@@ -1654,15 +1644,13 @@ function addResults(classSubjectID, isEdit = false) {
                                                placeholder="Remark" readonly>
                                     </td>
                                 </tr>
-                                ${isSecondarySchool ? `
-                                    <tr class="question-details-row d-none" id="question_details_${student.studentID}" data-student="${student.studentID}">
-                                        <td colspan="${questionColspan}">
-                                            <div class="question-detail-container" data-student="${student.studentID}">
-                                                <div class="text-muted small">Select examination to load question formats.</div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ` : ''}
+                                <tr class="question-details-row questions-detail-row d-none" id="question_details_${student.studentID}" data-student="${student.studentID}">
+                                    <td colspan="${questionColspan}">
+                                        <div class="question-detail-container" data-student="${student.studentID}">
+                                            <div class="text-muted small">Select examination to load question formats.</div>
+                                        </div>
+                                    </td>
+                                </tr>
                             `;
                         });
                     }
@@ -1737,7 +1725,11 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
 
     const results = [];
 
-    if (isSecondarySchool) {
+    const examIDForResults = jQuery('#exam_id').val();
+    const selectedExamData = window.examDataCache[examIDForResults];
+    const allowNoFormat = selectedExamData && (selectedExamData.allow_no_format == 1);
+
+    if (isSecondarySchool && !allowNoFormat) {
         if (!examQuestionData.questions || examQuestionData.questions.length === 0) {
             Swal.fire({
                 title: 'Warning!',
@@ -1978,22 +1970,18 @@ function handleExamSelection(classSubjectID, examID) {
     jQuery('#downloadExcelBtn, #uploadExcelBtn').prop('disabled', true);
     jQuery('#test_week_group, #test_week_display_group').hide();
     jQuery('#test_week').prop('required', false).val('');
-
     if (!examID) {
         disableResultsForm();
         resetQuestionData();
         return;
     }
 
-    // Use cached exam data instead of making API call
-    const examData = window.examDataCache && window.examDataCache[examID];
-
-    if (examData) {
-        // Check ONLY enter_result status - no other logic
-        const enterResult = examData.enter_result === true || examData.enter_result === 1;
+    const exam = window.examDataCache[examID];
+    if (exam) {
+        // Check if teacher is allowed to enter results
+        const enterResult = exam.enter_result === true || exam.enter_result === 1;
 
         if (!enterResult) {
-            // Disable form inputs
             disableResultsForm();
             jQuery('#downloadExcelBtn').prop('disabled', true);
             jQuery('#uploadExcelBtn').prop('disabled', true);
@@ -2003,11 +1991,26 @@ function handleExamSelection(classSubjectID, examID) {
         }
 
         // If enter_result is true, enable form - no other checks
-        enableResultsForm();
+        enableResultsForm(exam);
         jQuery('#downloadExcelBtn').prop('disabled', false);
         jQuery('#uploadExcelBtn').prop('disabled', false);
         jQuery('.results-status-error').remove();
 
+
+        // Check allow_no_format to toggle alerts and excel buttons
+        if (exam.allow_no_format == 1) {
+            jQuery('.secondary-only-alert').hide();
+            jQuery('.questions-column-header, .questions-column-cell').hide();
+            // Show Excel options if it was secondary school but no format allowed
+            if (isSecondarySchool) {
+               // We need to ensure the Excel alert is available or show/hide carefully
+            }
+        } else {
+            jQuery('.secondary-only-alert').show();
+            if (isSecondarySchool) {
+               jQuery('.questions-column-header, .questions-column-cell').show();
+            }
+        }
 
         // Load existing results after enabling form
         loadExistingResults(classSubjectID, examID);
@@ -2047,15 +2050,21 @@ function disableResultsForm() {
 }
 
 // Helper function to enable form inputs
-function enableResultsForm() {
+function enableResultsForm(exam = null) {
     jQuery('.marks-input, .grade-input, .remark-input').prop('disabled', false).css({
         'background-color': '',
         'cursor': '',
         'color': ''
     });
     jQuery('.grade-input, .remark-input').prop('readonly', true); // Keep readonly for grade and remark
-    if (isSecondarySchool) {
+    
+    // Check allow_no_format
+    const allowNoFormat = exam && (exam.allow_no_format == 1);
+    
+    if (isSecondarySchool && !allowNoFormat) {
         jQuery('.marks-input').prop('readonly', true);
+    } else {
+        jQuery('.marks-input').prop('readonly', false);
     }
     jQuery('.question-mark-input, .toggle-question-btn').prop('disabled', false);
     jQuery('#resultsForm button[type="submit"]').prop('disabled', false);

@@ -497,7 +497,7 @@
                 <div class="tab-pane fade show active" id="upload" role="tabpanel">
                     <div class="card border-0 shadow-sm">
                         <div class="card-body">
-                            <form id="uploadExamPaperForm">
+                            <form id="uploadExamPaperForm" novalidate>
                                 <input type="hidden" name="placeholder_id" id="placeholder_id">
                                 <div class="row">
                                     <div class="col-md-12 mb-3">
@@ -508,7 +508,7 @@
                                             <select class="form-control" id="selected_exam" name="examID" required>
                                                 <option value="">Select Examination</option>
                                                 @foreach($examinations as $exam)
-                                                    <option value="{{ $exam->examID }}">
+                                                    <option value="{{ $exam->examID }}" data-allow-no-format="{{ $exam->allow_no_format ? '1' : '0' }}">
                                                         {{ $exam->exam_name }}
                                                         @if($exam->term)
                                                             - {{ ucfirst(str_replace('_', ' ', $exam->term)) }}
@@ -924,7 +924,7 @@
                 </button>
             </div>
             <div class="modal-body">
-                <form id="modalUploadForm">
+                <form id="modalUploadForm" novalidate>
                     <div class="form-group">
                         <label for="modal_selected_exam">Select Examination <span class="text-danger">*</span></label>
                         @if($examinations && $examinations->count() > 0)
@@ -1815,6 +1815,13 @@ jQuery(document).ready(function($) {
             $('#test_subject').html('<option value="">Select a period first</option>');
         }
 
+        const allowNoFormat = $(this).find('option:selected').data('allow-no-format') == '1';
+        if (allowNoFormat) {
+            $('#question-format-main').hide();
+        } else {
+            $('#question-format-main').show();
+        }
+
         fetchAllowedClasses(examID);
         fetchExistingPapers(examID);
     });
@@ -1901,8 +1908,16 @@ jQuery(document).ready(function($) {
     }
 
     $('#modal_selected_exam').on('change', function() {
-        fetchAllowedClasses($(this).val());
-        fetchExistingPapers($(this).val());
+        const examID = $(this).val();
+        const allowNoFormat = $(this).find('option:selected').data('allow-no-format') == '1';
+        if (allowNoFormat) {
+            $('#question-format-modal').hide();
+        } else {
+            $('#question-format-modal').show();
+        }
+        
+        fetchAllowedClasses(examID);
+        fetchExistingPapers(examID);
     });
 
     $('#class_subject').on('change', function() {
@@ -2003,7 +2018,7 @@ jQuery(document).ready(function($) {
             return;
         }
 
-        if (isSecondarySchool) {
+        if (isSecondarySchool && selectedExam.allow_no_format != 1) {
             const $questionContainer = isModal ? $('#question-rows-modal') : $('#question-rows-main');
             const descriptions = $questionContainer.find('.question-description').map(function() {
                 return $(this).val().trim();

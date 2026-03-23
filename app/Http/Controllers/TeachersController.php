@@ -4169,6 +4169,8 @@ class TeachersController extends Controller
                         'exam_category' => $exam->exam_category,
                         'term' => $exam->term,
                         'is_term_closed' => $isTermClosed,
+                        'allow_no_format' => $exam->allow_no_format,
+                        'allow_no_paper' => $exam->allow_no_paper,
                     ];
                 });
 
@@ -4221,7 +4223,19 @@ class TeachersController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->first();
 
+            $exam = Examination::find($examID);
+            $allowNoPaper = $exam && $exam->allow_no_paper == 1;
+
             if (!$examPaper) {
+                if ($allowNoPaper) {
+                    return response()->json([
+                        'success' => true,
+                        'questions' => [],
+                        'marks_by_student' => [],
+                        'max_total' => 0,
+                        'allow_no_paper' => true,
+                    ], 200);
+                }
                 return response()->json([
                     'success' => true,
                     'questions' => [],
@@ -4231,7 +4245,7 @@ class TeachersController extends Controller
                 ], 200);
             }
 
-            if ($examPaper->status !== 'approved') {
+            if ($examPaper->status !== 'approved' && !$allowNoPaper) {
                 return response()->json([
                     'success' => true,
                     'questions' => [],
@@ -4369,13 +4383,15 @@ class TeachersController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->first();
 
-            if (!$examPaper) {
+            $allowNoPaper = $examination && $examination->allow_no_paper == 1;
+
+            if (!$examPaper && !$allowNoPaper) {
                 return response()->json([
                     'error' => 'No exam paper found for this subject. Please upload an exam paper first.'
                 ], 403);
             }
 
-            if ($examPaper->status !== 'approved') {
+            if ($examPaper && $examPaper->status !== 'approved' && !$allowNoPaper) {
                 return response()->json([
                     'error' => 'Your exam paper status is currently \'' . ucfirst($examPaper->status) . '\'. Results can only be entered for approved exam papers.'
                 ], 403);
@@ -4386,10 +4402,10 @@ class TeachersController extends Controller
             // For weekly/monthly tests, use the week from the exam paper
             $testWeek = $request->test_week;
             if ($examination->exam_category === 'test' && in_array($examination->test_type, ['weekly_test', 'monthly_test'])) {
-                $testWeek = $examPaper->test_week;
+                $testWeek = $examPaper ? $examPaper->test_week : $request->test_week;
                 if (!$testWeek) {
                     return response()->json([
-                        'error' => 'The approved exam paper for this subject does not have a week range specified. Please update the exam paper first.'
+                        'error' => 'Please specify the test week/month range.'
                     ], 422);
                 }
 
@@ -4440,7 +4456,7 @@ class TeachersController extends Controller
 
             $school = $schoolID ? School::find($schoolID) : null;
             $schoolType = $school && $school->school_type ? strtolower($school->school_type) : 'secondary';
-            $requiresQuestionMarks = $schoolType === 'secondary';
+            $requiresQuestionMarks = $schoolType === 'secondary' && ($examination && $examination->allow_no_format != 1);
 
             $examPaper = null;
             $questions = collect();
@@ -4592,7 +4608,6 @@ class TeachersController extends Controller
                             'error' => 'Total question marks cannot exceed the maximum total.'
                         ], 422);
                     }
-
                     $finalMarks = $totalMarks;
                     $gradeRemark = $this->calculateGradeAndRemarkFromMarks($finalMarks);
                     $finalGrade = $gradeRemark['grade'];
@@ -4618,8 +4633,16 @@ class TeachersController extends Controller
                                 'examID' => $request->examID,
                                 'class_subjectID' => $request->class_subjectID,
                                 'marks' => $markValue,
+                                'recorded_by' => $teacherID
                             ]
                         );
+                    }
+                } else {
+                    // Direct marks entry - calculate grade
+                    if ($finalMarks !== null) {
+                        $gradeRemark = $this->calculateGradeAndRemarkFromMarks($finalMarks);
+                        $finalGrade = $gradeRemark['grade'];
+                        $finalRemark = $gradeRemark['remark'];
                     }
                 }
 
