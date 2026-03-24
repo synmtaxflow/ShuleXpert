@@ -330,6 +330,7 @@ Route::post('teacher/change-password', [TeachersController::class, 'changePasswo
 Route::get('get_subject_students/{classSubjectID}', [TeachersController::class, 'getSubjectStudents'])->name('get_subject_students');
 Route::get('get_subject_results/{classSubjectID}', [TeachersController::class, 'getSubjectResults'])->name('get_subject_results');
 Route::get('get_subject_results/{classSubjectID}/{examID}', [TeachersController::class, 'getSubjectResults'])->name('get_subject_results_by_exam');
+Route::get('export_subject_results_pdf/{classSubjectID}/{examID?}', [TeachersController::class, 'exportSubjectResultsPdf'])->name('export_subject_results_pdf');
 Route::get('get_examinations_for_subject/{classSubjectID}', [TeachersController::class, 'getExaminationsForSubject'])->name('get_examinations_for_subject');
 Route::get('get_exam_allowed_classes/{examID}', [ManageExaminationController::class, 'getExamAllowedClasses'])->name('get_exam_allowed_classes');
 Route::get('get_exam_paper_question_data/{classSubjectID}/{examID}', [TeachersController::class, 'getExamPaperQuestionData'])->name('get_exam_paper_question_data');

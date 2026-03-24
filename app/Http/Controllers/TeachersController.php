@@ -4087,10 +4087,105 @@ class TeachersController extends Controller
             }
 
             $results = $query->get();
+            $hasCA = false;
+
+            if ($examID) {
+                // Check if this exam has CA definition
+                $caDefinition = \App\Models\CaDefinition::where('schoolID', Session::get('schoolID'))
+                    ->where('examID', $examID)
+                    ->first();
+
+                if ($caDefinition && !empty($caDefinition->test_ids)) {
+                    $hasCA = true;
+                    $allTestResults = Result::where('class_subjectID', $classSubjectID)
+                        ->whereIn('examID', $caDefinition->test_ids)
+                        ->get();
+
+                    $caMarksMap = [];
+                    foreach ($allTestResults->groupBy('studentID') as $studentID => $studentTestResults) {
+                        $validMarks = $studentTestResults->filter(function($r) {
+                            return $r->marks !== null && $r->marks !== '';
+                        });
+                        $averageCa = $validMarks->count() > 0 ? $validMarks->avg('marks') : 0;
+                        $caMarksMap[$studentID] = round($averageCa);
+                    }
+
+                    $results->transform(function ($result) use ($caMarksMap, $classSubject) {
+                        $caMark = isset($caMarksMap[$result->studentID]) ? $caMarksMap[$result->studentID] : 0;
+                        $examMark = $result->marks !== null ? (float)$result->marks : 0;
+                        
+                        $result->ca_marks = $caMark;
+                        $result->exam_marks = $examMark;
+                        $result->total_marks = $examMark + $caMark;
+                        $result->avg_marks = $result->total_marks / 2;
+                        
+                        $gradeData = $this->getGradeFromDefinition($result->avg_marks, $classSubject->classID);
+                        $result->grade = $gradeData['grade'] ?? 'N/A';
+                        
+                        // Map grade to descriptive remark
+                        $grade = strtoupper($result->grade);
+                        if ($grade === 'A') $result->remark = 'Excellent';
+                        elseif ($grade === 'B') $result->remark = 'Very Good';
+                        elseif ($grade === 'C') $result->remark = 'Good';
+                        elseif ($grade === 'D') $result->remark = 'Pass';
+                        elseif ($grade === 'E') $result->remark = 'Satisfactory';
+                        else $result->remark = 'Fail';
+
+                        return $result;
+                    });
+                } else {
+                    $results->transform(function ($result) use ($classSubject) {
+                        $result->ca_marks = 0;
+                        $result->exam_marks = $result->marks !== null ? (float)$result->marks : 0;
+                        $result->total_marks = $result->exam_marks;
+                        $result->avg_marks = $result->total_marks;
+                        
+                        $gradeData = $this->getGradeFromDefinition($result->total_marks, $classSubject->classID);
+                        $result->grade = $gradeData['grade'] ?? 'N/A';
+                        
+                        // Map grade to descriptive remark
+                        $grade = strtoupper($result->grade);
+                        if ($grade === 'A') $result->remark = 'Excellent';
+                        elseif ($grade === 'B') $result->remark = 'Very Good';
+                        elseif ($grade === 'C') $result->remark = 'Good';
+                        elseif ($grade === 'D') $result->remark = 'Pass';
+                        elseif ($grade === 'E') $result->remark = 'Satisfactory';
+                        else $result->remark = 'Fail';
+                        
+                        return $result;
+                    });
+                }
+            } else {
+                // Basic results if no examID
+                $results->transform(function ($result) use ($classSubject) {
+                    $result->ca_marks = 0;
+                    $result->exam_marks = $result->marks !== null ? (float)$result->marks : 0;
+                    $result->total_marks = $result->exam_marks;
+                    $result->avg_marks = $result->total_marks;
+                    
+                    $gradeData = $this->getGradeFromDefinition($result->total_marks, $classSubject->classID);
+                    $result->grade = $gradeData['grade'] ?? 'N/A';
+                    
+                    // Map grade to descriptive remark
+                    $grade = strtoupper($result->grade);
+                    if ($grade === 'A') $result->remark = 'Excellent';
+                    elseif ($grade === 'B') $result->remark = 'Very Good';
+                    elseif ($grade === 'C') $result->remark = 'Good';
+                    elseif ($grade === 'D') $result->remark = 'Pass';
+                    elseif ($grade === 'E') $result->remark = 'Satisfactory';
+                    else $result->remark = 'Fail';
+                    
+                    return $result;
+                });
+            }
+
+            // Sort by total_marks high to low
+            $results = $results->sortByDesc('total_marks')->values();
 
             return response()->json([
                 'success' => true,
                 'results' => $results,
+                'has_ca' => $hasCA,
                 'class_subject' => $classSubject
             ], 200);
 
@@ -4098,6 +4193,165 @@ class TeachersController extends Controller
             return response()->json([
                 'error' => 'An error occurred: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    public function exportSubjectResultsPdf(Request $request, $classSubjectID, $examID = null)
+    {
+        try {
+            $schoolID = Session::get('schoolID');
+            $teacherID = Session::get('teacherID');
+
+            if (!$schoolID || !$teacherID) {
+                return redirect()->back()->with('error', 'Session expired.');
+            }
+
+            // Fetch class subject details correctly using school_subjects table
+            $classSubject = DB::table('class_subjects')
+                ->join('classes', 'class_subjects.classID', '=', 'classes.classID')
+                ->join('school_subjects', 'class_subjects.subjectID', '=', 'school_subjects.subjectID')
+                ->where('class_subjects.class_subjectID', $classSubjectID)
+                ->select('class_subjects.*', 'classes.class_name', 'school_subjects.subject_name')
+                ->first();
+
+            if (!$classSubject) return redirect()->back()->with('error', 'Subject not found.');
+
+            // Fetch results by joining with students to filter by schoolID
+            $query = \App\Models\Result::with(['student'])
+                ->join('students', 'results.studentID', '=', 'students.studentID')
+                ->where('results.class_subjectID', $classSubjectID)
+                ->where('students.schoolID', $schoolID)
+                ->select('results.*'); // Ensure we only get result columns to avoid ID conflicts
+
+            if ($examID) {
+                $query->where('results.examID', $examID);
+            }
+
+            if ($request->has('test_week') && !empty($request->test_week)) {
+                $query->where('results.test_week', $request->test_week);
+            }
+
+            $results = $query->get();
+            $hasCA = false;
+            $examName = 'All Examinations';
+
+            if ($examID) {
+                $examination = \App\Models\Examination::find($examID);
+                $examName = $examination ? $examination->exam_name : 'Unknown';
+
+                $caDefinition = \App\Models\CaDefinition::where('schoolID', $schoolID)
+                    ->where('examID', $examID)
+                    ->first();
+
+                if ($caDefinition && !empty($caDefinition->test_ids)) {
+                    $hasCA = true;
+                    // Filter test results by schoolID via students join as well
+                    $allTestResults = \App\Models\Result::join('students', 'results.studentID', '=', 'students.studentID')
+                        ->where('results.class_subjectID', $classSubjectID)
+                        ->where('students.schoolID', $schoolID)
+                        ->whereIn('results.examID', $caDefinition->test_ids)
+                        ->select('results.*')
+                        ->get();
+
+                    $caMarksMap = [];
+                    foreach ($allTestResults->groupBy('studentID') as $sid => $studentTestResults) {
+                        $validMarks = $studentTestResults->filter(function($r) {
+                            return $r->marks !== null && $r->marks !== '';
+                        });
+                        $averageCa = $validMarks->count() > 0 ? $validMarks->avg('marks') : 0;
+                        $caMarksMap[$sid] = round($averageCa);
+                    }
+
+                    $results->transform(function ($result) use ($caMarksMap, $classSubject) {
+                        $caMark = isset($caMarksMap[$result->studentID]) ? $caMarksMap[$result->studentID] : 0;
+                        $examMark = $result->marks !== null ? (float)$result->marks : 0;
+                        $result->ca_marks = $caMark;
+                        $result->exam_marks = $examMark;
+                        $result->total_marks = $examMark + $caMark;
+                        $result->avg_marks = $result->total_marks / 2;
+                        
+                        $gradeData = $this->getGradeFromDefinition($result->avg_marks, $classSubject->classID);
+                        $result->grade = $gradeData['grade'] ?? 'N/A';
+                        
+                        $grade = strtoupper($result->grade);
+                        if ($grade === 'A') $result->remark = 'Excellent';
+                        elseif ($grade === 'B') $result->remark = 'Very Good';
+                        elseif ($grade === 'C') $result->remark = 'Good';
+                        elseif ($grade === 'D') $result->remark = 'Pass';
+                        elseif ($grade === 'E') $result->remark = 'Satisfactory';
+                        else $result->remark = 'Fail';
+                        
+                        return $result;
+                    });
+                } else {
+                    $results->transform(function ($result) use ($classSubject) {
+                        $result->ca_marks = 0;
+                        $result->exam_marks = $result->marks !== null ? (float)$result->marks : 0;
+                        $result->total_marks = $result->exam_marks;
+                        $result->avg_marks = $result->total_marks;
+                        
+                        $gradeData = $this->getGradeFromDefinition($result->total_marks, $classSubject->classID);
+                        $result->grade = $gradeData['grade'] ?? 'N/A';
+                        
+                        $grade = strtoupper($result->grade);
+                        if ($grade === 'A') $result->remark = 'Excellent';
+                        elseif ($grade === 'B') $result->remark = 'Very Good';
+                        elseif ($grade === 'C') $result->remark = 'Good';
+                        elseif ($grade === 'D') $result->remark = 'Pass';
+                        elseif ($grade === 'E') $result->remark = 'Satisfactory';
+                        else $result->remark = 'Fail';
+                        
+                        return $result;
+                    });
+                }
+            } else {
+                $results->transform(function ($result) use ($classSubject) {
+                    $result->ca_marks = 0;
+                    $result->exam_marks = $result->marks !== null ? (float)$result->marks : 0;
+                    $result->total_marks = $result->exam_marks;
+                    $result->avg_marks = $result->total_marks;
+                    
+                    $gradeData = $this->getGradeFromDefinition($result->total_marks, $classSubject->classID);
+                    $result->grade = $gradeData['grade'] ?? 'N/A';
+                    
+                    $grade = strtoupper($result->grade);
+                    if ($grade === 'A') $result->remark = 'Excellent';
+                    elseif ($grade === 'B') $result->remark = 'Very Good';
+                    elseif ($grade === 'C') $result->remark = 'Good';
+                    elseif ($grade === 'D') $result->remark = 'Pass';
+                    elseif ($grade === 'E') $result->remark = 'Satisfactory';
+                    else $result->remark = 'Fail';
+                    
+                    return $result;
+                });
+            }
+
+            $results = $results->sortByDesc('total_marks')->values();
+            
+            $teacher = DB::table('teachers')->where('id', $teacherID)->first();
+            $teacherName = $teacher ? ($teacher->first_name . ' ' . $teacher->last_name) : 'N/A';
+
+            $dompdf = new \Dompdf\Dompdf();
+            $html = view('Teacher.subject_results_pdf', [
+                'results' => $results,
+                'class_subject' => $classSubject,
+                'has_ca' => $hasCA,
+                'exam_name' => $examName,
+                'teacher_name' => $teacherName,
+                'subject' => (object)['subject_name' => $classSubject->subject_name]
+            ])->render();
+
+            $dompdf->loadHtml($html);
+            $dompdf->setPaper('A4', 'portrait');
+            $dompdf->render();
+
+            $filename = str_replace(' ', '_', $classSubject->class_name . '_' . $classSubject->subject_name) . '_Results.pdf';
+            return response()->streamDownload(function() use ($dompdf) {
+                echo $dompdf->output();
+            }, $filename, ['Content-Type' => 'application/pdf']);
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Error generating PDF: ' . $e->getMessage());
         }
     }
 

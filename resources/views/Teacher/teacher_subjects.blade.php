@@ -18,6 +18,7 @@
         border-color: #940000;
         color: #ffffff;
     }
+    /*gyguggjgjggjfgjffffjgngjvfgjghg*/
     .btn-primary-custom:hover {
         background-color: #b30000;
         border-color: #b30000;
@@ -89,6 +90,10 @@
 
 <!-- Bootstrap Icons -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+<!-- jsPDF Library for PDF generation -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.31/dist/jspdf.plugin.autotable.min.js"></script>
 
 <div class="container-fluid mt-4">
     <div class="row">
@@ -1004,7 +1009,21 @@ function viewStudents(classSubjectID) {
 
 // View Results
 function viewResults(classSubjectID) {
+    // Get subject name and class from the card
+    const card = jQuery(`i.view-results[onclick="viewResults(${classSubjectID})"]`).closest('.card');
+    const subjectName = card.find('.card-title').text().trim();
+    const className = card.find('strong').first().text().trim();
+    
+    // Grab the teacher's name from Auth::user or session if possible, 
+    // but since we are in JS let's use the blade variable correctly.
+    const teacherName = "{{ Auth::user()->name ?? 'N/A' }}";
+    
+    window.currentViewSubject = subjectName;
+    window.currentViewClass = className;
+    window.currentViewTeacher = teacherName;
+
     jQuery('#viewResultsModal').modal('show');
+    jQuery('#viewResultsModalLabel').html(`<i class="bi bi-clipboard-check"></i> Results: ${subjectName} (${className})`);
     jQuery('#resultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
 
     // First get examinations for this subject
@@ -1013,24 +1032,38 @@ function viewResults(classSubjectID) {
         method: 'GET',
         success: function(examResponse) {
             if (examResponse.success && examResponse.examinations && examResponse.examinations.length > 0) {
-                // Show exam selector
+                // Show exam selector and filter options
                 let html = `
-                    <div class="mb-3">
-                        <label>Select Examination:</label>
-                        <select class="form-control" id="examSelector" onchange="handleViewResultsExamSelection(${classSubjectID}, this.value)">
-                            <option value="">All Examinations</option>
-                `;
-
-                examResponse.examinations.forEach(function(exam) {
-                    // Only show examinations where enter_result is true
-                    if (exam.enter_result === true || exam.enter_result === 1) {
-                        html += `<option value="${exam.examID}">${exam.exam_name} (${exam.year})</option>`;
-                    }
-                });
-
-                html += `
-                        </select>
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label><i class="bi bi-calendar-event"></i> Year:</label>
+                            <select class="form-control" id="view_year_filter" onchange="filterViewResultsOptions(${classSubjectID})">
+                                <option value="">All Years</option>
+                                ${getUniqueYears(examResponse.examinations)}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label><i class="bi bi-clock-history"></i> Term:</label>
+                            <select class="form-control" id="view_term_filter" onchange="filterViewResultsOptions(${classSubjectID})">
+                                <option value="">All Terms</option>
+                                <option value="first_term">First Term</option>
+                                <option value="second_term">Second Term</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label><i class="bi bi-file-earmark-text"></i> Examination:</label>
+                            <select class="form-control" id="examSelector" onchange="handleViewResultsExamSelection(${classSubjectID}, this.value)">
+                                <option value="">All Examinations</option>
+                                ${generateExamOptions(examResponse.examinations)}
+                            </select>
+                        </div>
+                         <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-danger btn-block" onclick="exportResultsToPDF(${classSubjectID})">
+                                <i class="bi bi-file-pdf"></i> PDF
+                            </button>
+                        </div>
                     </div>
+
                     <!-- Week selection for Weekly Tests in View Modal -->
                     <div class="mb-3" id="view_test_week_group" style="display: none;">
                         <label>Select Week:</label>
@@ -1040,6 +1073,9 @@ function viewResults(classSubjectID) {
                     </div>
                     <div id="resultsContent"></div>
                 `;
+
+                // Store all exams for filtering
+                window.viewModalExams = examResponse.examinations;
 
                 jQuery('#resultsModalBody').html(html);
                 loadResultsForExam(classSubjectID, '');
@@ -1139,12 +1175,12 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
                                     <th>Student Name</th>
                                     <th>Admission No.</th>
                                     <th>Examination</th>
-                                    <th>Marks</th>
+                                    ${response.has_ca ? '<th>Exam Marks</th><th>CA</th><th>Total</th><th>Avg</th>' : '<th>Marks</th>'}
                                     <th>Grade</th>
                                     <th>Remark</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody id="viewResultsTable">
                 `;
 
                 response.results.forEach(function(result, index) {
@@ -1171,7 +1207,11 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
                     const fallbackPhoto = student.gender === 'Female' ? baseUrl + 'images/female.png' : baseUrl + 'images/male.png';
 
                     // Handle marks, grade, and remark
-                    const marks = result.marks !== null && result.marks !== '' ? result.marks : null;
+                    const examMarksValue = result.exam_marks !== undefined ? result.exam_marks : result.marks;
+                    const marks = examMarksValue !== null && examMarksValue !== '' ? examMarksValue : null;
+                    const caValue = response.has_ca ? (result.ca_marks !== undefined ? result.ca_marks : 0) : null;
+                    const totalValue = response.has_ca ? (result.total_marks !== undefined ? result.total_marks : marks) : null;
+
                     let grade = result.grade || '';
                     let remark = result.remark || '';
 
@@ -1183,6 +1223,19 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
 
                     // Get grade cell class for styling
                     const gradeClass = getGradeCellClass(grade);
+
+                    let marksColumnHtml = '';
+                    if (response.has_ca) {
+                        const avgValue = result.avg_marks !== undefined ? result.avg_marks : (totalValue / 2);
+                        marksColumnHtml = `
+                            <td><strong>${marks !== null ? marks : '<span class="text-muted">-</span>'}</strong></td>
+                            <td><span class="text-info font-weight-bold">${caValue !== null ? caValue : '-'}</span></td>
+                            <td><span class="text-success font-weight-bold">${totalValue !== null ? totalValue : '-'}</span></td>
+                            <td><span class="text-warning font-weight-bold" style="font-size: 1.1em">${avgValue !== null ? avgValue : '-'}</span></td>
+                        `;
+                    } else {
+                        marksColumnHtml = `<td><strong>${marks !== null ? marks : '<span class="text-muted">-</span>'}</strong></td>`;
+                    }
 
                     html += `
                         <tr>
@@ -1201,7 +1254,7 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
                                 ${result.examination ? result.examination.exam_name : 'N/A'}
                                 ${result.test_week ? `<br><small class="badge badge-info">${result.test_week}</small>` : ''}
                             </td>
-                            <td><strong>${marks !== null ? marks : '<span class="text-muted">-</span>'}</strong></td>
+                            ${marksColumnHtml}
                             <td><span class="badge ${gradeClass}" style="font-size: 0.9rem; padding: 0.4rem 0.6rem;">${grade || '<span class="text-muted">-</span>'}</span></td>
                             <td>${remark || '<span class="text-muted">-</span>'}</td>
                         </tr>
@@ -1223,6 +1276,109 @@ function loadResultsForExam(classSubjectID, examID, testWeek = null) {
             jQuery('#resultsContent').html('<div class="alert alert-danger">Error loading results.</div>');
         }
     });
+}
+
+// Helper: Get Unique Years from exams
+function getUniqueYears(exams) {
+    let years = [...new Set(exams.map(e => e.year))];
+    years.sort((a, b) => b - a);
+    return years.map(y => `<option value="${y}">${y}</option>`).join('');
+}
+
+// Helper: Generate Exam Options
+function generateExamOptions(exams) {
+    return exams
+        .filter(e => e.enter_result === true || e.enter_result === 1)
+        .map(e => `<option value="${e.examID}" data-year="${e.year}" data-term="${e.term}">${e.exam_name} (${e.year})</option>`)
+        .join('');
+}
+
+// Helper: Filter Exam Selector based on Year/Term
+function filterViewResultsOptions(classSubjectID) {
+    const year = jQuery('#view_year_filter').val();
+    const term = jQuery('#view_term_filter').val();
+    const selector = jQuery('#examSelector');
+    
+    selector.find('option').each(function() {
+        const opt = jQuery(this);
+        if (!opt.val()) return; // Skip "All"
+        
+        const optYear = opt.data('year');
+        const optTerm = opt.data('term');
+        
+        let show = true;
+        if (year && optYear != year) show = false;
+        if (term && optTerm != term) show = false;
+        
+        if (show) opt.show(); else opt.hide();
+    });
+    
+    // Reset selection if hidden
+    if (selector.find('option:selected').css('display') === 'none') {
+        selector.val('');
+    }
+    
+    // Trigger result reload
+    handleViewResultsExamSelection(classSubjectID, selector.val());
+}
+
+// PDF Export Logic (jsPDF)
+function exportResultsToPDF(classSubjectID) {
+    const examID = jQuery('#examSelector').val() || '';
+    const testWeek = jQuery('#view_test_week').val() || '';
+    
+    let url = `/export_subject_results_pdf/${classSubjectID}`;
+    if (examID) {
+        url += `/${examID}`;
+    }
+    
+    const params = new URLSearchParams();
+    if (testWeek) params.append('test_week', testWeek);
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
+
+    // Show loading state
+    Swal.fire({
+        title: 'Generating PDF...',
+        html: 'Please wait while your report is being prepared.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    fetch(url)
+        .then(response => {
+            if (!response.ok) throw new Error('Network response was not ok');
+            return response.blob();
+        })
+        .then(blob => {
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = downloadUrl;
+            
+            // Generate dynamic filename
+            const subjectName = window.currentViewSubject ? window.currentViewSubject.replace(/\s+/g, '_') : 'Subject';
+            const className = window.currentViewClass ? window.currentViewClass.replace(/\s+/g, '_') : 'Class';
+            a.download = `${className}_${subjectName}_Results.pdf`;
+            
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            Swal.fire({
+                title: 'Success!',
+                text: 'Your PDF has been downloaded.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+            });
+        })
+        .catch(error => {
+            console.error('Download error:', error);
+            Swal.fire('Error', 'Failed to generate PDF. Please try again.', 'error');
+        });
 }
 
 // Removed checkExamStatusForAddEdit function - now only checking enter_result
