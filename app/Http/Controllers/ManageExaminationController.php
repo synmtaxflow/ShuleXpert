@@ -6086,6 +6086,7 @@ class ManageExaminationController extends Controller
                     'exam_paperID' => $examPaper->exam_paperID,
                     'range_number' => $rangeNumber,
                     'total_marks' => $totalMarks,
+                    'required_questions' => $optionalRequiredCounts[$rangeNumber] ?? 1,
                 ]);
             }
 

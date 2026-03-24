@@ -2461,6 +2461,7 @@ jQuery(document).ready(function($) {
                     addOptionalRange('#question-rows-edit');
                     const $wrapper = $('.optional-ranges-wrapper[data-wrapper-for="#question-rows-edit"] .optional-range-item').last();
                     $wrapper.find('.optional-total-input').val(range.total_marks);
+                    $wrapper.find('.optional-required-input').val(range.required_questions);
                 });
 
                 (response.questions || []).forEach(function(question) {
@@ -2495,6 +2496,7 @@ jQuery(document).ready(function($) {
             return parseInt($(this).val(), 10);
         }).get();
         const optionalTotals = getOptionalTotals('#question-rows-edit');
+        const optionalRequiredCounts = getOptionalRequiredCounts('#question-rows-edit');
 
         if (descriptions.length === 0) {
             Swal.fire('Error', 'Please add at least one question format', 'error');
@@ -2556,6 +2558,9 @@ jQuery(document).ready(function($) {
         });
         Object.keys(optionalTotals).forEach(function(rangeNumber) {
             formData.append(`optional_ranges[${rangeNumber}]`, optionalTotals[rangeNumber]);
+        });
+        Object.keys(optionalRequiredCounts).forEach(function(rangeNumber) {
+            formData.append(`optional_required_counts[${rangeNumber}]`, optionalRequiredCounts[rangeNumber]);
         });
         formData.append('test_week', $('#edit_questions_test_week').val());
         formData.append('test_date', $('#edit_questions_test_date').val());
