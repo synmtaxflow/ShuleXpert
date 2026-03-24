@@ -5792,12 +5792,18 @@ class ManageExaminationController extends Controller
             $examination = $examPaper->examination;
             $wasRejected = ($examPaper->status === 'rejected');
 
+            $examPaper->test_week = $request->test_week;
+            $examPaper->test_date = $request->test_date;
             $examPaper->upload_type = 'upload';
 
             // Delete old file if exists
             if ($examPaper->file_path && Storage::disk('public')->exists($examPaper->file_path)) {
                 Storage::disk('public')->delete($examPaper->file_path);
             }
+
+            // Clear any manual questions if we are switching to file upload
+            ExamPaperQuestion::where('exam_paperID', $examPaper->exam_paperID)->delete();
+            ExamPaperOptionalRange::where('exam_paperID', $examPaper->exam_paperID)->delete();
 
             $file = $request->file('file');
             $fileName = time().'_'.$file->getClientOriginalName();
@@ -6049,6 +6055,16 @@ class ManageExaminationController extends Controller
             }
 
             DB::beginTransaction();
+
+            // Clear old file if we are switching to questions mode
+            if ($examPaper->file_path && Storage::disk('public')->exists($examPaper->file_path)) {
+                Storage::disk('public')->delete($examPaper->file_path);
+                $examPaper->file_path = null;
+            }
+
+            $examPaper->upload_type = 'create';
+            $examPaper->test_week = $request->test_week;
+            $examPaper->test_date = $request->test_date;
 
             ExamPaperQuestion::where('exam_paperID', $examPaper->exam_paperID)->delete();
             ExamPaperOptionalRange::where('exam_paperID', $examPaper->exam_paperID)->delete();

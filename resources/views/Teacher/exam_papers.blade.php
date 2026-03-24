@@ -862,18 +862,38 @@
                                                 </div>
                                             @endif
 
+                                            <!-- Test Week / Date -->
+                                            <div class="mb-2" style="font-size: 0.85rem;">
+                                                @if($paper->test_week)
+                                                    <span class="badge bg-light text-dark border me-1">
+                                                        <i class="bi bi-clock"></i> {{ $paper->test_week }}
+                                                    </span>
+                                                @endif
+                                                @if($paper->test_date)
+                                                    <span class="badge bg-light text-dark border">
+                                                        <i class="bi bi-calendar-event"></i> {{ \Carbon\Carbon::parse($paper->test_date)->format('M d, Y') }}
+                                                    </span>
+                                                @endif
+                                            </div>
+
                                             <!-- Upload date -->
-                                            <p class="mb-2 text-muted" style="font-size: 0.8rem;">
-                                                <i class="bi bi-calendar"></i> {{ $paper->created_at->format('M d, Y H:i') }}
+                                            <p class="mb-2 text-muted" style="font-size: 0.75rem;">
+                                                <i class="bi bi-upload"></i> Submited: {{ $paper->created_at->format('M d, Y H:i') }}
                                             </p>
 
                                             <!-- Action Buttons -->
                                             <div class="exam-card-actions">
-                                                @if($paper->status == 'wait_approval')
-                                                    <button class="btn btn-exam-action btn-sm edit-paper-btn" data-paper-id="{{ $paper->exam_paperID }}">
+                                                @if(in_array($paper->status, ['wait_approval', 'pending', 'rejected']))
+                                                    <button class="btn btn-exam-action btn-sm edit-paper-btn" 
+                                                        data-paper-id="{{ $paper->exam_paperID }}"
+                                                        data-week="{{ $paper->test_week }}"
+                                                        data-date="{{ $paper->test_date }}">
                                                         <i class="bi bi-pencil"></i> Edit Paper
                                                     </button>
-                                                    <button class="btn btn-exam-action btn-sm edit-questions-btn" data-paper-id="{{ $paper->exam_paperID }}">
+                                                    <button class="btn btn-exam-action btn-sm edit-questions-btn" 
+                                                        data-paper-id="{{ $paper->exam_paperID }}"
+                                                        data-week="{{ $paper->test_week }}"
+                                                        data-date="{{ $paper->test_date }}">
                                                         <i class="bi bi-list-check"></i> Edit Questions
                                                     </button>
                                                 @endif
@@ -1051,6 +1071,20 @@
             <div class="modal-body">
                 <form id="editExamPaperForm">
                     <input type="hidden" id="edit_paper_id" name="exam_paperID">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_test_week">Test Week</label>
+                                <input type="text" class="form-control" id="edit_test_week" name="test_week" placeholder="e.g. Week 1">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="edit_test_date">Test Date</label>
+                                <input type="date" class="form-control" id="edit_test_date" name="test_date">
+                            </div>
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label for="edit_exam_file">Exam Paper File <span class="text-danger">*</span></label>
                         <input type="file" class="form-control-file" id="edit_exam_file" name="file" accept=".pdf,.doc,.docx" required>
@@ -1083,6 +1117,20 @@
             <div class="modal-body">
                 <form id="editExamPaperQuestionsForm">
                     <input type="hidden" id="edit_questions_paper_id" name="exam_paperID">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="form-group mb-0">
+                                <label for="edit_questions_test_week">Test Week</label>
+                                <input type="text" class="form-control" id="edit_questions_test_week" name="test_week" placeholder="e.g. Week 1">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group mb-0">
+                                <label for="edit_questions_test_date">Test Date</label>
+                                <input type="date" class="form-control" id="edit_questions_test_date" name="test_date">
+                            </div>
+                        </div>
+                    </div>
                     <div class="card border-primary-custom">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -2222,6 +2270,8 @@ jQuery(document).ready(function($) {
                     const paper = response.exam_papers.find(p => p.exam_paperID == paperID);
                     if (paper) {
                         $('#edit_paper_id').val(paper.exam_paperID);
+                        $('#edit_test_week').val(paper.test_week);
+                        $('#edit_test_date').val(paper.test_date ? paper.test_date.split('T')[0] : '');
                         $('#editExamPaperModal').modal('show');
                     }
                 }
@@ -2240,6 +2290,8 @@ jQuery(document).ready(function($) {
 
         const formData = new FormData();
         formData.append('upload_type', 'upload');
+        formData.append('test_week', $('#edit_test_week').val());
+        formData.append('test_date', $('#edit_test_date').val());
         formData.append('file', fileInput.files[0]);
         formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
 
@@ -2385,7 +2437,12 @@ jQuery(document).ready(function($) {
     // Edit exam paper questions
     $(document).on('click', '.edit-questions-btn', function() {
         const paperID = $(this).data('paper-id');
+        const testWeek = $(this).data('week');
+        const testDate = $(this).data('date');
+
         $('#edit_questions_paper_id').val(paperID);
+        $('#edit_questions_test_week').val(testWeek);
+        $('#edit_questions_test_date').val(testDate);
         $('#question-rows-edit').empty();
         $('.optional-ranges-wrapper[data-wrapper-for="#question-rows-edit"]').empty();
         $('#editExamPaperQuestionsModal').modal('show');
@@ -2500,6 +2557,8 @@ jQuery(document).ready(function($) {
         Object.keys(optionalTotals).forEach(function(rangeNumber) {
             formData.append(`optional_ranges[${rangeNumber}]`, optionalTotals[rangeNumber]);
         });
+        formData.append('test_week', $('#edit_questions_test_week').val());
+        formData.append('test_date', $('#edit_questions_test_date').val());
         formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
 
         // Show loading
