@@ -733,6 +733,28 @@ function loadExamQuestionData(classSubjectID, examID) {
             }
 
             updateTotalsFromCache();
+
+            // Re-render any question detail rows that are already visible/loaded
+            // so they show the fresh marks_by_student data
+            jQuery('.question-details-row.loaded').each(function() {
+                const studentID = jQuery(this).data('student');
+                jQuery(this).find('.question-detail-container').html(buildQuestionDetails(studentID));
+                // Restore optional-select checkbox state and enable inputs
+                jQuery(this).find('.optional-select').each(function() {
+                    const questionId = jQuery(this).data('question-id');
+                    const hasMark = examQuestionData.marksByStudent[studentID] &&
+                        examQuestionData.marksByStudent[studentID][questionId] !== undefined &&
+                        examQuestionData.marksByStudent[studentID][questionId] !== null &&
+                        examQuestionData.marksByStudent[studentID][questionId] !== '';
+                    if (hasMark) {
+                        jQuery(this).prop('checked', true);
+                        const $input = jQuery(this).closest('.question-details-row')
+                            .find(`.question-mark-input[data-question-id="${questionId}"]`);
+                        $input.prop('disabled', false);
+                    }
+                });
+                updateStudentTotal(studentID);
+            });
         },
         error: function() {
             jQuery('.question-detail-container').html(
@@ -1614,17 +1636,16 @@ function loadExistingResults(classSubjectID, examID, testWeek = null) {
                 jQuery('.marks-input, .grade-input, .remark-input').val('');
 
                 // Populate with existing results
+                // Only show marks that are genuinely non-zero (> 0) — zero/null means 'not entered'
                 response.results.forEach(function(result) {
                     if (result.studentID) {
-                        const marks = result.marks || '';
-                        jQuery(`#marks_${result.studentID}`).val(marks);
-                        // Auto-calculate grade and remark if marks exist
-                        if (marks) {
+                        const rawMarks = parseFloat(result.marks);
+                        const hasRealMarks = !isNaN(rawMarks) && rawMarks > 0;
+                        if (hasRealMarks) {
+                            jQuery(`#marks_${result.studentID}`).val(rawMarks);
                             autoCalculateGrade(result.studentID);
-                        } else {
-                            jQuery(`#grade_${result.studentID}`).val(result.grade || '');
-                            jQuery(`#remark_${result.studentID}`).val(result.remark || '');
                         }
+                        // If marks are 0 or null, leave the input empty (placeholder shows)
                     }
                 });
             }
@@ -1933,23 +1954,12 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
                     continue;
                 }
 
-                if (value === undefined || value === null || value === '') {
-                    hasValidationError = true;
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Please fill all question marks for each student before saving.',
-                        icon: 'error',
-                        confirmButtonColor: '#940000'
-                    });
-                    return false;
-                }
-
-                const numericValue = parseFloat(value);
+                const numericValue = (value === undefined || value === null || value === '') ? 0 : parseFloat(value);
                 if (isNaN(numericValue) || numericValue < 0 || numericValue > parseFloat(question.marks)) {
                     hasValidationError = true;
                     Swal.fire({
                         title: 'Error!',
-                        text: 'Question marks must not exceed the allowed maximum.',
+                        text: 'Question marks must not exceed the allowed maximum (Max: ' + question.marks + ').',
                         icon: 'error',
                         confirmButtonColor: '#940000'
                     });
@@ -1961,6 +1971,11 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
                     question_id: question.exam_paper_questionID,
                     marks: numericValue
                 });
+            }
+
+            // Skip this student if their total is 0 (all questions blank/zero = not entered)
+            if (total <= 0) {
+                return;
             }
 
             const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
@@ -2257,22 +2272,37 @@ jQuery(document).on('click', '.toggle-question-btn', function() {
         return;
     }
 
-    if (!$detailRow.hasClass('loaded')) {
-        $detailRow.find('.question-detail-container').html(buildQuestionDetails(studentID));
-        $detailRow.addClass('loaded');
-        $detailRow.find('.optional-select').each(function() {
-            const questionId = jQuery(this).data('question-id');
-            const hasMark = examQuestionData.marksByStudent[studentID] &&
-                examQuestionData.marksByStudent[studentID][questionId] !== undefined &&
-                examQuestionData.marksByStudent[studentID][questionId] !== '';
-            if (hasMark) {
-                jQuery(this).prop('checked', true);
-                const $input = $detailRow.find(`.question-mark-input[data-question-id="${questionId}"]`);
-                $input.prop('disabled', false);
-            }
-        });
-        updateStudentTotal(studentID);
+    // Always re-render to ensure fresh data (marks, optional selections)
+    $detailRow.find('.question-detail-container').html(buildQuestionDetails(studentID));
+    $detailRow.addClass('loaded');
+    // Restore optional-select checkbox state and enable inputs for questions that have marks
+    $detailRow.find('.optional-select').each(function() {
+        const questionId = jQuery(this).data('question-id');
+        const hasMark = examQuestionData.marksByStudent[studentID] &&
+            examQuestionData.marksByStudent[studentID][questionId] !== undefined &&
+            examQuestionData.marksByStudent[studentID][questionId] !== null &&
+            examQuestionData.marksByStudent[studentID][questionId] !== '';
+        if (hasMark) {
+            jQuery(this).prop('checked', true);
+            const $input = $detailRow.find(`.question-mark-input[data-question-id="${questionId}"]`);
+            $input.prop('disabled', false);
+        }
+    });
+
+    // Sync rendered input values back into examQuestionData.marksByStudent
+    // so the submit handler can read them (setting input value= in HTML doesn't fire 'input' event)
+    if (!examQuestionData.marksByStudent[studentID]) {
+        examQuestionData.marksByStudent[studentID] = {};
     }
+    $detailRow.find('.question-mark-input').each(function() {
+        const questionId = jQuery(this).data('question-id');
+        const val = jQuery(this).val();
+        if (val !== '' && val !== null && val !== undefined) {
+            examQuestionData.marksByStudent[studentID][questionId] = val;
+        }
+    });
+
+    updateStudentTotal(studentID);
 
     $detailRow.toggleClass('d-none');
 });

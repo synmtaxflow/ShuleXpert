@@ -4806,10 +4806,12 @@ class TeachersController extends Controller
                             ], 422);
                         }
 
-                        if ($markValue === '' || $markValue === null || !is_numeric($markValue)) {
+                        if ($markValue === '' || $markValue === null) {
+                            $markValue = 0;
+                        } elseif (!is_numeric($markValue)) {
                             DB::rollBack();
                             return response()->json([
-                                'error' => 'Please enter valid marks for all question formats.'
+                                'error' => 'Please enter valid numeric marks for all question formats.'
                             ], 422);
                         }
 
@@ -4887,7 +4889,6 @@ class TeachersController extends Controller
                                 'examID' => $request->examID,
                                 'class_subjectID' => $request->class_subjectID,
                                 'marks' => $markValue,
-                                'recorded_by' => $teacherID
                             ]
                         );
                     }
