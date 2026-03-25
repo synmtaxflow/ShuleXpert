@@ -3384,7 +3384,7 @@ class TeachersController extends Controller
 
         // Verify teacher has access (either created it or is assigned to the subject)
         $classSubject = $scheme->classSubject;
-        if ($classSubject->teacherID != $teacherID && $scheme->created_by != $teacherID) {
+        if ((!$classSubject || $classSubject->teacherID != $teacherID) && $scheme->created_by != $teacherID) {
             return redirect()->route('teacher.schemeOfWork')->with('error', 'You do not have access to this scheme of work');
         }
 

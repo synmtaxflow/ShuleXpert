@@ -786,9 +786,14 @@ function buildQuestionDetails(studentID) {
             ? examQuestionData.marksByStudent[studentID][question.exam_paper_questionID]
             : '';
         let optionalTag = '';
+        let isChecked = false;
         if (question.is_optional) {
             const rangeLabel = question.optional_range_number ? `Opt ${question.optional_range_number}` : 'Optional';
             optionalTag = `<span class="badge badge-warning ml-2">${rangeLabel}</span>`;
+            // If it exists in marksByStudent (even as 0), it's selected
+            isChecked = examQuestionData.marksByStudent[studentID] &&
+                        examQuestionData.marksByStudent[studentID][question.exam_paper_questionID] !== undefined &&
+                        examQuestionData.marksByStudent[studentID][question.exam_paper_questionID] !== null;
         }
         html += `
             <div class="form-row align-items-end mb-2">
@@ -805,7 +810,8 @@ function buildQuestionDetails(studentID) {
                             <input class="form-check-input optional-select" type="checkbox"
                                    data-student="${studentID}"
                                    data-question-id="${question.exam_paper_questionID}"
-                                   data-optional-range="${question.optional_range_number || 0}">
+                                   data-optional-range="${question.optional_range_number || 0}"
+                                   ${isChecked ? 'checked' : ''}>
                             <label class="form-check-label small">Selected</label>
                         </div>
                     ` : ''}
@@ -820,7 +826,7 @@ function buildQuestionDetails(studentID) {
                            max="${question.marks}"
                            step="0.01"
                            value="${existingMarks}"
-                           ${question.is_optional ? 'disabled' : ''}>
+                           ${(question.is_optional && !isChecked) ? 'disabled' : ''}>
                     <div class="text-danger small question-max-warning d-none"></div>
                 </div>
             </div>
@@ -868,12 +874,16 @@ function updateTotalsFromCache() {
 }
 
 function updateStudentTotal(studentID) {
+    if (!studentID) return;
+    
     let total = 0;
-    let requiredTotal = 0;
     let optionalTotal = 0;
     let optionalTotalsByRange = {};
     let hasMarks = false;
-    const optionalSelectedByRange = {};
+    
+    // Find inputs strictly for this student
+    const $studentRow = jQuery(`input[id="marks_${studentID}"], .marks-input[data-student="${studentID}"]`).closest('tr');
+    
     jQuery(`.question-mark-input[data-student="${studentID}"]`).each(function() {
         const value = parseFloat(jQuery(this).val());
         const isOptional = jQuery(this).data('optional') == 1;
@@ -885,17 +895,8 @@ function updateStudentTotal(studentID) {
                 if (rangeNumber > 0) {
                     optionalTotalsByRange[rangeNumber] = (optionalTotalsByRange[rangeNumber] || 0) + value;
                 }
-            } else {
-                requiredTotal += value;
             }
             hasMarks = true;
-        }
-    });
-
-    jQuery(`.optional-select[data-student="${studentID}"]`).each(function() {
-        const rangeNumber = parseInt(jQuery(this).data('optional-range'), 10);
-        if (rangeNumber > 0 && jQuery(this).is(':checked')) {
-            optionalSelectedByRange[rangeNumber] = (optionalSelectedByRange[rangeNumber] || 0) + 1;
         }
     });
 
@@ -906,16 +907,7 @@ function updateStudentTotal(studentID) {
         return rangeTotal && sum > parseFloat(rangeTotal.total_marks);
     });
 
-    const selectionExceeded = Object.keys(optionalSelectedByRange).some(function(range) {
-        const selected = optionalSelectedByRange[range];
-        const rangeMeta = (examQuestionData.optionalRanges || []).find(r => r.range_number == range);
-        const requiredCount = rangeMeta ? parseInt(rangeMeta.required_questions || 0, 10) : 0;
-        return requiredCount > 0 && selected > requiredCount;
-    });
-
-    if (selectionExceeded) {
-        $optionalWarning.text('Optional questions selected exceed required count.').removeClass('d-none');
-    } else if (rangeExceeded) {
+    if (rangeExceeded) {
         $optionalWarning.text('Optional marks exceed allowed range total.').removeClass('d-none');
     } else if (examQuestionData.optionalTotal > 0 && optionalTotal > examQuestionData.optionalTotal) {
         $optionalWarning.text('Optional marks exceed allowed total.').removeClass('d-none');
@@ -924,9 +916,14 @@ function updateStudentTotal(studentID) {
     }
 
     const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
+    
+    // Update UI elements only for this student
     jQuery(`.student-question-total[data-student="${studentID}"]`).text(hasMarks ? displayTotal : 0);
-    jQuery(`#marks_${studentID}`).val(hasMarks ? displayTotal : '');
-    autoCalculateGrade(studentID);
+    const $mainMarksInput = jQuery(`#marks_${studentID}`);
+    $mainMarksInput.val(hasMarks ? displayTotal : '');
+    
+    // Pass the row to autoCalculateGrade for precision
+    autoCalculateGrade(studentID, $studentRow);
 }
 
 // View Students
@@ -1687,10 +1684,13 @@ function fillRandomPrimaryResults() {
     });
 }
 
-function autoCalculateGrade(studentID) {
-    const marksInput = jQuery(`#marks_${studentID}`);
-    const gradeInput = jQuery(`#grade_${studentID}`);
-    const remarkInput = jQuery(`#remark_${studentID}`);
+function autoCalculateGrade(studentID, $row = null) {
+    if (!studentID) return;
+    
+    const $targetRow = $row || jQuery(`input[id="marks_${studentID}"], .marks-input[data-student="${studentID}"]`).closest('tr');
+    const marksInput = $targetRow.find(`.marks-input[data-student="${studentID}"]`);
+    const gradeInput = $targetRow.find(`.grade-input[data-student="${studentID}"]`);
+    const remarkInput = $targetRow.find(`.remark-input[data-student="${studentID}"]`);
 
     const marks = marksInput.val();
 
@@ -1984,6 +1984,14 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
             const questionPayload = [];
             const selectedOptionalIds = {};
 
+            // IMPORTANT: Don't just look at DOM checkboxes (they don't exist if panel is closed)
+            // Look at our marks cache to see which optional questions are active
+            if (examQuestionData.marksByStudent[studentID]) {
+                Object.keys(examQuestionData.marksByStudent[studentID]).forEach(function(qId) {
+                    selectedOptionalIds[qId] = true;
+                });
+            }
+            // Also include anything currently checked in the DOM (for newly selected ones)
             jQuery(`.optional-select[data-student="${studentID}"]:checked`).each(function() {
                 selectedOptionalIds[jQuery(this).data('question-id')] = true;
             });
@@ -2319,19 +2327,8 @@ jQuery(document).on('click', '.toggle-question-btn', function() {
     // Always re-render to ensure fresh data (marks, optional selections)
     $detailRow.find('.question-detail-container').html(buildQuestionDetails(studentID));
     $detailRow.addClass('loaded');
-    // Restore optional-select checkbox state and enable inputs for questions that have marks
-    $detailRow.find('.optional-select').each(function() {
-        const questionId = jQuery(this).data('question-id');
-        const hasMark = examQuestionData.marksByStudent[studentID] &&
-            examQuestionData.marksByStudent[studentID][questionId] !== undefined &&
-            examQuestionData.marksByStudent[studentID][questionId] !== null &&
-            examQuestionData.marksByStudent[studentID][questionId] !== '';
-        if (hasMark) {
-            jQuery(this).prop('checked', true);
-            const $input = $detailRow.find(`.question-mark-input[data-question-id="${questionId}"]`);
-            $input.prop('disabled', false);
-        }
-    });
+    // Question fields were already rendered with correct checkbox state and disabled state in buildQuestionDetails
+
 
     // Sync rendered input values back into examQuestionData.marksByStudent
     // so the submit handler can read them (setting input value= in HTML doesn't fire 'input' event)
@@ -2403,6 +2400,8 @@ jQuery(document).on('input', '.question-mark-input', function() {
 
     const studentID = $input.data('student');
     const questionId = $input.data('question-id');
+
+    if (!studentID || !questionId) return;
 
     if (!examQuestionData.marksByStudent[studentID]) {
         examQuestionData.marksByStudent[studentID] = {};
