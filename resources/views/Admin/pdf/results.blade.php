@@ -87,10 +87,16 @@
         /* ── RESULT SUMMARY BAR ──────────────────── */
         .result-bar { background-color: #FFF5F5; border-left: 3px solid #940000; padding: 3px 7px; margin-bottom: 6px; font-size: 8px; }
 
-        /* ── SIGNATURE ───────────────────────────── */
-        .sig-block  { margin-top: 18px; text-align: right; }
-        .sig-line   { border-top: 1.5px solid #940000; width: 160px; display: inline-block; margin-bottom: 2px; }
-        .sig-label  { font-size: 7.5px; color: #940000; font-weight: bold; }
+        /* ── SIGNATURE AND STAMP ─────────────────── */
+        .sig-table { width: 100%; margin-top: 30px; border-collapse: collapse; }
+        .sig-table td { border: none; padding: 0; vertical-align: bottom; }
+        .stamp-cell { width: 50%; text-align: center; vertical-align: middle; }
+        .stamp-cell img { max-width: 125px; max-height: 125px; opacity: 0.85; }
+        .sign-cell { width: 50%; text-align: center; padding-bottom: 5px; }
+        .school-signature-img { height: 45px; margin-bottom: 4px; }
+        .school-signature-img img { max-width: 170px; max-height: 45px; }
+        .sig-line   { border-top: 1.5px solid #940000; width: 180px; margin: 0 auto; display: block; }
+        .sig-label  { font-size: 8.5px; color: #940000; font-weight: bold; padding-top: 4px; display: block; text-transform: uppercase;}
 
         /* ── FOOTER ──────────────────────────────── */
         .footer {
@@ -325,6 +331,27 @@
     @else
         <p style="color:#940000; font-style:italic; margin-top:10px;">No result data found for this student.</p>
     @endif
+
+    <table class="sig-table">
+        <tr>
+            <td class="stamp-cell">
+                @if($school && $school->school_stamp)
+                    <img src="{{ public_path($school->school_stamp) }}" alt="Stamp">
+                @endif
+            </td>
+            <td class="sign-cell">
+                @if($school && $school->school_signature)
+                    <div class="school-signature-img">
+                        <img src="{{ public_path($school->school_signature) }}" alt="Signature">
+                    </div>
+                @else
+                    <div style="height: 35px;"></div>
+                @endif
+                <div class="sig-line"></div>
+                <span class="sig-label">Headmaster's Signature</span>
+            </td>
+        </tr>
+    </table>
 
 {{-- ====================================================
      CLASS / SUBCLASS / ALL STUDENTS
@@ -592,10 +619,26 @@
             @endif
 
 
-            <div class="sig-block">
-                <div class="sig-line"></div><br>
-                <span class="sig-label">Headmaster / Principal's Signature</span>
-            </div>
+            <table class="sig-table">
+                <tr>
+                    <td class="stamp-cell">
+                        @if($school && $school->school_stamp)
+                            <img src="{{ public_path($school->school_stamp) }}" alt="Stamp">
+                        @endif
+                    </td>
+                    <td class="sign-cell">
+                        @if($school && $school->school_signature)
+                            <div class="school-signature-img">
+                                <img src="{{ public_path($school->school_signature) }}" alt="Signature">
+                            </div>
+                        @else
+                            <div style="height: 35px;"></div>
+                        @endif
+                        <div class="sig-line"></div>
+                        <span class="sig-label">Headmaster's Signature</span>
+                    </td>
+                </tr>
+            </table>
         @endforeach
     @else
         {{-- ALL STUDENTS FLAT TABLE --}}
@@ -654,10 +697,26 @@
             </tbody>
         </table>
 
-        <div class="sig-block">
-            <div class="sig-line"></div><br>
-            <span class="sig-label">Headmaster / Principal's Signature</span>
-        </div>
+        <table class="sig-table">
+            <tr>
+                <td class="stamp-cell">
+                    @if($school && $school->school_stamp)
+                        <img src="{{ public_path($school->school_stamp) }}" alt="Stamp">
+                    @endif
+                </td>
+                <td class="sign-cell">
+                    @if($school && $school->school_signature)
+                        <div class="school-signature-img">
+                            <img src="{{ public_path($school->school_signature) }}" alt="Signature">
+                        </div>
+                    @else
+                        <div style="height: 35px;"></div>
+                    @endif
+                    <div class="sig-line"></div>
+                    <span class="sig-label">Headmaster's Signature</span>
+                </td>
+            </tr>
+        </table>
     @endif
 @endif
 <div class="footer">

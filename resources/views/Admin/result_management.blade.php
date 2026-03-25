@@ -3620,7 +3620,7 @@ $(document).ready(function() {
         // Get student info from the row
         const studentName = $row.find('td').eq(2).text().trim();
         const studentNumber = $row.find('td').eq(1).text().trim();
-        const gradeOrDivision = $row.find('td').eq(3).text().trim();
+        const gradeOrDivision = $row.find('td').eq(4).text().trim();
         const position = $row.find('td').eq(0).text().trim();
         
         // Show modal

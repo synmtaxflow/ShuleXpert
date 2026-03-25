@@ -130,6 +130,8 @@ Route::get('super-admin/schools/register', [ConfigurationController::class, 'ind
 Route::get('super-admin/schools', [SuperAdminController::class, 'schools'])->name('superadmin.schools.index');
 Route::post('super-admin/schools/update-settings', [SuperAdminController::class, 'updateSchoolSettings'])->name('superadmin.schools.update_settings');
 Route::post('super-admin/schools/update-logo', [SuperAdminController::class, 'updateSchoolLogo'])->name('superadmin.schools.update_logo');
+Route::post('super-admin/schools/update-stamp', [SuperAdminController::class, 'updateSchoolStamp'])->name('superadmin.schools.update_stamp');
+Route::post('super-admin/schools/update-signature', [SuperAdminController::class, 'updateSchoolSignature'])->name('superadmin.schools.update_signature');
 Route::get('super-admin/change-password', [SuperAdminController::class, 'changePasswordForm'])->name('superadmin.change_password');
 Route::post('super-admin/change-password', [SuperAdminController::class, 'changePassword'])->name('superadmin.change_password.store');
 

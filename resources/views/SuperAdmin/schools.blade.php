@@ -111,6 +111,8 @@
                                 <td>
                                     <button type="button" class="btn btn-sm btn-outline-primary-custom btn-edit-settings" data-school-id="{{ $sid }}">Edit</button>
                                     <button type="button" class="btn btn-sm btn-outline-secondary btn-change-logo" data-school-id="{{ $sid }}">Logo</button>
+                                    <button type="button" class="btn btn-sm btn-outline-info btn-change-stamp" data-school-id="{{ $sid }}">Stamp</button>
+                                    <button type="button" class="btn btn-sm btn-outline-dark btn-change-signature" data-school-id="{{ $sid }}">Sign</button>
                                 </td>
                             </tr>
                         @empty
@@ -181,8 +183,9 @@
                 <div class="modal-body">
                     <form id="changeSchoolLogoForm" enctype="multipart/form-data">
                         <input type="hidden" name="schoolID" id="logo_schoolID">
-                        <div class="mb-3">
-                            <label class="form-label">Logo (JPG/PNG)</label>
+                        <div class="mb-3 text-center">
+                            <label class="form-label d-block text-left">Current Logo</label>
+                            <div id="current_logo_preview" class="mb-2"></div>
                             <input type="file" class="form-control" name="school_logo" id="logo_file" accept="image/*" required>
                         </div>
                     </form>
@@ -191,6 +194,64 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
                     <button type="button" class="btn btn-primary-custom" id="btnUploadSchoolLogo">Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- School Stamp Modal -->
+    <div class="modal fade" id="changeSchoolStampModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-md" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update School Stamp</h5>
+                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="changeSchoolStampForm" enctype="multipart/form-data">
+                        <input type="hidden" name="schoolID" id="stamp_schoolID">
+                        <div class="mb-3 text-center">
+                            <label class="form-label d-block text-left">Current Stamp</label>
+                            <div id="current_stamp_preview" class="mb-2"></div>
+                            <input type="file" class="form-control" name="school_stamp" id="stamp_file" accept="image/*" required>
+                        </div>
+                    </form>
+                    <div class="text-danger mt-2" id="stamp_error" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary-custom" id="btnUploadSchoolStamp">Upload</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- School Signature Modal -->
+    <div class="modal fade" id="changeSchoolSignatureModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-md" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update School Signature</h5>
+                    <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="changeSchoolSignatureForm" enctype="multipart/form-data">
+                        <input type="hidden" name="schoolID" id="signature_schoolID">
+                        <div class="mb-3 text-center">
+                            <label class="form-label d-block text-left">Current Signature</label>
+                            <div id="current_signature_preview" class="mb-2"></div>
+                            <input type="file" class="form-control" name="school_signature" id="signature_file" accept="image/*" required>
+                        </div>
+                    </form>
+                    <div class="text-danger mt-2" id="signature_error" style="display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary-custom" id="btnUploadSchoolSignature">Upload</button>
                 </div>
             </div>
         </div>
@@ -281,9 +342,17 @@
 
         $(document).on('click', '.btn-change-logo', function() {
             const sid = $(this).data('school-id');
+            const $img = $('#logo_img_' + sid);
             $('#logo_error').hide().text('');
             $('#logo_schoolID').val(sid);
             $('#logo_file').val('');
+            
+            if ($img.is('img')) {
+                $('#current_logo_preview').html('<img src="' + $img.attr('src') + '" class="school-logo" style="width:100px;height:100px;">');
+            } else {
+                $('#current_logo_preview').html('<div class="school-logo d-inline-flex align-items-center justify-content-center" style="width:100px;height:100px;"><i class="fa fa-building fa-3x" style="color: rgba(148, 0, 0, 0.45);"></i></div>');
+            }
+            
             $('#changeSchoolLogoModal').modal('show');
         });
 
@@ -295,11 +364,17 @@
                 return;
             }
 
+            if (fileInput.files[0].size > 5 * 1024 * 1024) {
+                $('#logo_error').show().text('File is too large! Maximum allowed size is 5 MB.');
+                return;
+            }
+
             const formData = new FormData();
             formData.append('schoolID', sid);
             formData.append('school_logo', fileInput.files[0]);
 
             $('#logo_error').hide().text('');
+            $('#btnUploadSchoolLogo').prop('disabled', true).text('Uploading...');
 
             $.ajax({
                 url: '{{ route('superadmin.schools.update_logo') }}',
@@ -309,6 +384,7 @@
                 processData: false,
                 contentType: false,
                 success: function(resp) {
+                    $('#btnUploadSchoolLogo').prop('disabled', false).text('Upload');
                     if (!resp || !resp.success) {
                         $('#logo_error').show().text((resp && resp.message) ? resp.message : 'Failed to update logo');
                         return;
@@ -325,8 +401,10 @@
                     }
 
                     $('#changeSchoolLogoModal').modal('hide');
+                    Swal.fire('Success', 'School logo updated successfully', 'success');
                 },
                 error: function(xhr) {
+                    $('#btnUploadSchoolLogo').prop('disabled', false).text('Upload');
                     let msg = 'Failed to update logo';
                     if (xhr && xhr.responseJSON && xhr.responseJSON.errors) {
                         msg = Object.values(xhr.responseJSON.errors).map(v => (Array.isArray(v) ? v[0] : v)).join(' | ');
@@ -334,6 +412,124 @@
                         msg = xhr.responseJSON.message;
                     }
                     $('#logo_error').show().text(msg);
+                }
+            });
+        });
+
+        // Stamp Upload
+        $(document).on('click', '.btn-change-stamp', function() {
+            const sid = $(this).data('school-id');
+            $('#stamp_error').hide().text('');
+            $('#stamp_schoolID').val(sid);
+            $('#stamp_file').val('');
+            $('#current_stamp_preview').html('<div class="text-muted">Loading preview...</div>');
+            
+            // We could fetch current stamp but for now just show a placeholder or let them upload
+            $('#current_stamp_preview').html('<div class="text-muted small">Select a new image to replace current stamp</div>');
+            
+            $('#changeSchoolStampModal').modal('show');
+        });
+
+        $('#btnUploadSchoolStamp').on('click', function() {
+            const sid = $('#stamp_schoolID').val();
+            const fileInput = document.getElementById('stamp_file');
+            if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+                $('#stamp_error').show().text('Please choose a stamp image');
+                return;
+            }
+
+            if (fileInput.files[0].size > 5 * 1024 * 1024) {
+                $('#stamp_error').show().text('File is too large! Maximum allowed size is 5 MB.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('schoolID', sid);
+            formData.append('school_stamp', fileInput.files[0]);
+
+            $('#stamp_error').hide().text('');
+            $('#btnUploadSchoolStamp').prop('disabled', true).text('Uploading...');
+
+            $.ajax({
+                url: '{{ route('superadmin.schools.update_stamp') }}',
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(resp) {
+                    $('#btnUploadSchoolStamp').prop('disabled', false).text('Upload');
+                    if (!resp || !resp.success) {
+                        $('#stamp_error').show().text((resp && resp.message) ? resp.message : 'Failed to update stamp');
+                        return;
+                    }
+                    $('#changeSchoolStampModal').modal('hide');
+                    Swal.fire('Success', 'School stamp updated successfully', 'success');
+                },
+                error: function(xhr) {
+                    $('#btnUploadSchoolStamp').prop('disabled', false).text('Upload');
+                    let msg = 'Failed to update stamp';
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.errors) {
+                        msg = Object.values(xhr.responseJSON.errors).map(v => (Array.isArray(v) ? v[0] : v)).join(' | ');
+                    }
+                    $('#stamp_error').show().text(msg);
+                }
+            });
+        });
+
+        // Signature Upload
+        $(document).on('click', '.btn-change-signature', function() {
+            const sid = $(this).data('school-id');
+            $('#signature_error').hide().text('');
+            $('#signature_schoolID').val(sid);
+            $('#signature_file').val('');
+            $('#current_signature_preview').html('<div class="text-muted small">Select a new image to replace current signature</div>');
+            $('#changeSchoolSignatureModal').modal('show');
+        });
+
+        $('#btnUploadSchoolSignature').on('click', function() {
+            const sid = $('#signature_schoolID').val();
+            const fileInput = document.getElementById('signature_file');
+            if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+                $('#signature_error').show().text('Please choose a signature image');
+                return;
+            }
+
+            if (fileInput.files[0].size > 5 * 1024 * 1024) {
+                $('#signature_error').show().text('File is too large! Maximum allowed size is 5 MB.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('schoolID', sid);
+            formData.append('school_signature', fileInput.files[0]);
+
+            $('#signature_error').hide().text('');
+            $('#btnUploadSchoolSignature').prop('disabled', true).text('Uploading...');
+
+            $.ajax({
+                url: '{{ route('superadmin.schools.update_signature') }}',
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken },
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(resp) {
+                    $('#btnUploadSchoolSignature').prop('disabled', false).text('Upload');
+                    if (!resp || !resp.success) {
+                        $('#signature_error').show().text((resp && resp.message) ? resp.message : 'Failed to update signature');
+                        return;
+                    }
+                    $('#changeSchoolSignatureModal').modal('hide');
+                    Swal.fire('Success', 'School signature updated successfully', 'success');
+                },
+                error: function(xhr) {
+                    $('#btnUploadSchoolSignature').prop('disabled', false).text('Upload');
+                    let msg = 'Failed to update signature';
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.errors) {
+                        msg = Object.values(xhr.responseJSON.errors).map(v => (Array.isArray(v) ? v[0] : v)).join(' | ');
+                    }
+                    $('#signature_error').show().text(msg);
                 }
             });
         });

@@ -737,23 +737,40 @@ class ResultManagementController extends Controller
                         }
                         return $b['marks'] <=> $a['marks']; // If points equal, higher marks = better
                     });
+
+                    // Take best 7 if available
                     $bestSubjects = array_slice($subjectPoints, 0, min(7, count($subjectPoints)));
+                    
+                    // Sum actual best subjects
+                    foreach ($bestSubjects as $subject) {
+                        $totalPoints += $subject['points'];
+                    }
+
+                    // PAD MISSING SUBJECTS: If less than 7 subjects, add 5 points for each missing subject
+                    if (count($bestSubjects) < 7) {
+                        $missingCount = 7 - count($bestSubjects);
+                        $totalPoints += ($missingCount * 5);
+                    }
                 } elseif (in_array($classNameLower, ['form_five', 'form_six'])) {
                     // A-Level: Best 3 subjects (descending order of points = best)
                     usort($subjectPoints, function($a, $b) {
                         if ($a['points'] != $b['points']) {
-                            return $b['points'] <=> $a['points']; // Descending (lower points = better, but we sort descending to get best first)
+                            return $b['points'] <=> $a['points']; // Descending (higher points = better)
                         }
                         return $b['marks'] <=> $a['marks'];
                     });
                     $bestSubjects = array_slice($subjectPoints, 0, min(3, count($subjectPoints)));
+
+                    // Sum points of best subjects
+                    foreach ($bestSubjects as $subject) {
+                        $totalPoints += $subject['points'];
+                    }
                 } else {
                     $bestSubjects = $subjectPoints;
-                }
-
-                // Sum points of best subjects
-                foreach ($bestSubjects as $subject) {
-                    $totalPoints += $subject['points'];
+                    // Sum points of all subjects for other levels
+                    foreach ($bestSubjects as $subject) {
+                        $totalPoints += $subject['points'];
+                    }
                 }
             }
 
@@ -2249,6 +2266,11 @@ class ResultManagementController extends Controller
 
                         // Calculate total points
                         $totalPoints = array_sum(array_column($bestSeven, 'points'));
+                        
+                        // PAD MISSING SUBJECTS: O-Level always uses 7 subjects
+                        if (count($bestSeven) < 7) {
+                            $totalPoints += (7 - count($bestSeven)) * 5;
+                        }
 
                         // Calculate total marks for best 7 subjects
                         $bestSevenTotalMarks = array_sum(array_column($bestSeven, 'marks'));
@@ -2448,6 +2470,11 @@ class ResultManagementController extends Controller
                         sort($allSubjectPoints); // Sort ascending (lowest first = best)
                         $bestSeven = array_slice($allSubjectPoints, 0, min(7, count($allSubjectPoints)));
                         $totalPoints = array_sum($bestSeven);
+                        
+                        // PAD MISSING SUBJECTS: O-Level always uses 7 subjects
+                        if (count($bestSeven) < 7) {
+                            $totalPoints += (7 - count($bestSeven)) * 5;
+                        }
                     }
                 } elseif ($schoolType === 'Secondary' && in_array(strtolower(preg_replace('/[\s\-]+/', '_', $className)), ['form_five', 'form_six'])) {
                     // A-Level: Use 3 best principal subjects (highest points)

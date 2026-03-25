@@ -174,9 +174,15 @@ class SuperAdminController extends Controller
             return $resp;
         }
 
+        if (!$request->hasFile('school_logo')) {
+            $errCode = isset($_FILES['school_logo']['error']) ? $_FILES['school_logo']['error'] : 'MISSING_ENTIRELY';
+            $errMsg = "No valid file received. PHP Error Code: " . $errCode . " | Web Limit: " . ini_get('upload_max_filesize') . " | Post: " . ini_get('post_max_size');
+            return response()->json(['success' => false, 'errors' => ['school_logo' => [$errMsg]]], 422);
+        }
+
         $validator = Validator::make($request->all(), [
             'schoolID' => 'required|integer|exists:schools,schoolID',
-            'school_logo' => 'required|image|mimes:jpg,jpeg,png|max:2048',
+            'school_logo' => 'required|file|mimes:jpg,jpeg,png,gif,webp,svg|max:5120',
         ]);
 
         if ($validator->fails()) {
@@ -191,7 +197,7 @@ class SuperAdminController extends Controller
         $basePath = base_path();
         $parentDir = dirname($basePath);
         $publicHtmlPath = $parentDir . '/public_html/logos';
-        $docRootPath = $_SERVER['DOCUMENT_ROOT'] . '/logos';
+        $docRootPath = (isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] . '/logos' : null);
         $localPublicPath = public_path('logos');
 
         if (file_exists($parentDir . '/public_html')) {
@@ -202,7 +208,7 @@ class SuperAdminController extends Controller
             $uploadPath = $localPublicPath;
         }
 
-        if (!file_exists($uploadPath)) {
+        if ($uploadPath && !file_exists($uploadPath)) {
             @mkdir($uploadPath, 0755, true);
         }
 
@@ -229,6 +235,146 @@ class SuperAdminController extends Controller
             'success' => true,
             'message' => 'School logo updated successfully.',
             'logo_url' => asset($school->school_logo),
+        ]);
+    }
+
+    public function updateSchoolStamp(Request $request)
+    {
+        if ($resp = $this->ensureSuperAdmin()) {
+            return $resp;
+        }
+
+        if (!$request->hasFile('school_stamp')) {
+            $errCode = isset($_FILES['school_stamp']['error']) ? $_FILES['school_stamp']['error'] : 'MISSING_ENTIRELY';
+            $errMsg = "No valid file received. PHP Error Code: " . $errCode . " | Web Limit: " . ini_get('upload_max_filesize') . " | Post: " . ini_get('post_max_size');
+            return response()->json(['success' => false, 'errors' => ['school_stamp' => [$errMsg]]], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'schoolID' => 'required|integer|exists:schools,schoolID',
+            'school_stamp' => 'required|file|mimes:jpg,jpeg,png,gif,webp,svg|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $school = School::find($request->schoolID);
+        if (!$school) {
+            return response()->json(['success' => false, 'message' => 'School not found'], 404);
+        }
+
+        $basePath = base_path();
+        $parentDir = dirname($basePath);
+        $publicHtmlPath = $parentDir . '/public_html/stamps';
+        $docRootPath = (isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] . '/stamps' : null);
+        $localPublicPath = public_path('stamps');
+
+        if (file_exists($parentDir . '/public_html')) {
+            $uploadPath = $publicHtmlPath;
+        } elseif (isset($_SERVER['DOCUMENT_ROOT']) && strpos($_SERVER['DOCUMENT_ROOT'], 'public_html') !== false) {
+            $uploadPath = $docRootPath;
+        } else {
+            $uploadPath = $localPublicPath;
+        }
+
+        if ($uploadPath && !file_exists($uploadPath)) {
+            @mkdir($uploadPath, 0755, true);
+        }
+
+        if ($school->school_stamp) {
+            $possibleOldPaths = [
+                $parentDir . '/public_html/' . $school->school_stamp,
+                (isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] . '/' . $school->school_stamp : null),
+                public_path($school->school_stamp)
+            ];
+            foreach ($possibleOldPaths as $oldPath) {
+                if ($oldPath && file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
+            }
+        }
+
+        $stamp = $request->file('school_stamp');
+        $filename = time() . '_' . $stamp->getClientOriginalName();
+        $stamp->move($uploadPath, $filename);
+        $school->school_stamp = 'stamps/' . $filename;
+        $school->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'School stamp updated successfully.',
+            'stamp_url' => asset($school->school_stamp),
+        ]);
+    }
+
+    public function updateSchoolSignature(Request $request)
+    {
+        if ($resp = $this->ensureSuperAdmin()) {
+            return $resp;
+        }
+
+        if (!$request->hasFile('school_signature')) {
+            $errCode = isset($_FILES['school_signature']['error']) ? $_FILES['school_signature']['error'] : 'MISSING_ENTIRELY';
+            $errMsg = "No valid file received. PHP Error Code: " . $errCode . " | Web Limit: " . ini_get('upload_max_filesize') . " | Post: " . ini_get('post_max_size');
+            return response()->json(['success' => false, 'errors' => ['school_signature' => [$errMsg]]], 422);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'schoolID' => 'required|integer|exists:schools,schoolID',
+            'school_signature' => 'required|file|mimes:jpg,jpeg,png,gif,webp,svg|max:5120',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $school = School::find($request->schoolID);
+        if (!$school) {
+            return response()->json(['success' => false, 'message' => 'School not found'], 404);
+        }
+
+        $basePath = base_path();
+        $parentDir = dirname($basePath);
+        $publicHtmlPath = $parentDir . '/public_html/signatures';
+        $docRootPath = (isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] . '/signatures' : null);
+        $localPublicPath = public_path('signatures');
+
+        if (file_exists($parentDir . '/public_html')) {
+            $uploadPath = $publicHtmlPath;
+        } elseif (isset($_SERVER['DOCUMENT_ROOT']) && strpos($_SERVER['DOCUMENT_ROOT'], 'public_html') !== false) {
+            $uploadPath = $docRootPath;
+        } else {
+            $uploadPath = $localPublicPath;
+        }
+
+        if ($uploadPath && !file_exists($uploadPath)) {
+            @mkdir($uploadPath, 0755, true);
+        }
+
+        if ($school->school_signature) {
+            $possibleOldPaths = [
+                $parentDir . '/public_html/' . $school->school_signature,
+                (isset($_SERVER['DOCUMENT_ROOT']) ? $_SERVER['DOCUMENT_ROOT'] . '/' . $school->school_signature : null),
+                public_path($school->school_signature)
+            ];
+            foreach ($possibleOldPaths as $oldPath) {
+                if ($oldPath && file_exists($oldPath)) {
+                    @unlink($oldPath);
+                }
+            }
+        }
+
+        $signature = $request->file('school_signature');
+        $filename = time() . '_' . $signature->getClientOriginalName();
+        $signature->move($uploadPath, $filename);
+        $school->school_signature = 'signatures/' . $filename;
+        $school->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'School signature updated successfully.',
+            'signature_url' => asset($school->school_signature),
         ]);
     }
 
