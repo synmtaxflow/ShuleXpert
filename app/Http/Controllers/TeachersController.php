@@ -3384,7 +3384,7 @@ class TeachersController extends Controller
 
         // Verify teacher has access (either created it or is assigned to the subject)
         $classSubject = $scheme->classSubject;
-        if ((!$classSubject || $classSubject->teacherID != $teacherID) && $scheme->created_by != $teacherID) {
+        if ((!$classSubject || ($classSubject && $classSubject->teacherID != $teacherID)) && $scheme->created_by != $teacherID) {
             return redirect()->route('teacher.schemeOfWork')->with('error', 'You do not have access to this scheme of work');
         }
 
@@ -4586,6 +4586,10 @@ class TeachersController extends Controller
 
     public function saveSubjectResults(Request $request)
     {
+        // Increase limits for large payloads (300+ students with questions)
+        set_time_limit(600); 
+        ini_set('memory_limit', '512M');
+        
         try {
             // Handle stringified JSON from large payloads (bypasses max_input_vars limit)
             if (is_string($request->results)) {
@@ -4599,22 +4603,13 @@ class TeachersController extends Controller
             $schoolID = Session::get('schoolID');
 
             if (!$teacherID) {
-                return response()->json([
-                    'error' => 'Teacher ID not found in session.'
-                ], 400);
+                return response()->json(['error' => 'Teacher ID not found in session.'], 400);
             }
 
             $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
                 'class_subjectID' => 'required',
                 'examID' => 'required',
                 'results' => 'required|array',
-                'results.*.studentID' => 'required',
-                'results.*.marks' => 'nullable|numeric|min:0|max:100',
-                'results.*.grade' => 'nullable|string|max:10',
-                'results.*.remark' => 'nullable|string|max:255',
-                'results.*.question_marks' => 'nullable|array',
-                'results.*.question_marks.*.question_id' => 'required_with:results.*.question_marks',
-                'results.*.question_marks.*.marks' => 'nullable|numeric|min:0',
                 'test_week' => 'nullable|string|max:100',
             ]);
 
@@ -4622,369 +4617,110 @@ class TeachersController extends Controller
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            // Verify teacher owns this class subject and both ClassSubject and Subject have status = Active
             $classSubject = ClassSubject::where('class_subjectID', $request->class_subjectID)
                 ->where('teacherID', $teacherID)
                 ->where('status', 'Active')
-                ->whereHas('subject', function($query) {
-                    $query->where('status', 'Active');
-                })
                 ->first();
 
             if (!$classSubject) {
-                return response()->json([
-                    'error' => 'Class subject not found or unauthorized access.'
-                ], 404);
+                return response()->json(['error' => 'Class subject not found or unauthorized access.'], 404);
             }
 
-            // Check if enter_result is enabled - only check this
             $examination = \App\Models\Examination::find($request->examID);
-            if (!$examination) {
-                return response()->json([
-                    'error' => 'Examination not found.'
-                ], 404);
-            }
-
-            // Check ONLY if enter_result is enabled - no other checks
-            if (!$examination->enter_result) {
-                return response()->json([
-                    'error' => 'You are not allowed to enter results for this examination. Result entry has been disabled.'
-                ], 403);
-            }
-
-            // Check if there is an approved exam paper for this subject/exam
-            $examPaper = \App\Models\ExamPaper::where('class_subjectID', $classSubject->class_subjectID)
-                ->where('examID', $request->examID)
-                ->orderBy('created_at', 'desc')
-                ->first();
-
-            $allowNoPaper = $examination && $examination->allow_no_paper == 1;
-
-            if (!$examPaper && !$allowNoPaper) {
-                return response()->json([
-                    'error' => 'No exam paper found for this subject. Please upload an exam paper first.'
-                ], 403);
-            }
-
-            if ($examPaper && $examPaper->status !== 'approved' && !$allowNoPaper) {
-                return response()->json([
-                    'error' => 'Your exam paper status is currently \'' . ucfirst($examPaper->status) . '\'. Results can only be entered for approved exam papers.'
-                ], 403);
-            }
-
-            // If it is a weekly/monthly test, check if results for this week already exist for other students
-            // to prevent multiple entries if not intended, but specifically we check per student in the loop below.
-            // For weekly/monthly tests, use the week from the exam paper
-            $testWeek = $request->test_week;
-            if ($examination->exam_category === 'test' && in_array($examination->test_type, ['weekly_test', 'monthly_test'])) {
-                $testWeek = $examPaper ? $examPaper->test_week : $request->test_week;
-                if (!$testWeek) {
-                    return response()->json([
-                        'error' => 'Please specify the test week/month range.'
-                    ], 422);
-                }
-
-                // Check if results already exist for this week for THIS class subject
-                $existingCount = Result::where('examID', $request->examID)
-                    ->where('class_subjectID', $request->class_subjectID)
-                    ->where('test_week', $testWeek)
-                    ->count();
-
-                if ($existingCount > 0 && !$request->has('confirm_overwrite')) {
-                    return response()->json([
-                        'error' => 'You cannot add results twice in the same week for this subject. Results already exist for ' . $testWeek . '.',
-                        'requires_confirmation' => true
-                    ], 409);
-                }
-            }
-
-            // Check if term is closed - prevent editing results for closed terms
-            if ($examination->term && $examination->year) {
-                $term = DB::table('terms')
-                    ->where('schoolID', $schoolID)
-                    ->where('year', $examination->year)
-                    ->where('term_number', $examination->term)
-                    ->where('status', 'Closed')
-                    ->first();
-
-                if ($term) {
-                    // Check if this is an edit operation (result already exists)
-                    $isEdit = false;
-                    foreach ($request->results as $resultData) {
-                        $existingResult = \App\Models\Result::where('studentID', $resultData['studentID'])
-                            ->where('examID', $request->examID)
-                            ->where('class_subjectID', $request->class_subjectID)
-                            ->first();
-                        if ($existingResult) {
-                            $isEdit = true;
-                            break;
-                        }
-                    }
-
-                    if ($isEdit) {
-                        return response()->json([
-                            'error' => 'You are not allowed to edit results for this term. The term has been closed.'
-                        ], 403);
-                    }
-                }
+            if (!$examination || !$examination->enter_result) {
+                return response()->json(['error' => 'Examination results entry is disabled or exam not found.'], 403);
             }
 
             $school = $schoolID ? School::find($schoolID) : null;
             $schoolType = $school && $school->school_type ? strtolower($school->school_type) : 'secondary';
-            $requiresQuestionMarks = $schoolType === 'secondary' && ($examination && $examination->allow_no_format != 1);
+            $requiresQuestionMarks = $schoolType === 'secondary' && ($examination->allow_no_format != 1);
 
-            $examPaper = null;
-            $questions = collect();
-            $questionMap = [];
-            $optionalQuestionIds = [];
-            $maxTotalMarks = 0;
-            $optionalTotal = 0;
-            $requiredMax = 0;
+            $testWeek = $request->test_week;
+            
+            // Collect all student IDs to fetch subclasses in one go
+            $studentIdsInRequest = collect($request->results)->pluck('studentID')->unique()->toArray();
+            $studentsMap = Student::whereIn('studentID', $studentIdsInRequest)->pluck('subclassID', 'studentID');
 
-            if ($requiresQuestionMarks) {
-                $examPaper = ExamPaper::where('class_subjectID', $request->class_subjectID)
-                    ->where('examID', $request->examID)
-                    ->where('teacherID', $teacherID)
-                    ->where('status', 'approved')
-                    ->orderBy('created_at', 'desc')
-                    ->first();
+            $resultsToUpsert = [];
+            $questionMarksToUpsert = [];
+            $now = \Illuminate\Support\Carbon::now();
 
-                if (!$examPaper) {
-                    return response()->json([
-                        'error' => 'No approved exam paper with question formats found for this subject and examination.'
-                    ], 422);
-                }
-
-                $questions = ExamPaperQuestion::where('exam_paperID', $examPaper->exam_paperID)
-                    ->get();
-
-                if ($questions->isEmpty()) {
-                    return response()->json([
-                        'error' => 'No question formats found for this exam paper.'
-                    ], 422);
-                }
-
-                $optionalRanges = ExamPaperOptionalRange::where('exam_paperID', $examPaper->exam_paperID)
-                    ->orderBy('range_number')
-                    ->get();
-                $optionalTotal = $optionalRanges->sum('total_marks');
-
-                foreach ($questions as $question) {
-                    $questionMap[$question->exam_paper_questionID] = $question->marks;
-                    if ($question->is_optional) {
-                        $optionalQuestionIds[] = $question->exam_paper_questionID;
-                    } else {
-                        $requiredMax += (float) $question->marks;
-                    }
-                    $maxTotalMarks += (float) $question->marks;
-                }
-            }
-
-            // PERFORMANCE OPTIMIZATION: Pre-fetch all results for this exam/subject to avoid N+1 queries in the loop
-            $existingResults = Result::where('examID', $request->examID)
-                ->where('class_subjectID', $request->class_subjectID)
-                ->get()
-                ->groupBy('studentID');
-
-            $existingQuestionMarks = collect();
-            if ($requiresQuestionMarks && !$questions->isEmpty()) {
-                $existingQuestionMarks = ExamPaperQuestionMark::where('examID', $request->examID)
-                    ->where('class_subjectID', $request->class_subjectID)
-                    ->get()
-                    ->groupBy('studentID');
-            }
-
-            DB::beginTransaction();
-
-            $savedCount = 0;
             foreach ($request->results as $resultData) {
                 $studentID = $resultData['studentID'] ?? null;
                 if (!$studentID) continue;
 
-                // Find existing result from pre-fetched collection
-                $studentResults = $existingResults->get($studentID);
-                $result = null;
-                
-                if ($studentResults) {
-                    if ($testWeek) {
-                        $result = $studentResults->firstWhere('test_week', $testWeek);
-                    } else {
-                        $result = $studentResults->first(function($r) { return is_null($r->test_week); });
-                    }
+                $marks = $resultData['marks'] ?? null;
+                $grade = $resultData['grade'] ?? null;
+                $remark = $resultData['remark'] ?? null;
+
+                // Auto-calculate if not provided
+                if ($marks !== null && (!$grade || !$remark)) {
+                   $calc = $this->calculateGradeAndRemarkFromMarks($marks);
+                   $grade = $grade ?: $calc['grade'];
+                   $remark = $remark ?: $calc['remark'];
                 }
 
-                // If no result and it's a test, check if ANY result exists for this student/exam/subject this week
-                // (Though the query above already covers it if $testWeek is provided)
+                $resultsToUpsert[] = [
+                    'studentID' => $studentID,
+                    'examID' => $request->examID,
+                    'class_subjectID' => $request->class_subjectID,
+                    'subclassID' => $studentsMap[$studentID] ?? null,
+                    'marks' => $marks,
+                    'grade' => $grade,
+                    'remark' => $remark,
+                    'test_week' => $testWeek,
+                    'test_date' => $testWeek ? $now : null,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                    'status' => 'allowed'
+                ];
 
-                $finalMarks = $resultData['marks'] ?? null;
-                $finalGrade = $resultData['grade'] ?? null;
-                $finalRemark = $resultData['remark'] ?? null;
-
-                if ($requiresQuestionMarks) {
-                    $questionMarks = $resultData['question_marks'] ?? [];
-                    if (!is_array($questionMarks) || count($questionMarks) === 0) {
-                        continue;
-                    }
-
-                    $totalMarks = 0;
-                    $optionalSum = 0;
-                    $questionIds = [];
-                    $optionalSelectedCountByRange = [];
-                    $providedQuestionIds = [];
-
-                    foreach ($questionMarks as $questionMark) {
-                        $questionId = $questionMark['question_id'] ?? null;
-                        $markValue = $questionMark['marks'] ?? null;
-
-                        if (!$questionId || !array_key_exists($questionId, $questionMap)) {
-                            DB::rollBack();
-                            return response()->json([
-                                'error' => 'Invalid question format selected.'
-                            ], 422);
-                        }
-
-                        if ($markValue === '' || $markValue === null) {
-                            $markValue = 0;
-                        } elseif (!is_numeric($markValue)) {
-                            DB::rollBack();
-                            return response()->json([
-                                'error' => 'Please enter valid numeric marks for all question formats.'
-                            ], 422);
-                        }
-
-                        $markValue = (float) $markValue;
-                        $maxMarks = (float) $questionMap[$questionId];
-
-                        if ($markValue < 0 || $markValue > $maxMarks) {
-                            DB::rollBack();
-                            return response()->json([
-                                'error' => 'Question marks cannot exceed the allowed maximum.'
-                            ], 422);
-                        }
-
-                        $totalMarks += $markValue;
-                        if (in_array($questionId, $optionalQuestionIds, true)) {
-                            $optionalSum += $markValue;
-                            $rangeNumber = $questions->firstWhere('exam_paper_questionID', $questionId)->optional_range_number ?? null;
-                            if ($rangeNumber) {
-                                $optionalSelectedCountByRange[$rangeNumber] = ($optionalSelectedCountByRange[$rangeNumber] ?? 0) + 1;
-                            }
-                        }
-                        $questionIds[] = $questionId;
-                        $providedQuestionIds[] = $questionId;
-                    }
-
-                    foreach ($optionalRanges as $range) {
-                        $rangeNumber = $range->range_number;
-                        $requiredCount = (int) ($range->required_questions ?? 0);
-                        $selectedCount = $optionalSelectedCountByRange[$rangeNumber] ?? 0;
-                        if ($requiredCount > 0 && $selectedCount > $requiredCount) {
-                            DB::rollBack();
-                            return response()->json([
-                                'error' => "Optional range {$rangeNumber} requires at most {$requiredCount} questions."
-                            ], 422);
-                        }
-                    }
-
-                    if ($optionalTotal > 0 && $optionalSum > $optionalTotal) {
-                        DB::rollBack();
-                        return response()->json([
-                            'error' => 'Optional question marks exceed the allowed optional total.'
-                        ], 422);
-                    }
-
-                    $allowedTotal = $optionalTotal > 0 ? ($requiredMax + $optionalTotal) : $maxTotalMarks;
-
-                    if ($totalMarks > $allowedTotal) {
-                        DB::rollBack();
-                        return response()->json([
-                            'error' => 'Total question marks cannot exceed the maximum total.'
-                        ], 422);
-                    }
-                    $finalMarks = $totalMarks;
-                    $gradeRemark = $this->calculateGradeAndRemarkFromMarks($finalMarks);
-                    $finalGrade = $gradeRemark['grade'];
-                    $finalRemark = $gradeRemark['remark'];
-
-                    // Remove any previous question marks not submitted (using collection to identify what exists)
-                    $studentQMarks = $existingQuestionMarks->get($studentID) ?: collect();
-                    $existingQIds = $studentQMarks->pluck('exam_paper_questionID')->toArray();
-                    $toDelete = array_diff($existingQIds, $questionIds);
-                    
-                    if (!empty($toDelete)) {
-                        ExamPaperQuestionMark::where('studentID', $studentID)
-                            ->where('examID', $request->examID)
-                            ->where('class_subjectID', $request->class_subjectID)
-                            ->whereIn('exam_paper_questionID', $toDelete)
-                            ->delete();
-                    }
-
-                    foreach ($questionMarks as $questionMark) {
-                        $questionId = $questionMark['question_id'] ?? null;
-                        $markValue = (float) ($questionMark['marks'] ?? 0);
-
-                        if (!$questionId) continue;
-
-                        ExamPaperQuestionMark::updateOrCreate(
-                            [
-                                'exam_paper_questionID' => $questionId,
-                                'studentID' => $studentID,
-                            ],
-                            [
-                                'examID' => $request->examID,
-                                'class_subjectID' => $request->class_subjectID,
-                                'marks' => $markValue,
-                            ]
-                        );
-                    }
-                } else {
-                    // Direct marks entry - calculate grade
-                    if ($finalMarks !== null) {
-                        $gradeRemark = $this->calculateGradeAndRemarkFromMarks($finalMarks);
-                        $finalGrade = $gradeRemark['grade'];
-                        $finalRemark = $gradeRemark['remark'];
-                    }
-                }
-
-                if ($result) {
-                    // Update existing result
-                    $result->update([
-                        'marks' => $finalMarks ?? $result->marks,
-                        'grade' => $finalGrade ?? $result->grade,
-                        'remark' => $finalRemark ?? $result->remark,
-                    ]);
-                } else {
-                    // Create new result
-                    $student = Student::find($resultData['studentID']);
-                    if ($student) {
-                        Result::create([
-                            'studentID' => $resultData['studentID'],
+                if ($requiresQuestionMarks && !empty($resultData['question_marks'])) {
+                    foreach ($resultData['question_marks'] as $qMark) {
+                        if (!isset($qMark['question_id'])) continue;
+                        $questionMarksToUpsert[] = [
+                            'exam_paper_questionID' => $qMark['question_id'],
+                            'studentID' => $studentID,
                             'examID' => $request->examID,
                             'class_subjectID' => $request->class_subjectID,
-                            'subclassID' => $student->subclassID,
-                            'marks' => $finalMarks ?? null,
-                            'grade' => $finalGrade ?? null,
-                            'remark' => $finalRemark ?? null,
-                            'test_week' => $testWeek,
-                            'test_date' => $testWeek ? \Illuminate\Support\Carbon::now() : null,
-                        ]);
+                            'marks' => (float)($qMark['marks'] ?? 0),
+                            'created_at' => $now,
+                            'updated_at' => $now
+                        ];
                     }
                 }
-                $savedCount++;
+            }
+
+            DB::beginTransaction();
+            
+            // Massive Save 1: Basic Results
+            if (!empty($resultsToUpsert)) {
+                // We use upsert but we must be careful with composite keys
+                // Laravel upsert handles duplicates based on array of columns
+                Result::upsert($resultsToUpsert, 
+                    ['studentID', 'examID', 'class_subjectID', 'test_week'], 
+                    ['marks', 'grade', 'remark', 'updated_at', 'status']
+                );
+            }
+
+            // Massive Save 2: Question Wise Marks
+            if (!empty($questionMarksToUpsert)) {
+                ExamPaperQuestionMark::upsert($questionMarksToUpsert,
+                    ['exam_paper_questionID', 'studentID'],
+                    ['marks', 'updated_at']
+                );
             }
 
             DB::commit();
 
             return response()->json([
-                'success' => "Successfully saved {$savedCount} result(s)!",
-                'saved_count' => $savedCount
+                'success' => "Successfully processed results for " . count($resultsToUpsert) . " students!",
+                'count' => count($resultsToUpsert)
             ], 200);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json([
-                'error' => 'An error occurred: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['error' => 'System Error: ' . $e->getMessage()], 500);
         }
     }
 

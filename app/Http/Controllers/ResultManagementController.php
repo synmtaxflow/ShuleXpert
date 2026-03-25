@@ -1335,6 +1335,121 @@ class ResultManagementController extends Controller
         ]);
     }
 
+    /**
+     * Send SMS reminder to a single teacher
+     */
+    public function sendTeacherReminder(Request $request)
+    {
+        try {
+            $phoneNumber = $request->input('phone');
+            $message = $request->input('message');
+            $teacherName = $request->input('name');
+
+            if (!$phoneNumber || !$message) {
+                return response()->json(['success' => false, 'error' => 'Phone number and message are required.'], 400);
+            }
+
+            $smsService = new SmsService();
+            $result = $smsService->sendSms($phoneNumber, $message);
+
+            if ($result['success']) {
+                return response()->json(['success' => true, 'message' => "Reminder sent to {$teacherName}"]);
+            } else {
+                return response()->json(['success' => false, 'error' => 'Gateway error: ' . $result['message']], 500);
+            }
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => 'System error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Broadcast SMS reminder to all teachers with incomplete results for an exam
+     */
+    public function sendBroadcastReminder(Request $request)
+    {
+        try {
+            $examID = $request->input('examID');
+            $customMessageTemplate = $request->input('message'); // e.g. "Habari {name}, ..." or generic
+            $schoolID = Session::get('schoolID');
+
+            if (!$schoolID || !$examID || !$customMessageTemplate) {
+                return response()->json(['success' => false, 'error' => 'Missing required broadcast parameters.'], 400);
+            }
+
+            // Reuse the scanning logic to identify teachers with incomplete results
+            // 1. Get all students grouped by subclass
+            $studentsBySubclass = DB::table('students')
+                ->where('schoolID', $schoolID)
+                ->where('status', 'Active')
+                ->pluck('subclassID', 'studentID')
+                ->groupBy(function($item) { return $item; });
+
+            // 2. Get students by subclass properly
+            $subclassStudentsCount = DB::table('students')
+                ->where('schoolID', $schoolID)
+                ->where('status', 'Active')
+                ->select('subclassID', DB::raw('count(*) as total'))
+                ->groupBy('subclassID')
+                ->pluck('total', 'subclassID');
+
+            // 3. Get completed marks count per subject
+            $completedCounts = DB::table('results')
+                ->where('examID', $examID)
+                ->whereNotNull('marks')
+                ->select('class_subjectID', DB::raw('count(*) as count'))
+                ->groupBy('class_subjectID')
+                ->pluck('count', 'class_subjectID');
+
+            // 4. Find all active class subjects for this school
+            $classSubjects = ClassSubject::where('status', 'Active')
+                ->whereHas('subclass.class', function($q) use ($schoolID) {
+                    $q->where('schoolID', $schoolID);
+                })
+                ->with(['subject', 'teacher'])
+                ->get();
+
+            $teachersToNotify = [];
+            foreach ($classSubjects as $cs) {
+                if (!$cs->teacher || !$cs->teacher->phone_number) continue;
+                
+                $expected = $subclassStudentsCount->get($cs->subclassID) ?: 0;
+                $actual = $completedCounts->get($cs->class_subjectID) ?: 0;
+
+                if ($actual < $expected) {
+                    $teachersToNotify[$cs->teacherID] = [
+                        'phone' => $cs->teacher->phone_number,
+                        'name' => $cs->teacher->first_name . ' ' . $cs->teacher->last_name
+                    ];
+                }
+            }
+
+            if (empty($teachersToNotify)) {
+                return response()->json(['success' => true, 'message' => 'No teachers with pending results found.']);
+            }
+
+            $smsService = new SmsService();
+            $successCount = 0;
+            $failCount = 0;
+
+            foreach ($teachersToNotify as $teacher) {
+                // Personalize if template contains placeholder
+                $msg = str_replace('{name}', $teacher['name'], $customMessageTemplate);
+                $res = $smsService->sendSms($teacher['phone'], $msg);
+                
+                if ($res['success']) $successCount++;
+                else $failCount++;
+            }
+
+            return response()->json([
+                'success' => true, 
+                'message' => "Broadcast complete. Sent: {$successCount}, Failed: {$failCount}"
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'error' => 'Broadcast failed: ' . $e->getMessage()], 500);
+        }
+    }
+
     public function subjectAnalysis(Request $request)
     {
         $schoolID = Session::get('schoolID');

@@ -4260,15 +4260,33 @@ $(document).ready(function() {
                     didOpen: () => { Swal.showLoading(); }
                 });
                 
-                setTimeout(() => {
-                    Swal.fire({
-                        title: 'Success!',
-                        text: `Custom reminder sent to ${name}.`,
-                        icon: 'success',
-                        timer: 2000,
-                        showConfirmButton: false
-                    });
-                }, 1200);
+                $.ajax({
+                    url: '{{ route("send_teacher_reminder") }}',
+                    method: 'POST',
+                    data: {
+                        phone: phone,
+                        message: customSms,
+                        name: name,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                title: 'Success!',
+                                text: response.message,
+                                icon: 'success',
+                                timer: 2000,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            Swal.fire('Failed', response.error || 'Unknown error', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        const err = xhr.responseJSON ? xhr.responseJSON.error : 'Connection error';
+                        Swal.fire('Error', err, 'error');
+                    }
+                });
             }
         });
     });
@@ -4308,14 +4326,31 @@ $(document).ready(function() {
                     didOpen: () => { Swal.showLoading(); }
                 });
                 
-                setTimeout(() => {
-                    Swal.fire({
-                        title: 'Broadcast Complete!',
-                        text: `All ${count} teachers have been notified with your custom message.`,
-                        icon: 'success',
-                        confirmButtonColor: '#27ae60'
-                    });
-                }, 2000);
+                $.ajax({
+                    url: '{{ route("send_broadcast_reminder") }}',
+                    method: 'POST',
+                    data: {
+                        examID: $('#examID').val(),
+                        message: broadcastMsg,
+                        _token: '{{ csrf_token() }}'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                title: 'Broadcast Complete!',
+                                text: response.message,
+                                icon: 'success',
+                                confirmButtonColor: '#27ae60'
+                            });
+                        } else {
+                            Swal.fire('Failed', response.error || 'Unknown error', 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        const err = xhr.responseJSON ? xhr.responseJSON.error : 'Connection error';
+                        Swal.fire('Error', err, 'error');
+                    }
+                });
             }
         });
     });

@@ -660,6 +660,8 @@ Route::post('move_student_hall/{examHallID}', [ManageExaminationController::clas
 
 // Result Management Routes
 Route::get('manageResults', [ResultManagementController::class, 'index'])->name('manageResults');
+Route::post('send_teacher_reminder', [ResultManagementController::class, 'sendTeacherReminder'])->name('send_teacher_reminder');
+Route::post('send_broadcast_reminder', [ResultManagementController::class, 'sendBroadcastReminder'])->name('send_broadcast_reminder');
 Route::get('admin/subject-analysis', [ResultManagementController::class, 'subjectAnalysis'])->name('admin.subject_analysis');
 Route::get('admin/get-class-subjects', [ResultManagementController::class, 'getClassSubjectsForAnalysis'])->name('admin.get_class_subjects_for_analysis');
 Route::post('admin/send-subject-analysis-comment', [ResultManagementController::class, 'sendSubjectAnalysisComment'])->name('admin.send_subject_analysis_comment');

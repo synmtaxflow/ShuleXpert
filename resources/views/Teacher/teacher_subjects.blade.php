@@ -1017,7 +1017,7 @@ function viewStudents(classSubjectID) {
         error: function(xhr) {
             Swal.fire({
                 title: 'Error!',
-                text: xhr.responseJSON?.error || 'Failed to load students',
+                text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load students',
                 icon: 'error',
                 confirmButtonColor: '#940000'
             });
@@ -1105,7 +1105,7 @@ function viewResults(classSubjectID) {
         error: function(xhr) {
             Swal.fire({
                 title: 'Error!',
-                text: xhr.responseJSON?.error || 'Failed to load examinations',
+                text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load examinations',
                 icon: 'error',
                 confirmButtonColor: '#940000'
             });
@@ -1588,7 +1588,7 @@ function editResults(classSubjectID) {
                         error: function(xhr) {
                             Swal.fire({
                                 title: 'Error!',
-                                text: xhr.responseJSON?.error || 'Failed to load results',
+                                text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load results',
                                 icon: 'error',
                                 confirmButtonColor: '#940000'
                             });
@@ -1598,7 +1598,7 @@ function editResults(classSubjectID) {
                 error: function(xhr) {
                     Swal.fire({
                         title: 'Error!',
-                        text: xhr.responseJSON?.error || 'Failed to load examinations',
+                        text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load examinations',
                         icon: 'error',
                         confirmButtonColor: '#940000'
                     });
@@ -1608,7 +1608,7 @@ function editResults(classSubjectID) {
         error: function(xhr) {
             Swal.fire({
                 title: 'Error!',
-                text: xhr.responseJSON?.error || 'Failed to load students',
+                text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load students',
                 icon: 'error',
                 confirmButtonColor: '#940000'
             });
@@ -1883,7 +1883,7 @@ function addResults(classSubjectID, isEdit = false) {
                 error: function(xhr) {
                     Swal.fire({
                         title: 'Error!',
-                        text: xhr.responseJSON?.error || 'Failed to load examinations',
+                        text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load examinations',
                         icon: 'error',
                         confirmButtonColor: '#940000'
                     });
@@ -1893,7 +1893,7 @@ function addResults(classSubjectID, isEdit = false) {
         error: function(xhr) {
             Swal.fire({
                 title: 'Error!',
-                text: xhr.responseJSON?.error || 'Failed to load students',
+                text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to load students',
                 icon: 'error',
                 confirmButtonColor: '#940000'
             });
@@ -2107,14 +2107,14 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
             if (xhr.status === 409) {
                 Swal.fire({
                     title: 'Existing Results!',
-                    text: xhr.responseJSON?.error || 'Results already exist for this week. You cannot enter results twice.',
+                    text: (xhr.responseJSON && xhr.responseJSON.error) || 'Results already exist for this week. You cannot enter results twice.',
                     icon: 'warning',
                     confirmButtonColor: '#940000'
                 });
             } else {
                 Swal.fire({
                     title: 'Error!',
-                    text: xhr.responseJSON?.error || 'Failed to save results',
+                    text: (xhr.responseJSON && xhr.responseJSON.error) || 'Failed to save results',
                     icon: 'error',
                     confirmButtonColor: '#940000'
                 });
