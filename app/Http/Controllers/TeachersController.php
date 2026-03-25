@@ -4776,8 +4776,11 @@ class TeachersController extends Controller
 
             $savedCount = 0;
             foreach ($request->results as $resultData) {
+                $studentID = $resultData['studentID'] ?? null;
+                if (!$studentID) continue;
+
                 // Find existing result or create new one
-                $query = Result::where('studentID', $resultData['studentID'])
+                $query = Result::where('studentID', $studentID)
                     ->where('examID', $request->examID)
                     ->where('class_subjectID', $request->class_subjectID);
 
@@ -4883,20 +4886,22 @@ class TeachersController extends Controller
                     $finalRemark = $gradeRemark['remark'];
 
                     // Remove any previous question marks not submitted
-                    ExamPaperQuestionMark::where('studentID', $resultData['studentID'])
+                    ExamPaperQuestionMark::where('studentID', $studentID)
                         ->where('examID', $request->examID)
                         ->where('class_subjectID', $request->class_subjectID)
                         ->whereNotIn('exam_paper_questionID', $questionIds)
                         ->delete();
 
                     foreach ($questionMarks as $questionMark) {
-                        $questionId = $questionMark['question_id'];
-                        $markValue = (float) $questionMark['marks'];
+                        $questionId = $questionMark['question_id'] ?? null;
+                        $markValue = (float) ($questionMark['marks'] ?? 0);
+
+                        if (!$questionId) continue;
 
                         ExamPaperQuestionMark::updateOrCreate(
                             [
                                 'exam_paper_questionID' => $questionId,
-                                'studentID' => $resultData['studentID'],
+                                'studentID' => $studentID,
                             ],
                             [
                                 'examID' => $request->examID,
