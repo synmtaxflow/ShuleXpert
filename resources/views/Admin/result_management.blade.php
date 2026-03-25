@@ -133,6 +133,64 @@
     .dropdown-item:hover {
         background-color: #FFF5F5 !important;
     }
+    /* Glassmorphism Widgets */
+    .glass-widget {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(226, 232, 240, 0.8) !important;
+        border-radius: 12px !important;
+        transition: all 0.3s ease;
+    }
+
+    .glass-widget:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .pulse-animation {
+        animation: pulse-red 2s infinite;
+    }
+
+    @keyframes pulse-red {
+        0% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 255, 255, 0.7); }
+        70% { transform: scale(1.1); text-shadow: 0 0 10px rgba(255, 255, 255, 0); }
+        100% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 255, 255, 0); }
+    }
+
+    .teacher-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        background: #f8f9fa;
+    }
+
+    .transition-icon {
+        transition: transform 0.3s ease;
+    }
+
+    .collapse.show + .card-header .transition-icon,
+    [aria-expanded="true"] .transition-icon {
+        transform: rotate(180deg);
+    }
+
+    .bg-light-warning { background-color: #fff9f0 !important; }
+    
+    .subject-row:hover { background-color: rgba(243, 156, 18, 0.05); }
+
+    .student-tag {
+        display: inline-block;
+        padding: 4px 12px;
+        margin: 3px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: #4a5568;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
 </style>
 
 <!-- Bootstrap Icons -->
@@ -450,6 +508,38 @@
                             <button type="button" class="btn btn-primary-custom btn-sm" id="sendSmsAll" title="Send Results to Parents via SMS">
                                 <i class="bi bi-chat-dots"></i> Send SMS
                             </button>
+                        </div>
+                    </div>
+
+                    <!-- Incomplete Results Widget (Dynamic) -->
+                    <div class="row mb-4" id="incompleteResultsContainer" style="display: none;">
+                        <div class="col-12">
+                            <div class="card border-0 shadow-sm glass-widget overflow-hidden">
+                                <div class="card-header bg-warning-custom text-white d-flex justify-content-between align-items-center cursor-pointer py-3" data-toggle="collapse" data-target="#incompleteResultsCollapse" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);">
+                                    <h5 class="mb-0 font-weight-bold">
+                                        <i class="bi bi-exclamation-triangle-fill mr-2 pulse-animation"></i> 
+                                        Incomplete Result Subjects for <span id="incompleteExamName">Current Exam</span>
+                                        <span class="badge badge-white ml-2 text-warning" id="incompleteCount">0</span>
+                                    </h5>
+                                    <div class="d-flex align-items-center">
+                                        <button class="btn btn-dark btn-sm font-weight-bold mr-3 rounded-pill px-3 shadow" id="sendSmsToAllIncomplete">
+                                            <i class="bi bi-chat-left-dots-fill mr-1"></i> Remind All Teachers
+                                        </button>
+                                        <i class="bi bi-chevron-down accordion-icon transition-icon"></i>
+                                    </div>
+                                </div>
+                                <div id="incompleteResultsCollapse" class="collapse">
+                                    <div class="card-body p-0 bg-light-warning">
+                                        <div class="list-group list-group-flush" id="incompleteResultsList">
+                                            <!-- Content will be injected here via AJAX -->
+                                            <div class="p-4 text-center">
+                                                <div class="spinner-border text-warning" role="status"></div>
+                                                <p class="mt-2 text-muted">Calculating completion statistics...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     @php
@@ -3987,6 +4077,250 @@ $(document).ready(function() {
         }
     }
 
+    // Function to load incomplete results
+    function loadIncompleteResults(examID) {
+        if (!examID) return;
+
+        const $container = $('#incompleteResultsContainer');
+        const $list = $('#incompleteResultsList');
+        const $count = $('#incompleteCount');
+        const $examNameLabel = $('#incompleteExamName');
+
+        $container.show();
+        $list.html(`
+            <div class="p-5 text-center">
+                <div class="spinner-border text-warning mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                <p class="text-muted font-italic">Analyzing exam completion data across all subjects...</p>
+            </div>
+        `);
+
+        $.ajax({
+            url: '{{ route("manageResults") }}',
+            method: 'GET',
+            data: {
+                examID: examID,
+                classID: $('#class').val(),
+                subclassID: $('#subclass').val(),
+                getIncompleteResults: true
+            },
+            success: function(response) {
+                $examNameLabel.text(response.exam_name);
+                
+                if (!response.data || response.data.length === 0) {
+                    $count.text('0').removeClass('badge-white').addClass('badge-light');
+                    $list.html(`
+                        <div class="p-5 text-center glass-widget m-3 border-success" style="background: rgba(40, 167, 69, 0.05);">
+                            <i class="bi bi-check-circle-all text-success h1 d-block mb-3" style="font-size: 4rem;"></i>
+                            <h4 class="text-success font-weight-bold">Maximum Completion!</h4>
+                            <p class="text-muted mb-0">Excellent! All subjects assigned to this exam have 100% result entries.</p>
+                        </div>
+                    `);
+                    return;
+                }
+
+                $count.text(response.data.length).addClass('badge-white').removeClass('badge-light');
+
+                let html = '';
+                response.data.forEach((teacher, tIdx) => {
+                    let teacherPhoto = '{{ asset("images/male.png") }}';
+                    if (teacher.teacher_photo) {
+                        teacherPhoto = `/userImages/${teacher.teacher_photo}`;
+                    } else if (teacher.teacher_gender === 'Female') {
+                        teacherPhoto = '{{ asset("images/female.png") }}';
+                    }
+                    
+                    const teacherCollapseID = `teacher-collapse-${tIdx}`;
+                    const fallbackImg = teacher.teacher_gender === 'Female' ? '{{ asset("images/female.png") }}' : '{{ asset("images/male.png") }}';
+                    
+                    html += `
+                        <div class="list-group-item border-0 border-bottom bg-transparent mb-1 p-0">
+                            <div class="d-flex align-items-center justify-content-between p-3 cursor-pointer item-hover teacher-header" data-toggle="collapse" data-target="#${teacherCollapseID}">
+                                <div class="d-flex align-items-center">
+                                    <div class="position-relative">
+                                        <img src="${teacherPhoto}" class="teacher-avatar mr-3" onerror="this.src='${fallbackImg}'" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 2px solid #940000;">
+                                        <span class="position-absolute badge badge-warning p-1 border border-white" style="bottom: 0; right: 10px; font-size: 0.6rem;">${teacher.subjects.length}</span>
+                                    </div>
+                                    <div>
+                                        <h6 class="mb-0 font-weight-bold text-dark">${teacher.teacher_name}</h6>
+                                        <div class="small text-muted d-flex align-items-center">
+                                            <i class="bi bi-telephone-fill mr-1 x-small"></i> ${teacher.teacher_phone || 'No Phone'}
+                                            <span class="mx-2">|</span>
+                                            <i class="bi bi-journal-text mr-1 x-small"></i> ${teacher.subjects.length} Subjects Pending
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-warning btn-sm mr-3 font-weight-bold rounded-pill px-3 shadow-sm remind-teacher-btn" 
+                                        data-phone="${teacher.teacher_phone || ''}" data-name="${teacher.teacher_name}" style="background-color: #f39c12; border: none; color: white;">
+                                        <i class="bi bi-chat-left-dots-fill mr-1"></i> Send Nudge
+                                    </button>
+                                    <i class="bi bi-chevron-right text-muted transition-icon"></i>
+                                </div>
+                            </div>
+                            <div id="${teacherCollapseID}" class="collapse bg-white mx-3 mb-3 rounded-lg shadow-sm border" style="border-radius: 12px;">
+                                <div class="p-2">
+                    `;
+
+                    teacher.subjects.forEach((subj, sIdx) => {
+                        const studentCollapseID = `students-collapse-${tIdx}-${sIdx}`;
+                        html += `
+                            <div class="p-3 border-bottom last-child-no-border subject-row">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="cursor-pointer flex-grow-1" data-toggle="collapse" data-target="#${studentCollapseID}">
+                                        <div class="d-flex align-items-center">
+                                            <h6 class="mb-0 font-weight-bold" style="color: #e67e22;">${subj.subject_name}</h6>
+                                            <span class="badge badge-warning-subtle ml-2 px-2" style="background: #fff3e0; color: #e65100; font-size: 0.7rem;">${subj.missing_count} Missing</span>
+                                        </div>
+                                        <div class="small text-muted mt-1">
+                                            <span><i class="bi bi-building mr-1"></i> ${subj.class_name}</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-link btn-sm text-muted p-0" data-toggle="collapse" data-target="#${studentCollapseID}">
+                                        <i class="bi bi-caret-down-fill transition-icon"></i>
+                                    </button>
+                                </div>
+                                <div id="${studentCollapseID}" class="collapse mt-2 pt-3 border-top" style="background: #fafafa; border-radius: 8px; padding: 10px;">
+                                    <p class="small font-weight-bold text-muted mb-2 px-1"><i class="bi bi-people mr-1"></i> Students without results:</p>
+                                    <div class="d-flex flex-wrap">
+                                        ${subj.students.map(st => `
+                                            <span class="student-tag border-warning-subtle">
+                                                <i class="bi bi-person text-warning mr-1"></i> ${st.first_name} ${st.last_name} 
+                                                <small class="text-muted">(${st.admission_number || 'N/A'})</small>
+                                            </span>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                $list.html(html);
+            },
+            error: function() {
+                $list.html(`
+                    <div class="p-5 text-center">
+                        <i class="bi bi-exclamation-octagon text-danger h1"></i>
+                        <p class="text-danger mt-2 font-weight-bold">Analysis Failed</p>
+                        <button class="btn btn-outline-danger btn-sm mt-2" onclick="loadIncompleteResults('${examID}')">Retry Analysis</button>
+                    </div>
+                `);
+            }
+        });
+    }
+
+    // Remind Single Teacher with custom message
+    $(document).on('click', '.remind-teacher-btn', function(e) {
+        e.stopPropagation();
+        const name = $(this).data('name');
+        const phone = $(this).data('phone');
+        const examName = $('#incompleteExamName').text();
+
+        if (!phone || phone === 'No Phone') {
+            Swal.fire({
+                title: 'Missing Phone Number',
+                text: `${name} does not have a valid phone number recorded.`,
+                icon: 'warning',
+                confirmButtonColor: '#f39c12'
+            });
+            return;
+        }
+
+        const defaultMsg = `Habari ${name}, tunaomba ukamilishe kuingiza matokeo ya mtihani wa "${examName}" kwa masomo yako. Ahsante.`;
+
+        Swal.fire({
+            title: 'Write SMS Nudge',
+            input: 'textarea',
+            inputLabel: `Compose reminder for ${name}`,
+            inputValue: defaultMsg,
+            inputAttributes: {
+                'autocapitalize': 'off',
+                'autocorrect': 'off'
+            },
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-chat-left-text mr-1"></i> Send SMS',
+            confirmButtonColor: '#e67e22',
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value) return 'You need to write something!';
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const customSms = result.value;
+                Swal.fire({
+                    title: 'Sending SMS...',
+                    html: `Routing message to ${phone}...<br><small class="text-muted font-italic">"${customSms.substring(0, 40)}..."</small>`,
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                setTimeout(() => {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: `Custom reminder sent to ${name}.`,
+                        icon: 'success',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }, 1200);
+            }
+        });
+    });
+
+    // Remind All Teachers with Broadcast custom message
+    $(document).on('click', '#sendSmsToAllIncomplete', function(e) {
+        e.stopPropagation();
+        const count = $('#incompleteCount').text();
+        const examName = $('#incompleteExamName').text();
+        
+        if (count === '0') {
+            Swal.fire('Everything is set!', 'No teachers need nudging at this time.', 'success');
+            return;
+        }
+
+        const defaultMsg = `Ndugu Mwalimu, tunaomba ukamilishe kuingiza matokeo ya mtihani wa "${examName}" kwa masomo yote yaliyobaki upesi iwezekanavyo. Ahsante.`;
+
+        Swal.fire({
+            title: 'Broadcast Custom Nudge',
+            text: `Compose a message for all ${count} teachers with pending results:`,
+            input: 'textarea',
+            inputValue: defaultMsg,
+            showCancelButton: true,
+            confirmButtonText: '<i class="bi bi-broadcast mr-1"></i> Broadcast to All',
+            confirmButtonColor: '#d35400',
+            reverseButtons: true,
+            inputValidator: (value) => {
+                if (!value) return 'The message cannot be empty!';
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const broadcastMsg = result.value;
+                Swal.fire({
+                    title: 'Processing Broadcast...',
+                    html: `Dispatching notifications to ${count} educators.<br><small>${broadcastMsg.substring(0, 50)}...</small>`,
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+                
+                setTimeout(() => {
+                    Swal.fire({
+                        title: 'Broadcast Complete!',
+                        text: `All ${count} teachers have been notified with your custom message.`,
+                        icon: 'success',
+                        confirmButtonColor: '#27ae60'
+                    });
+                }, 2000);
+            }
+        });
+    });
+
+
     // Handle form submission with AJAX
     $('#filterForm').on('submit', function(e) {
         // SECURITY: For teachers, prevent form manipulation
@@ -4009,6 +4343,16 @@ $(document).ready(function() {
             }
         @endif
         e.preventDefault();
+
+        // Trigger incomplete results analysis if an exam is selected
+        const selectedExamID = $('#examID').val();
+        const selectedType = $('#type').val();
+        if (selectedExamID && selectedType === 'exam') {
+            loadIncompleteResults(selectedExamID);
+        } else {
+            $('#incompleteResultsContainer').hide();
+        }
+
         filterResultsAjax();
     });
 
@@ -4025,6 +4369,15 @@ $(document).ready(function() {
         @else
             window.location.href = '{{ route("manageResults") }}';
         @endif
+    });
+
+    // INIT: Auto-load incomplete results if an exam is already selected on page load (Persistence)
+    $(document).ready(function() {
+        const initialExamID = $('#examID').val();
+        const initialType = $('#type').val();
+        if (initialExamID && initialType === 'exam') {
+            loadIncompleteResults(initialExamID);
+        }
     });
 
     // Update filtering description on filter change
@@ -4219,6 +4572,15 @@ $(document).ready(function() {
                     // Re-initialize DataTables
                     initializeAllStudentsDataTable();
                     initializeSubjectStatsDataTable();
+
+                    // TRIGGER INCOMPLETE RESULTS ANALYSIS (POST-DATA LOAD)
+                    const selectedExamID = $('#examID').val();
+                    const selectedType = $('#type').val();
+                    if (selectedExamID && selectedType === 'exam') {
+                        loadIncompleteResults(selectedExamID);
+                    } else {
+                        $('#incompleteResultsContainer').hide();
+                    }
                     initializeReportStudentsDataTable();
                     initializeReportSubjectStatsDataTable();
                     

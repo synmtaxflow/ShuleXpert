@@ -343,8 +343,95 @@ class ResultManagementController extends Controller
 
         // Check if this is a request for subject details (AJAX)
         $getSubjectDetails = $request->get('getSubjectDetails', false);
+        $getIncompleteResults = $request->get('getIncompleteResults', false);
         $studentIDFilter = $request->get('studentID', '');
         $typeFilterForDetails = $request->get('type', 'exam');
+
+        // NEW: Fetch Incomplete Results logic (STABLE ULTRA-FAST BATCH SCAN)
+        if ($getIncompleteResults && $examFilter) {
+            $exam = Examination::find($examFilter);
+            if (!$exam) return response()->json(['error' => 'Exam not found'], 404);
+
+            // 1. Get all active students grouped by subclass (minimal columns)
+            $studentsBySubclass = DB::table('students')
+                ->where('schoolID', $schoolID)
+                ->where('status', 'Active')
+                ->select('studentID', 'subclassID', 'first_name', 'last_name', 'admission_number')
+                ->get()
+                ->groupBy('subclassID');
+
+            // 2. Get ONLY IDs of existing marks for this exam
+            $completedMarksBySubject = DB::table('results')
+                ->where('examID', $examFilter)
+                ->whereNotNull('marks')
+                ->select('studentID', 'class_subjectID')
+                ->get()
+                ->groupBy('class_subjectID')
+                ->map(function($rows) {
+                    return $rows->pluck('studentID')->toArray();
+                });
+
+            // 3. Get active class subjects (Scoped correctly without non-existent schoolID column)
+            $classIDFilter = $request->get('classID', '');
+            $subclassIDFilter = $request->get('subclassID', '');
+
+            $classSubjects = ClassSubject::where('status', 'Active')
+                ->whereHas('subclass.class', function($q) use ($schoolID) {
+                    $q->where('schoolID', $schoolID);
+                })
+                ->when($classIDFilter, function($query) use ($classIDFilter) {
+                    return $query->whereHas('subclass', function($q) use ($classIDFilter) {
+                        $q->where('classID', $classIDFilter);
+                    });
+                })
+                ->when($subclassIDFilter, function($query) use ($subclassIDFilter) {
+                    return $query->where('subclassID', $subclassIDFilter);
+                })
+                ->with(['subject', 'teacher', 'subclass.class'])
+                ->get();
+
+            $incompleteData = [];
+
+            foreach ($classSubjects as $cs) {
+                if (!$cs->subclassID) continue;
+
+                $expectedStudents = $studentsBySubclass->get($cs->subclassID) ?: collect();
+                if ($expectedStudents->isEmpty()) continue;
+
+                $completedIds = $completedMarksBySubject->get($cs->class_subjectID) ?: [];
+                
+                // Identify missing students (not in results OR have no marks)
+                $missing = $expectedStudents->filter(function($st) use ($completedIds) {
+                    return !in_array($st->studentID, $completedIds);
+                });
+
+                if ($missing->isNotEmpty()) {
+                    $teacherId = $cs->teacherID ?: 0;
+                    if (!isset($incompleteData[$teacherId])) {
+                        $incompleteData[$teacherId] = [
+                            'teacher_name' => $cs->teacher ? ($cs->teacher->first_name . ' ' . $cs->teacher->last_name) : 'Unassigned',
+                            'teacher_photo' => $cs->teacher ? $cs->teacher->image : null,
+                            'teacher_phone' => $cs->teacher ? $cs->teacher->phone_number : null,
+                            'teacher_gender' => $cs->teacher ? $cs->teacher->gender : 'Male',
+                            'subjects' => []
+                        ];
+                    }
+
+                    $incompleteData[$teacherId]['subjects'][] = [
+                        'subject_name' => $cs->subject ? $cs->subject->subject_name : 'Unknown',
+                        'class_name' => ($cs->subclass && $cs->subclass->class) ? ($cs->subclass->class->class_name . ' ' . $cs->subclass->subclass_name) : 'Unknown',
+                        'missing_count' => $missing->count(),
+                        'students' => $missing->values()->take(150)->toArray()
+                    ];
+                }
+            }
+
+            return response()->json([
+                'exam_name' => $exam->exam_name,
+                'incomplete_count' => count($incompleteData),
+                'data' => array_values($incompleteData)
+            ]);
+        }
 
         // Support both exam and term report subject details
         if ($getSubjectDetails && $studentIDFilter && (($typeFilterForDetails === 'exam' && $examFilter) || ($typeFilterForDetails === 'report' && $termFilter && $yearFilter))) {
