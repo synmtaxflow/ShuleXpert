@@ -822,7 +822,7 @@
                         <div id="paper_approval_fields" style="display: none;">
                             <div class="form-group">
                                 <label for="number_of_paper_approvals">Number of Approvals <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="number_of_paper_approvals" name="number_of_paper_approvals" min="1" max="{{ count($roles ?? []) }}" value="1">
+                                <input type="number" class="form-control" id="number_of_paper_approvals" name="number_of_paper_approvals" min="1" max="{{ (count($roles ?? []) + 2) }}" value="1">
                             </div>
                             <div id="paper_approval_role_selections">
                                 <!-- Dynamic paper approval role selects will be added here -->
@@ -1176,7 +1176,7 @@
                         <div id="edit_paper_approval_fields" style="display: none;">
                             <div class="form-group">
                                 <label for="edit_number_of_paper_approvals">Number of Approvals <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="edit_number_of_paper_approvals" name="number_of_paper_approvals" min="1" value="1">
+                                <input type="number" class="form-control" id="edit_number_of_paper_approvals" name="number_of_paper_approvals" min="1" max="{{ (count($roles ?? []) + 2) }}" value="1">
                             </div>
                             <div id="edit_paper_approval_role_selections"></div>
                         </div>
@@ -1756,9 +1756,10 @@ jQuery(document).ready(function($) {
     // Handle number of paper approvals change
     $('#number_of_paper_approvals').on('change', function() {
         const numApprovals = parseInt($(this).val()) || 0;
-        if (numApprovals > roles.length) {
-            Swal.fire({ icon: 'warning', title: 'Invalid Number', text: 'Number of approvals cannot exceed ' + roles.length });
-            $(this).val(roles.length);
+        const maxPaperApprovals = roles.length + 2; // Including 2 special roles
+        if (numApprovals > maxPaperApprovals) {
+            Swal.fire({ icon: 'warning', title: 'Invalid Number', text: 'Number of approvals cannot exceed ' + maxPaperApprovals });
+            $(this).val(maxPaperApprovals);
             generatePaperApprovalRoleSelects();
         } else if (numApprovals > 0) {
             generatePaperApprovalRoleSelects();
@@ -1793,7 +1794,8 @@ jQuery(document).ready(function($) {
         const numApprovals = parseInt($('#number_of_paper_approvals').val()) || 0;
         const container = $('#paper_approval_role_selections');
         container.empty();
-        if (numApprovals <= 0 || roles.length === 0) return;
+        // Allow generating if special roles exist even if roles.length is 0
+        if (numApprovals <= 0) return;
         for (let i = 1; i <= numApprovals; i++) {
             const selectId = 'paper_approval_role_' + i;
             const selectHtml = `

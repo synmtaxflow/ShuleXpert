@@ -4089,6 +4089,11 @@ class TeachersController extends Controller
             $results = $query->get();
             $hasCA = false;
 
+            // PRE-FETCH Grade Definitions and Class Info to avoid N+1 queries in loops
+            $grades = GradeDefinition::where('classID', $classSubject->classID)->get();
+            $className = ClassModel::find($classSubject->classID)->class_name ?? '';
+            $classNameLower = strtolower(preg_replace('/[\s\-]+/', '_', $className));
+
             if ($examID) {
                 // Check if this exam has CA definition
                 $caDefinition = \App\Models\CaDefinition::where('schoolID', Session::get('schoolID'))
@@ -4110,7 +4115,7 @@ class TeachersController extends Controller
                         $caMarksMap[$studentID] = round($averageCa);
                     }
 
-                    $results->transform(function ($result) use ($caMarksMap, $classSubject) {
+                    $results->transform(function ($result) use ($caMarksMap, $classSubject, $grades, $classNameLower) {
                         $caMark = isset($caMarksMap[$result->studentID]) ? $caMarksMap[$result->studentID] : 0;
                         $examMark = $result->marks !== null ? (float)$result->marks : 0;
                         
@@ -4119,38 +4124,46 @@ class TeachersController extends Controller
                         $result->total_marks = $examMark + $caMark;
                         $result->avg_marks = $result->total_marks / 2;
                         
-                        $gradeData = $this->getGradeFromDefinition($result->avg_marks, $classSubject->classID);
-                        $result->grade = $gradeData['grade'] ?? 'N/A';
+                        // Use pre-fetched grades logic here instead of call to getGradeFromDefinition
+                        $marksNum = (float) $result->avg_marks;
+                        $gradeDefinition = $grades->where('first', '<=', $marksNum)->where('last', '>=', $marksNum)->first();
+                        $result->grade = $gradeDefinition->grade ?? 'N/A';
                         
                         // Map grade to descriptive remark
                         $grade = strtoupper($result->grade);
-                        if ($grade === 'A') $result->remark = 'Excellent';
-                        elseif ($grade === 'B') $result->remark = 'Very Good';
-                        elseif ($grade === 'C') $result->remark = 'Good';
-                        elseif ($grade === 'D') $result->remark = 'Pass';
-                        elseif ($grade === 'E') $result->remark = 'Satisfactory';
-                        else $result->remark = 'Fail';
+                        $result->remark = match($grade) {
+                            'A' => 'Excellent',
+                            'B' => 'Very Good',
+                            'C' => 'Good',
+                            'D' => 'Pass',
+                            'E' => 'Satisfactory',
+                            default => 'Fail',
+                        };
 
                         return $result;
                     });
                 } else {
-                    $results->transform(function ($result) use ($classSubject) {
+                    $results->transform(function ($result) use ($classSubject, $grades, $classNameLower) {
                         $result->ca_marks = 0;
                         $result->exam_marks = $result->marks !== null ? (float)$result->marks : 0;
                         $result->total_marks = $result->exam_marks;
                         $result->avg_marks = $result->total_marks;
                         
-                        $gradeData = $this->getGradeFromDefinition($result->total_marks, $classSubject->classID);
-                        $result->grade = $gradeData['grade'] ?? 'N/A';
+                        // Use pre-fetched grades logic here instead of call to getGradeFromDefinition
+                        $marksNum = (float) $result->avg_marks;
+                        $gradeDefinition = $grades->where('first', '<=', $marksNum)->where('last', '>=', $marksNum)->first();
+                        $result->grade = $gradeDefinition->grade ?? 'N/A';
                         
                         // Map grade to descriptive remark
                         $grade = strtoupper($result->grade);
-                        if ($grade === 'A') $result->remark = 'Excellent';
-                        elseif ($grade === 'B') $result->remark = 'Very Good';
-                        elseif ($grade === 'C') $result->remark = 'Good';
-                        elseif ($grade === 'D') $result->remark = 'Pass';
-                        elseif ($grade === 'E') $result->remark = 'Satisfactory';
-                        else $result->remark = 'Fail';
+                        $result->remark = match($grade) {
+                            'A' => 'Excellent',
+                            'B' => 'Very Good',
+                            'C' => 'Good',
+                            'D' => 'Pass',
+                            'E' => 'Satisfactory',
+                            default => 'Fail',
+                        };
                         
                         return $result;
                     });

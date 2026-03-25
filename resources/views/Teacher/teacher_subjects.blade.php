@@ -1497,6 +1497,9 @@ function editResults(classSubjectID) {
                                                     <strong>Excel Import/Export:</strong> Download template, fill in results, then upload.
                                                 </div>
                                                 <div>
+                                                    <button type="button" class="btn btn-sm btn-outline-info" onclick="fillRandomPrimaryResults()" id="fillRandomBtn" disabled>
+                                                        <i class="bi bi-dice-5"></i> Fill Random
+                                                    </button>
                                                     <button type="button" class="btn btn-sm btn-success" onclick="downloadExcelTemplate(${classSubjectID})" id="downloadExcelBtn" disabled>
                                                         <i class="bi bi-download"></i> Download Excel Template
                                                     </button>
@@ -1632,8 +1635,8 @@ function loadExistingResults(classSubjectID, examID, testWeek = null) {
         data: data,
         success: function(response) {
             if (response.success && response.results) {
-                // Clear all inputs first
-                jQuery('.marks-input, .grade-input, .remark-input').val('');
+                // Clear all inputs first, scoped to the results table
+                jQuery('#resultsTableBody .marks-input, #resultsTableBody .grade-input, #resultsTableBody .remark-input').val('');
 
                 // Populate with existing results
                 // Only show marks that are genuinely non-zero (> 0) — zero/null means 'not entered'
@@ -1657,6 +1660,33 @@ function loadExistingResults(classSubjectID, examID, testWeek = null) {
 }
 
 // Auto-calculate grade and remark when marks are entered
+// Fill random results for primary/non-secondary schools for testing/balancing
+function fillRandomPrimaryResults() {
+    jQuery('.marks-input:not([readonly])').each(function() {
+        const studentID = jQuery(this).data('student');
+        
+        // Distribution targets:
+        // A: 15%, B: 25%, C: 30%, D: 20%, F: 10%
+        const rand = Math.random();
+        let marks = 0;
+        
+        if (rand < 0.15) { // A: 75-100
+            marks = 75 + Math.random() * 25;
+        } else if (rand < 0.40) { // B: 65-74
+            marks = 65 + Math.random() * 10;
+        } else if (rand < 0.70) { // C: 45-64
+            marks = 45 + Math.random() * 20;
+        } else if (rand < 0.90) { // D: 30-44
+            marks = 30 + Math.random() * 15;
+        } else { // F: 5-29
+            marks = 5 + Math.random() * 25;
+        }
+        
+        jQuery(this).val(marks.toFixed(2));
+        autoCalculateGrade(studentID);
+    });
+}
+
 function autoCalculateGrade(studentID) {
     const marksInput = jQuery(`#marks_${studentID}`);
     const gradeInput = jQuery(`#grade_${studentID}`);
@@ -1758,6 +1788,9 @@ function addResults(classSubjectID, isEdit = false) {
                                                 <strong>Excel Import/Export:</strong> Download template, fill in results, then upload.
                                             </div>
                                             <div>
+                                                <button type="button" class="btn btn-sm btn-outline-info" onclick="fillRandomPrimaryResults()" id="fillRandomBtn" disabled>
+                                                    <i class="bi bi-dice-5"></i> Fill Random
+                                                </button>
                                                 <button type="button" class="btn btn-sm btn-success" onclick="downloadExcelTemplate(${classSubjectID})" id="downloadExcelBtn" disabled>
                                                     <i class="bi bi-download"></i> Download Excel Template
                                                 </button>
@@ -1918,7 +1951,18 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
         }
 
         let hasValidationError = false;
-        jQuery('.marks-input').each(function() {
+        let hasResults = false;
+        // Check if any marks have been entered in the current form
+        jQuery('#resultsForm .marks-input').each(function() {
+            const marks = jQuery(this).val();
+            if (marks && marks !== '') {
+                hasResults = true;
+                return false; // Break loop
+            }
+        });
+
+        // Scope each loop to the resultsForm to avoid picking up stale DOM elements
+        jQuery('#resultsForm .marks-input').each(function() {
             const studentID = jQuery(this).data('student');
             const questionMarks = examQuestionData.marksByStudent[studentID] || {};
             const optionalRanges = examQuestionData.optionalRanges || [];
@@ -1995,7 +2039,8 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
             return;
         }
     } else {
-        jQuery('.marks-input').each(function() {
+        // Scope each loop to the resultsForm to avoid picking up stale DOM elements
+        jQuery('#resultsForm .marks-input').each(function() {
             const studentID = jQuery(this).data('student');
             const marks = jQuery(this).val();
             const grade = jQuery(`.grade-input[data-student="${studentID}"]`).val();
@@ -2138,7 +2183,7 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
 
 // Handle exam selection - enable/disable Excel buttons
 function handleExamSelection(classSubjectID, examID) {
-    jQuery('#downloadExcelBtn, #uploadExcelBtn').prop('disabled', true);
+    jQuery('#downloadExcelBtn, #uploadExcelBtn, #fillRandomBtn').prop('disabled', true);
     jQuery('#test_week_group, #test_week_display_group').hide();
     jQuery('#test_week').prop('required', false).val('');
     if (!examID) {
@@ -2163,8 +2208,7 @@ function handleExamSelection(classSubjectID, examID) {
 
         // If enter_result is true, enable form - no other checks
         enableResultsForm(exam);
-        jQuery('#downloadExcelBtn').prop('disabled', false);
-        jQuery('#uploadExcelBtn').prop('disabled', false);
+        jQuery('#downloadExcelBtn, #uploadExcelBtn, #fillRandomBtn').prop('disabled', false);
         jQuery('.results-status-error').remove();
 
 
@@ -2399,7 +2443,7 @@ jQuery(document).on('input', '.question-mark-input', function() {
 function checkIfEditMode(examID, classSubjectID) {
     // Check if any results exist for this exam and class subject
     let hasResults = false;
-    jQuery('.marks-input').each(function() {
+    jQuery('#resultsForm .marks-input').each(function() {
         const marks = jQuery(this).val();
         if (marks && marks !== '') {
             hasResults = true;

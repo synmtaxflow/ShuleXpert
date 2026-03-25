@@ -867,7 +867,7 @@ class ManageExaminationController extends Controller
                     },
                 ],
                 'use_paper_approval' => 'nullable|boolean',
-                'number_of_paper_approvals' => 'required_if:use_paper_approval,1|integer|min:1|max:'.$rolesCount,
+                'number_of_paper_approvals' => 'required_if:use_paper_approval,1|integer|min:1|max:'.($rolesCount + 2),
                 'paper_approval_role_ids' => 'required_if:use_paper_approval,1|array',
                 'paper_approval_role_ids.*' => [
                     'required',
@@ -1934,7 +1934,7 @@ class ManageExaminationController extends Controller
                     },
                 ],
                 'use_paper_approval' => 'nullable|boolean',
-                'number_of_paper_approvals' => 'required_if:use_paper_approval,1|integer|min:1|max:'.$rolesCount,
+                'number_of_paper_approvals' => 'required_if:use_paper_approval,1|integer|min:1|max:'.($rolesCount + 2),
                 'paper_approval_role_ids' => 'required_if:use_paper_approval,1|array',
                 'paper_approval_role_ids.*' => [
                     'required',
