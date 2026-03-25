@@ -4130,15 +4130,15 @@ class TeachersController extends Controller
                         $result->grade = $gradeDefinition->grade ?? 'N/A';
                         
                         // Map grade to descriptive remark
-                        $grade = strtoupper($result->grade);
-                        $result->remark = match($grade) {
-                            'A' => 'Excellent',
-                            'B' => 'Very Good',
-                            'C' => 'Good',
-                            'D' => 'Pass',
-                            'E' => 'Satisfactory',
-                            default => 'Fail',
-                        };
+                        $gradeUpper = strtoupper($result->grade);
+                        switch($gradeUpper) {
+                            case 'A': $result->remark = 'Excellent'; break;
+                            case 'B': $result->remark = 'Very Good'; break;
+                            case 'C': $result->remark = 'Good'; break;
+                            case 'D': $result->remark = 'Pass'; break;
+                            case 'E': $result->remark = 'Satisfactory'; break;
+                            default: $result->remark = 'Fail'; break;
+                        }
 
                         return $result;
                     });
@@ -4155,15 +4155,15 @@ class TeachersController extends Controller
                         $result->grade = $gradeDefinition->grade ?? 'N/A';
                         
                         // Map grade to descriptive remark
-                        $grade = strtoupper($result->grade);
-                        $result->remark = match($grade) {
-                            'A' => 'Excellent',
-                            'B' => 'Very Good',
-                            'C' => 'Good',
-                            'D' => 'Pass',
-                            'E' => 'Satisfactory',
-                            default => 'Fail',
-                        };
+                        $gradeUpper = strtoupper($result->grade);
+                        switch($gradeUpper) {
+                            case 'A': $result->remark = 'Excellent'; break;
+                            case 'B': $result->remark = 'Very Good'; break;
+                            case 'C': $result->remark = 'Good'; break;
+                            case 'D': $result->remark = 'Pass'; break;
+                            case 'E': $result->remark = 'Satisfactory'; break;
+                            default: $result->remark = 'Fail'; break;
+                        }
                         
                         return $result;
                     });
