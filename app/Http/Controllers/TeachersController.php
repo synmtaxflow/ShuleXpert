@@ -4587,6 +4587,14 @@ class TeachersController extends Controller
     public function saveSubjectResults(Request $request)
     {
         try {
+            // Handle stringified JSON from large payloads (bypasses max_input_vars limit)
+            if (is_string($request->results)) {
+                $decodedResults = json_decode($request->results, true);
+                if (is_array($decodedResults)) {
+                    $request->merge(['results' => $decodedResults]);
+                }
+            }
+
             $teacherID = Session::get('teacherID');
             $schoolID = Session::get('schoolID');
 
@@ -4597,15 +4605,15 @@ class TeachersController extends Controller
             }
 
             $validator = \Illuminate\Support\Facades\Validator::make($request->all(), [
-                'class_subjectID' => 'required|exists:class_subjects,class_subjectID',
-                'examID' => 'required|exists:examinations,examID',
+                'class_subjectID' => 'required',
+                'examID' => 'required',
                 'results' => 'required|array',
-                'results.*.studentID' => 'required|exists:students,studentID',
+                'results.*.studentID' => 'required',
                 'results.*.marks' => 'nullable|numeric|min:0|max:100',
                 'results.*.grade' => 'nullable|string|max:10',
                 'results.*.remark' => 'nullable|string|max:255',
                 'results.*.question_marks' => 'nullable|array',
-                'results.*.question_marks.*.question_id' => 'required_with:results.*.question_marks|exists:exam_paper_questions,exam_paper_questionID',
+                'results.*.question_marks.*.question_id' => 'required_with:results.*.question_marks',
                 'results.*.question_marks.*.marks' => 'nullable|numeric|min:0',
                 'test_week' => 'nullable|string|max:100',
             ]);
@@ -4772,6 +4780,20 @@ class TeachersController extends Controller
                 }
             }
 
+            // PERFORMANCE OPTIMIZATION: Pre-fetch all results for this exam/subject to avoid N+1 queries in the loop
+            $existingResults = Result::where('examID', $request->examID)
+                ->where('class_subjectID', $request->class_subjectID)
+                ->get()
+                ->groupBy('studentID');
+
+            $existingQuestionMarks = collect();
+            if ($requiresQuestionMarks && !$questions->isEmpty()) {
+                $existingQuestionMarks = ExamPaperQuestionMark::where('examID', $request->examID)
+                    ->where('class_subjectID', $request->class_subjectID)
+                    ->get()
+                    ->groupBy('studentID');
+            }
+
             DB::beginTransaction();
 
             $savedCount = 0;
@@ -4779,18 +4801,17 @@ class TeachersController extends Controller
                 $studentID = $resultData['studentID'] ?? null;
                 if (!$studentID) continue;
 
-                // Find existing result or create new one
-                $query = Result::where('studentID', $studentID)
-                    ->where('examID', $request->examID)
-                    ->where('class_subjectID', $request->class_subjectID);
-
-                if ($testWeek) {
-                    $query->where('test_week', $testWeek);
-                } else {
-                    $query->whereNull('test_week');
+                // Find existing result from pre-fetched collection
+                $studentResults = $existingResults->get($studentID);
+                $result = null;
+                
+                if ($studentResults) {
+                    if ($testWeek) {
+                        $result = $studentResults->firstWhere('test_week', $testWeek);
+                    } else {
+                        $result = $studentResults->first(function($r) { return is_null($r->test_week); });
+                    }
                 }
-
-                $result = $query->first();
 
                 // If no result and it's a test, check if ANY result exists for this student/exam/subject this week
                 // (Though the query above already covers it if $testWeek is provided)
@@ -4885,12 +4906,18 @@ class TeachersController extends Controller
                     $finalGrade = $gradeRemark['grade'];
                     $finalRemark = $gradeRemark['remark'];
 
-                    // Remove any previous question marks not submitted
-                    ExamPaperQuestionMark::where('studentID', $studentID)
-                        ->where('examID', $request->examID)
-                        ->where('class_subjectID', $request->class_subjectID)
-                        ->whereNotIn('exam_paper_questionID', $questionIds)
-                        ->delete();
+                    // Remove any previous question marks not submitted (using collection to identify what exists)
+                    $studentQMarks = $existingQuestionMarks->get($studentID) ?: collect();
+                    $existingQIds = $studentQMarks->pluck('exam_paper_questionID')->toArray();
+                    $toDelete = array_diff($existingQIds, $questionIds);
+                    
+                    if (!empty($toDelete)) {
+                        ExamPaperQuestionMark::where('studentID', $studentID)
+                            ->where('examID', $request->examID)
+                            ->where('class_subjectID', $request->class_subjectID)
+                            ->whereIn('exam_paper_questionID', $toDelete)
+                            ->delete();
+                    }
 
                     foreach ($questionMarks as $questionMark) {
                         $questionId = $questionMark['question_id'] ?? null;

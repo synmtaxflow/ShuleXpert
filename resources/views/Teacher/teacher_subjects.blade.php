@@ -2091,7 +2091,7 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
             class_subjectID: classSubjectID,
             examID: examID,
             test_week: jQuery('#test_week').val(),
-            results: results
+            results: JSON.stringify(results) // Stringify to bypass PHP max_input_vars limit
         },
         success: function(response) {
             Swal.fire({
