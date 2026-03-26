@@ -18,6 +18,7 @@ use App\Models\Teacher;
 use App\Models\SchoolSubject;
 use App\Models\ClassTeacherApproval;
 use App\Models\CoordinatorApproval;
+use App\Models\SubjectElector;
 use App\Models\ClassSessionTimetable;
 use App\Models\StudentSessionAttendance;
 use App\Models\SessionTask;
@@ -4016,22 +4017,32 @@ class TeachersController extends Controller
             $subclassID = $classSubject->subclassID;
             $classID = $classSubject->classID;
 
+            $isOptional = strtolower($classSubject->student_status ?? '') === 'optional';
+            $electedStudentIds = [];
+            if ($isOptional) {
+                $electedStudentIds = SubjectElector::where('classSubjectID', $classSubjectID)->pluck('studentID')->toArray();
+            }
+
             if ($subclassID) {
-                $students = Student::with(['subclass.class', 'parent'])
+                $query = Student::with(['subclass.class', 'parent'])
                     ->where('subclassID', $subclassID)
-                    ->where('status', 'Active')
-                    ->get();
+                    ->where('status', 'Active');
             } else {
                 $subclassIds = DB::table('subclasses')
                     ->where('classID', $classID)
                     ->pluck('subclassID')
                     ->toArray();
 
-                $students = Student::with(['subclass.class', 'parent'])
+                $query = Student::with(['subclass.class', 'parent'])
                     ->whereIn('subclassID', $subclassIds)
-                    ->where('status', 'Active')
-                    ->get();
+                    ->where('status', 'Active');
             }
+
+            if ($isOptional) {
+                $query->whereIn('studentID', $electedStudentIds);
+            }
+
+            $students = $query->get();
 
             return response()->json([
                 'success' => true,
@@ -4695,12 +4706,24 @@ class TeachersController extends Controller
             
             // Massive Save 1: Basic Results
             if (!empty($resultsToUpsert)) {
-                // We use upsert but we must be careful with composite keys
-                // Laravel upsert handles duplicates based on array of columns
-                Result::upsert($resultsToUpsert, 
-                    ['studentID', 'examID', 'class_subjectID', 'test_week'], 
-                    ['marks', 'grade', 'remark', 'updated_at', 'status']
-                );
+                foreach ($resultsToUpsert as $resultData) {
+                    Result::updateOrCreate(
+                        [
+                            'studentID' => $resultData['studentID'],
+                            'examID' => $resultData['examID'],
+                            'class_subjectID' => $resultData['class_subjectID'],
+                            'test_week' => $resultData['test_week']
+                        ],
+                        [
+                            'subclassID' => $resultData['subclassID'],
+                            'marks' => $resultData['marks'],
+                            'grade' => $resultData['grade'],
+                            'remark' => $resultData['remark'],
+                            'test_date' => $resultData['test_date'],
+                            'status' => $resultData['status']
+                        ]
+                    );
+                }
             }
 
             // Massive Save 2: Question Wise Marks
