@@ -2332,14 +2332,20 @@ jQuery(document).on('click', '.toggle-question-btn', function() {
 
 
     // Sync rendered input values back into examQuestionData.marksByStudent
-    // so the submit handler can read them (setting input value= in HTML doesn't fire 'input' event)
+    // ONLY for inputs that are ENABLED (i.e. selected optional questions or mandatory)
+    // Disabled optional inputs must NOT be synced - they carry stale values
     if (!examQuestionData.marksByStudent[studentID]) {
         examQuestionData.marksByStudent[studentID] = {};
     }
     $detailRow.find('.question-mark-input').each(function() {
         const questionId = jQuery(this).data('question-id');
+        const isDisabled = jQuery(this).prop('disabled');
         const val = jQuery(this).val();
-        if (val !== '' && val !== null && val !== undefined) {
+
+        if (isDisabled) {
+            // This optional question was NOT selected — remove it from cache
+            delete examQuestionData.marksByStudent[studentID][questionId];
+        } else if (val !== '' && val !== null && val !== undefined) {
             examQuestionData.marksByStudent[studentID][questionId] = val;
         }
     });
