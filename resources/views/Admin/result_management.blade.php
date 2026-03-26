@@ -5275,6 +5275,14 @@ $(document).ready(function() {
 
         let yPos = 15;
         
+        // Add watermark (ShuleXpert)
+        doc.saveGraphicsState();
+        doc.setGState(new doc.GState({opacity: 0.1}));
+        doc.setFontSize(60);
+        doc.setTextColor(200, 200, 200);
+        doc.text("ShuleXpert", pageWidth / 2, pageHeight / 2, { align: 'center', angle: 45 });
+        doc.restoreGraphicsState();
+        
         // 1. HEADER (Logo and School Name)
         if (logoImg) {
             const logoWidth = 22;
@@ -5751,6 +5759,15 @@ $(document).ready(function() {
         const examName = data.examName;
         const year = data.year;
         const schoolSubjects = @json($schoolSubjects ?? []);
+        const pageHeight = doc.internal.pageSize.getHeight();
+        
+        // Add watermark
+        doc.setFontSize(80);
+        doc.setTextColor(230, 230, 230);
+        doc.saveGraphicsState();
+        doc.setGState(new doc.GState({opacity: 0.08}));
+        doc.text("ShuleXpert", pageWidth / 2, pageHeight / 2, { align: 'center', angle: 45 });
+        doc.restoreGraphicsState();
         
         // Load and add school logo (if available)
         if (schoolLogo) {

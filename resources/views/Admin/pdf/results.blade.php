@@ -169,9 +169,26 @@
             font-size: 7px;
             overflow: hidden;
         }
+
+        /* ── WATERMARK ───────────────────────────── */
+        .watermark {
+            position: fixed;
+            top: 25%;
+            left: 10%;
+            width: 80%;
+            text-align: center;
+            opacity: 0.05;
+            font-size: 140px;
+            color: #940000;
+            transform: rotate(-45deg);
+            z-index: -1000;
+            font-weight: bold;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <div class="watermark">ShuleXpert</div>
 
 {{-- ====================================================
      SINGLE STUDENT OR BULK SINGLE STUDENT
