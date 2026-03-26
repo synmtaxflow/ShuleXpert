@@ -86,6 +86,43 @@
         background: #940000;
         border-radius: 4px;
     }
+    /* Premium Progress Bar Styling */
+    .progress-container {
+        width: 100%;
+        background-color: #f3f3f3;
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 20px 0;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .progress-bar-premium {
+        width: 0%;
+        height: 12px;
+        background: linear-gradient(90deg, #940000 0%, #d40000 50%, #940000 100%);
+        background-size: 200% 100%;
+        animation: gradient-pulse 2s infinite linear;
+        border-radius: 8px;
+        transition: width 0.4s ease-out;
+    }
+    
+    @keyframes gradient-pulse {
+        0% { background-position: 100% 0; }
+        100% { background-position: -100% 0; }
+    }
+    
+    .loading-text {
+        font-weight: 600;
+        color: #940000;
+        font-size: 1.1rem;
+        margin-bottom: 5px;
+    }
+    
+    .percentage-text {
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #333;
+    }
 </style>
 
 <!-- Bootstrap Icons -->
@@ -538,6 +575,48 @@ if (typeof $ === 'undefined') {
 
 const isSecondarySchool = @json(strtolower($schoolType ?? 'Secondary')) === 'secondary';
 const questionColspan = isSecondarySchool ? 7 : 6;
+// Helper for Premium Progress Bar Loading
+function showPremiumLoading(targetID, title = "Preparing Data...", detail = "Fetching information from server...") {
+    jQuery(`#${targetID}`).html(`
+        <div class="p-5 text-center">
+            <div class="loading-text"><i class="bi bi-hourglass-split"></i> <span>${title}</span></div>
+            <div class="percentage-text progress-percentage" id="perc-${targetID}">0%</div>
+            <div class="progress-container">
+                <div class="progress-bar-premium" id="prog-${targetID}" style="width: 0%"></div>
+            </div>
+            <small class="text-muted">${detail}</small>
+        </div>
+    `);
+
+    let progress = 0;
+    const interval = setInterval(() => {
+        if (progress >= 40) { // Default starting point before response
+            clearInterval(interval);
+        } else {
+            progress += 5;
+            jQuery(`#prog-${targetID}`).css('width', progress + '%');
+            jQuery(`#perc-${targetID}`).text(progress + '%');
+        }
+    }, 40);
+
+    return {
+        update: (target, text) => {
+            const step = 5;
+            const subInterval = setInterval(() => {
+                if (progress >= target) {
+                    clearInterval(subInterval);
+                } else {
+                    progress += step;
+                    if (progress > target) progress = target;
+                    jQuery(`#prog-${targetID}`).css('width', progress + '%');
+                    jQuery(`#perc-${targetID}`).text(progress + '%');
+                    if (text) jQuery(`#${targetID} .loading-text span`).text(text);
+                }
+            }, 30);
+        }
+    };
+}
+
 let examQuestionData = {
     questions: [],
     marksByStudent: {},
@@ -938,12 +1017,14 @@ function updateStudentTotal(studentID) {
 // View Students
 function viewStudents(classSubjectID) {
     jQuery('#viewStudentsModal').modal('show');
-    jQuery('#studentsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+    const loader = showPremiumLoading('studentsModalBody', "Loading Student List...", "Fetching all registered students for this subject...");
 
     jQuery.ajax({
         url: '/get_subject_students/' + classSubjectID,
         method: 'GET',
         success: function(response) {
+            loader.update(100, "Formatting student list...");
+            setTimeout(() => {
             if (response.success && response.students) {
                 let html = `
                     <div class="mb-3">
@@ -1022,6 +1103,7 @@ function viewStudents(classSubjectID) {
             } else {
                 jQuery('#studentsModalBody').html('<div class="alert alert-info">No students found.</div>');
             }
+            }, 400); // end of setTimeout
         },
         error: function(xhr) {
             Swal.fire({
@@ -1052,13 +1134,15 @@ function viewResults(classSubjectID) {
 
     jQuery('#viewResultsModal').modal('show');
     jQuery('#viewResultsModalLabel').html(`<i class="bi bi-clipboard-check"></i> Results: ${subjectName} (${className})`);
-    jQuery('#resultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+    const loader = showPremiumLoading('resultsModalBody', "Preparing Results View...", "Fetching examination structure for this subject...");
 
     // First get examinations for this subject
     jQuery.ajax({
         url: '/get_examinations_for_subject/' + classSubjectID,
         method: 'GET',
         success: function(examResponse) {
+            loader.update(100, "Finalizing interface...");
+            setTimeout(() => {
             if (examResponse.success && examResponse.examinations && examResponse.examinations.length > 0) {
                 // Show exam selector and filter options
                 let html = `
@@ -1110,6 +1194,7 @@ function viewResults(classSubjectID) {
             } else {
                 jQuery('#resultsModalBody').html('<div class="alert alert-info">No examinations found for this subject.</div>');
             }
+            }, 400); // end of setTimeout
         },
         error: function(xhr) {
             Swal.fire({
@@ -1413,6 +1498,10 @@ function exportResultsToPDF(classSubjectID) {
 
 // Edit Results
 function editResults(classSubjectID) {
+    jQuery('#addEditResultsModalLabel').html('<i class="bi bi-pencil-square"></i> Edit Results');
+    jQuery('#addEditResultsModal').modal('show');
+    const loader = showPremiumLoading('addEditResultsModalBody', "Checking Access...", "Verifying result-entry permissions for examinations...");
+
     // Clear exam data cache when opening modal
     window.examDataCache = {};
     resetQuestionData();
@@ -1422,6 +1511,7 @@ function editResults(classSubjectID) {
         url: '/get_examinations_for_subject/' + classSubjectID,
         method: 'GET',
         success: function(examsResponse) {
+            loader.update(40, "Verifying status...");
             // Check if there are any examinations with enter_result = true
             let hasEnterResultEnabled = false;
             if (examsResponse.success && examsResponse.examinations && examsResponse.examinations.length > 0) {
@@ -1431,6 +1521,7 @@ function editResults(classSubjectID) {
             }
 
             if (!hasEnterResultEnabled) {
+                jQuery('#addEditResultsModal').modal('hide');
                 Swal.fire({
                     title: 'Access Denied!',
                     text: 'You are not allowed to edit results. Result entry has been disabled for all examinations.',
@@ -1440,22 +1531,20 @@ function editResults(classSubjectID) {
                 return;
             }
 
-            // If there are examinations with enter_result = true, proceed with opening modal
-            const modalTitle = 'Edit Results';
-            jQuery('#addEditResultsModalLabel').html(`<i class="bi bi-pencil"></i> ${modalTitle}`);
-            jQuery('#addEditResultsModal').modal('show');
-            jQuery('#addEditResultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
-
             // Get students, examinations, and existing results
+            loader.update(60, "Fetching students...");
             jQuery.ajax({
                 url: '/get_subject_students/' + classSubjectID,
                 method: 'GET',
                 success: function(studentsResponse) {
+                    loader.update(80, "Fetching existing marks...");
                     // Get all results for this subject
                     jQuery.ajax({
                         url: '/get_subject_results/' + classSubjectID,
                         method: 'GET',
                         success: function(resultsResponse) {
+                            loader.update(100, "Formatting interface...");
+                            setTimeout(() => {
                             let html = `
                                 <form id="resultsForm">
                                     <input type="hidden" id="class_subject_id" value="${classSubjectID}">
@@ -1592,8 +1681,9 @@ function editResults(classSubjectID) {
                                 </form>
                             `;
 
-                            jQuery('#addEditResultsModalBody').html(html);
-                        },
+                                jQuery('#addEditResultsModalBody').html(html);
+                                }, 400); // end of setTimeout
+                            },
                         error: function(xhr) {
                             Swal.fire({
                                 title: 'Error!',
@@ -1718,7 +1808,9 @@ function addResults(classSubjectID, isEdit = false) {
     const modalTitle = isEdit ? 'Edit Results' : 'Add Results';
     jQuery('#addEditResultsModalLabel').html(`<i class="bi bi-${isEdit ? 'pencil' : 'plus-circle'}"></i> ${modalTitle}`);
     jQuery('#addEditResultsModal').modal('show');
-    jQuery('#addEditResultsModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"></div></div>');
+    
+    // Show Premium Progress Bar
+    const loader = showPremiumLoading('addEditResultsModalBody', "Preparing Details...", "Fetching student lists and examinations...");
 
     // Clear exam data cache when opening modal
     window.examDataCache = {};
@@ -1729,10 +1821,15 @@ function addResults(classSubjectID, isEdit = false) {
         url: '/get_subject_students/' + classSubjectID,
         method: 'GET',
         success: function(studentsResponse) {
+            loader.update(70, "Fetching examinations...");
             jQuery.ajax({
                 url: '/get_examinations_for_subject/' + classSubjectID,
                 method: 'GET',
                 success: function(examsResponse) {
+                    loader.update(100, "Finalizing interface...");
+                    
+                    // Small delay to let user see 100%
+                    setTimeout(() => {
                     let html = `
                         <form id="resultsForm">
                             <input type="hidden" id="class_subject_id" value="${classSubjectID}">
@@ -1888,6 +1985,7 @@ function addResults(classSubjectID, isEdit = false) {
                     `;
 
                     jQuery('#addEditResultsModalBody').html(html);
+                    }, 400); // end of setTimeout
                 },
                 error: function(xhr) {
                     Swal.fire({
@@ -2536,12 +2634,15 @@ function showUploadExcelModal(classSubjectID) {
 // View Session Attendance
 function viewSessionAttendance(classSubjectID) {
     jQuery('#sessionAttendanceModal').modal('show');
-    jQuery('#sessionAttendanceModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"><span class="sr-only">Loading...</span></div></div>');
+    const loader = showPremiumLoading('sessionAttendanceModalBody', "Loading Session Attendance...", "Fetching attendance records for this subject...");
 
     // Load session attendance view
     jQuery.get(`/teacher/session-attendance/${classSubjectID}`)
     .done(function(response) {
-        jQuery('#sessionAttendanceModalBody').html(response);
+        loader.update(100, "Displaying records...");
+        setTimeout(() => {
+            jQuery('#sessionAttendanceModalBody').html(response);
+        }, 400);
     })
     .fail(function(xhr) {
         jQuery('#sessionAttendanceModalBody').html('<div class="alert alert-danger">Failed to load session attendance. Please try again.</div>');
@@ -2551,14 +2652,17 @@ function viewSessionAttendance(classSubjectID) {
 // View Exam Attendance
 function viewExamAttendance(classSubjectID, subjectID) {
     jQuery('#examAttendanceModal').modal('show');
-    jQuery('#examAttendanceModalBody').html('<div class="text-center"><div class="spinner-border text-primary-custom" role="status"><span class="sr-only">Loading...</span></div></div>');
+    const loader = showPremiumLoading('examAttendanceModalBody', "Loading Exam Attendance...", "Identifying student participation in examinations...");
 
     // Load exam attendance view
     jQuery.get(`/teacher/exam-attendance/${classSubjectID}`, {
         subjectID: subjectID
     })
     .done(function(response) {
-        jQuery('#examAttendanceModalBody').html(response);
+        loader.update(100, "Compiling attendance list...");
+        setTimeout(() => {
+            jQuery('#examAttendanceModalBody').html(response);
+        }, 400);
     })
     .fail(function(xhr) {
         jQuery('#examAttendanceModalBody').html('<div class="alert alert-danger">Failed to load exam attendance. Please try again.</div>');
