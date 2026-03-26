@@ -3,6 +3,54 @@
 <head>
     <meta charset="utf-8">
     <title>Results - {{ $school->school_name ?? 'School' }}</title>
+    @php
+        /**
+         * Smart Image Resolver for DomPDF
+         * Checks multiple possible server locations (cPanel vs Local)
+         */
+        if (!function_exists('getSmartBase64')) {
+            function getSmartBase64($path) {
+                if (!$path) return null;
+                
+                $path = ltrim($path, '/');
+                $base = base_path();
+                $parent = dirname($base);
+                
+                $possibilities = [
+                    public_path($path),                             // Standard Laravel Public
+                    public_path('uploads/' . $path),                // Standard Laravel Public Uploads
+                    $parent . '/public_html/' . $path,              // cPanel / Shared Hosting
+                    $parent . '/public_html/uploads/' . $path,      // cPanel / Shared Hosting Uploads
+                ];
+                
+                if (isset($_SERVER['DOCUMENT_ROOT'])) {
+                    $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+                    $possibilities[] = $docRoot . '/' . $path;
+                    $possibilities[] = $docRoot . '/uploads/' . $path;
+                }
+                
+                $possibilities[] = base_path($path);
+                $possibilities[] = base_path('public/' . $path);
+                $possibilities[] = base_path('../public_html/' . $path);
+                
+                foreach ($possibilities as $fullPath) {
+                    if (@file_exists($fullPath) && is_file($fullPath)) {
+                        try {
+                            $data = base64_encode(file_get_contents($fullPath));
+                            $ext = pathinfo($fullPath, PATHINFO_EXTENSION);
+                            return 'data:image/' . ($ext ?: 'png') . ';base64,' . $data;
+                        } catch (\Exception $e) {}
+                    }
+                }
+                
+                return null;
+            }
+        }
+        
+        $schoolLogoBase64  = getSmartBase64($school->school_logo ?? '');
+        $schoolStampBase64 = getSmartBase64($school->school_stamp ?? '');
+        $schoolSignBase64  = getSmartBase64($school->school_signature ?? '');
+    @endphp
     <style>
         @page { margin: 12mm 14mm; }
         body {
@@ -15,12 +63,12 @@
         /* ── HEADER ─────────────────────────────── */
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 0; }
         .header-table td { border: none; padding: 0; vertical-align: middle; }
-        .logo-cell { width: 75px; }
-        .logo-cell img { max-width: 65px; max-height: 65px; }
+        .logo-cell { width: 68px; padding-right: 10px; }
+        .logo-cell img { display: block; width: 65px; height: 65px; border: none; outline: none; }
         .school-name-cell { text-align: center; }
-        .school-name { font-size: 16px; font-weight: bold; color: #940000; text-transform: uppercase; letter-spacing: 1px; }
-        .school-sub  { font-size: 8px; color: #555; margin: 1px 0; }
-        .header-line { border-bottom: 3px solid #940000; margin: 8px 0 10px 0; }
+        .school-name { font-size: 16px; font-weight: bold; color: #940000; text-transform: uppercase; letter-spacing: 0.5px; }
+        .school-sub  { font-size: 8px; color: #555; margin: 0; }
+        .header-line { border-bottom: 2px solid #940000; margin: 8px 0 10px 0; }
 
         /* ── TITLE BAND ──────────────────────────── */
         .title-band {
@@ -110,6 +158,17 @@
             padding-top: 3px;
         }
         .footer .brand { color: #940000; font-weight: bold; }
+        .placeholder-img {
+            border: 1px dashed #e0cdcd;
+            background: #fdfdfd;
+            color: #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 7px;
+            overflow: hidden;
+        }
     </style>
 </head>
 <body>
@@ -134,8 +193,10 @@
         <table class="header-table">
             <tr>
                 <td class="logo-cell">
-                    @if($school && $school->school_logo)
-                        <img src="{{ public_path($school->school_logo) }}" alt="Logo">
+                    @if($schoolLogoBase64)
+                        <img src="{{ $schoolLogoBase64 }}" alt="Logo">
+                    @else
+                        <div class="placeholder-img" style="width:65px; height:65px;">LOGO</div>
                     @endif
                 </td>
                 <td class="school-name-cell">
@@ -145,7 +206,13 @@
                         <div class="school-sub">Tel: {{ $school->phone ?? 'N/A' }}  |  Email: {{ $school->email ?? '' }}</div>
                     @endif
                 </td>
-                <td style="width:75px;"></td>
+                <td class="logo-cell" style="text-align:right; padding-right:0; padding-left:10px;">
+                    @if($schoolLogoBase64)
+                        <img src="{{ $schoolLogoBase64 }}" alt="Logo" style="margin-left:auto;">
+                    @else
+                        <div class="placeholder-img" style="width:65px; height:65px; margin-left:auto;">LOGO</div>
+                    @endif
+                </td>
             </tr>
         </table>
         <div class="header-line"></div>
@@ -348,17 +415,19 @@
     <table class="sig-table">
         <tr>
             <td class="stamp-cell">
-                @if($school && $school->school_stamp)
-                    <img src="{{ public_path($school->school_stamp) }}" alt="Stamp">
+                @if($schoolStampBase64)
+                    <img src="{{ $schoolStampBase64 }}" alt="Stamp">
+                @else
+                    <div class="placeholder-img" style="width:100px; height:100px; margin: 0 auto;">STAMP</div>
                 @endif
             </td>
             <td class="sign-cell">
-                @if($school && $school->school_signature)
+                @if($schoolSignBase64)
                     <div class="school-signature-img">
-                        <img src="{{ public_path($school->school_signature) }}" alt="Signature">
+                        <img src="{{ $schoolSignBase64 }}" alt="Signature">
                     </div>
                 @else
-                    <div style="height: 35px;"></div>
+                    <div class="placeholder-img" style="width:160px; height:40px; margin: 0 auto 4px auto;">SIGNATURE</div>
                 @endif
                 <div class="sig-line"></div>
                 <span class="sig-label">Headmaster's Signature</span>
@@ -380,8 +449,10 @@
     <table class="header-table">
         <tr>
             <td class="logo-cell">
-                @if($school && $school->school_logo)
-                    <img src="{{ public_path($school->school_logo) }}" alt="Logo">
+                @if($schoolLogoBase64)
+                    <img src="{{ $schoolLogoBase64 }}" alt="Logo">
+                @else
+                    <div class="placeholder-img" style="width:60px; height:60px;">LOGO</div>
                 @endif
             </td>
             <td class="school-name-cell">
@@ -391,7 +462,13 @@
                     <div class="school-sub">Tel: {{ $school->phone ?? 'N/A' }}  |  Email: {{ $school->email ?? '' }}</div>
                 @endif
             </td>
-            <td style="width:75px;"></td>
+            <td class="logo-cell" style="text-align:right; padding-right:0; padding-left:10px;">
+                @if($schoolLogoBase64)
+                    <img src="{{ $schoolLogoBase64 }}" alt="Logo" style="margin-left:auto;">
+                @else
+                    <div class="placeholder-img" style="width:60px; height:60px; margin-left:auto;">LOGO</div>
+                @endif
+            </td>
         </tr>
     </table>
     <div class="header-line"></div>
@@ -688,17 +765,19 @@
             <table class="sig-table">
                 <tr>
                     <td class="stamp-cell">
-                        @if($school && $school->school_stamp)
-                            <img src="{{ public_path($school->school_stamp) }}" alt="Stamp">
+                        @if($schoolStampBase64)
+                            <img src="{{ $schoolStampBase64 }}" alt="Stamp">
+                        @else
+                            <div class="placeholder-img" style="width:100px; height:100px; margin: 0 auto;">STAMP</div>
                         @endif
                     </td>
                     <td class="sign-cell">
-                        @if($school && $school->school_signature)
+                        @if($schoolSignBase64)
                             <div class="school-signature-img">
-                                <img src="{{ public_path($school->school_signature) }}" alt="Signature">
+                                <img src="{{ $schoolSignBase64 }}" alt="Signature">
                             </div>
                         @else
-                            <div style="height: 35px;"></div>
+                            <div class="placeholder-img" style="width:160px; height:40px; margin: 0 auto 4px auto;">SIGNATURE</div>
                         @endif
                         <div class="sig-line"></div>
                         <span class="sig-label">Headmaster's Signature</span>
@@ -766,17 +845,19 @@
         <table class="sig-table">
             <tr>
                 <td class="stamp-cell">
-                    @if($school && $school->school_stamp)
-                        <img src="{{ public_path($school->school_stamp) }}" alt="Stamp">
+                    @if($schoolStampBase64)
+                        <img src="{{ $schoolStampBase64 }}" alt="Stamp">
+                    @else
+                        <div class="placeholder-img" style="width:100px; height:100px; margin: 0 auto;">STAMP</div>
                     @endif
                 </td>
                 <td class="sign-cell">
-                    @if($school && $school->school_signature)
+                    @if($schoolSignBase64)
                         <div class="school-signature-img">
-                            <img src="{{ public_path($school->school_signature) }}" alt="Signature">
+                            <img src="{{ $schoolSignBase64 }}" alt="Signature">
                         </div>
                     @else
-                        <div style="height: 35px;"></div>
+                        <div class="placeholder-img" style="width:160px; height:40px; margin: 0 auto 4px auto;">SIGNATURE</div>
                     @endif
                     <div class="sig-line"></div>
                     <span class="sig-label">Headmaster's Signature</span>

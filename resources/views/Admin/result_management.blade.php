@@ -191,6 +191,43 @@
         color: #4a5568;
         box-shadow: 0 1px 3px rgba(0,0,0,0.02);
     }
+    /* Premium Progress Bar Styling */
+    .progress-container {
+        width: 100%;
+        background-color: #f3f3f3;
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 20px 0;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .progress-bar-premium {
+        width: 0%;
+        height: 12px;
+        background: linear-gradient(90deg, #940000 0%, #d40000 50%, #940000 100%);
+        background-size: 200% 100%;
+        animation: gradient-pulse 2s infinite linear;
+        border-radius: 8px;
+        transition: width 0.4s ease-out;
+    }
+    
+    @keyframes gradient-pulse {
+        0% { background-position: 100% 0; }
+        100% { background-position: -100% 0; }
+    }
+    
+    .loading-text {
+        font-weight: 600;
+        color: #940000;
+        font-size: 1.1rem;
+        margin-bottom: 5px;
+    }
+    
+    .percentage-text {
+        font-weight: bold;
+        font-size: 1.2rem;
+        color: #333;
+    }
 </style>
 
 <!-- Bootstrap Icons -->
@@ -3397,15 +3434,35 @@ $(document).ready(function() {
         $('.export-student-pdf-btn').attr('data-student-id', studentID).attr('data-exam-id', '');
         $('.export-student-excel-btn').attr('data-student-id', studentID).attr('data-exam-id', '');
         
-        // Show loading
+        // Show Premium Progress Bar
         $('#studentDetailsContent').html(`
-            <div class="text-center">
-                <div class="spinner-border text-primary-custom" role="status">
-                    <span class="sr-only">Loading...</span>
+            <div class="p-5 text-center">
+                <div class="loading-text"><i class="bi bi-hourglass-split"></i> <span>Preparing Report...</span></div>
+                <div class="percentage-text" id="view-load-percentage">0%</div>
+                <div class="progress-container">
+                    <div class="progress-bar-premium" id="view-load-progress" style="width: 0%"></div>
                 </div>
-                <p class="mt-2">Loading student details...</p>
+                <small class="text-muted">Fetching subject-wise breakdown and positions...</small>
             </div>
         `);
+        
+        let viewProgress = 0;
+        const updateViewProgress = (target, text) => {
+            const step = 5;
+            const interval = setInterval(() => {
+                if (viewProgress >= target) {
+                    clearInterval(interval);
+                } else {
+                    viewProgress += step;
+                    if (viewProgress > target) viewProgress = target;
+                    $('#view-load-progress').css('width', viewProgress + '%');
+                    $('#view-load-percentage').text(viewProgress + '%');
+                    if (text) $('#studentDetailsContent .loading-text span').text(text);
+                }
+            }, 25);
+        };
+        
+        updateViewProgress(40, "Requesting details...");
         
         const schoolType = '{{ $schoolType ?? "Secondary" }}';
         const termName = term ? term.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) : '';
@@ -3426,6 +3483,9 @@ $(document).ready(function() {
                 'Accept': 'application/json'
             },
             success: function(response) {
+                updateViewProgress(100, "Finalizing report...");
+                
+                setTimeout(() => {
                 // Store student data globally for PDF export
                 window.currentReportStudentData = {
                     studentID: response.student.studentID,
@@ -3594,6 +3654,7 @@ $(document).ready(function() {
                 `;
                 
                 $('#studentDetailsContent').html(content);
+                }, 400); // end of setTimeout
             },
             error: function(xhr, status, error) {
                 let errorMsg = 'Could not load subject details. Please try again.';
@@ -3639,15 +3700,35 @@ $(document).ready(function() {
         $('.export-student-pdf-btn').attr('data-student-id', studentID).attr('data-exam-id', examID);
         $('.export-student-excel-btn').attr('data-student-id', studentID).attr('data-exam-id', examID);
         
-        // Show loading
+        // Show Premium Progress Bar
         $('#studentDetailsContent').html(`
-            <div class="text-center">
-                <div class="spinner-border text-primary-custom" role="status">
-                    <span class="sr-only">Loading...</span>
+            <div class="p-5 text-center">
+                <div class="loading-text"><i class="bi bi-hourglass-split"></i> <span>Preparing Results...</span></div>
+                <div class="percentage-text" id="view-exam-load-percentage">0%</div>
+                <div class="progress-container">
+                    <div class="progress-bar-premium" id="view-exam-load-progress" style="width: 0%"></div>
                 </div>
-                <p class="mt-2">Loading student details...</p>
+                <small class="text-muted">Fetching detailed subject scores and positions...</small>
             </div>
         `);
+        
+        let viewExamProgress = 0;
+        const updateViewExamProgress = (target, text) => {
+            const step = 5;
+            const interval = setInterval(() => {
+                if (viewExamProgress >= target) {
+                    clearInterval(interval);
+                } else {
+                    viewExamProgress += step;
+                    if (viewExamProgress > target) viewExamProgress = target;
+                    $('#view-exam-load-progress').css('width', viewExamProgress + '%');
+                    $('#view-exam-load-percentage').text(viewExamProgress + '%');
+                    if (text) $('#studentDetailsContent .loading-text span').text(text);
+                }
+            }, 25);
+        };
+        
+        updateViewExamProgress(40, "Requesting data...");
         
         // Get exam name
         const examName = $('#examID option:selected').text().split('(')[0].trim();
@@ -3693,6 +3774,9 @@ $(document).ready(function() {
                 'Accept': 'application/json'
             },
             success: function(response) {
+                updateViewExamProgress(100, "Formatting results...");
+                
+                setTimeout(() => {
                 // Store student data globally for PDF export
                 window.currentStudentData = null;
                 
@@ -3905,6 +3989,7 @@ $(document).ready(function() {
                 
                 content += subjectsHtml;
                 $('#studentDetailsContent').html(content);
+                }, 400); // end of setTimeout
             },
             error: function(xhr, status, error) {
                 content += `
@@ -5151,27 +5236,56 @@ $(document).ready(function() {
 
         // Get school info
         const schoolName = '{{ $school->school_name ?? "School" }}';
-        const schoolLogo = '{{ $school->school_logo ?? "" }}';
+        const schoolLogo = '{{ $school->school_logo ? asset($school->school_logo) : "" }}';
+        const schoolStamp = '{{ $school->school_stamp ? asset($school->school_stamp) : "" }}';
+        const schoolSignature = '{{ $school->school_signature ? asset($school->school_signature) : "" }}';
 
         if (type === 'pdf') {
-            downloadStudentPDF(studentRow, studentID, filters, schoolName, schoolLogo);
+            downloadStudentPDF(studentRow, studentID, filters, schoolName, schoolLogo, schoolStamp, schoolSignature);
         } else {
             downloadStudentExcel(studentRow, studentID, filters, schoolName);
         }
     });
 
     // Function to download student PDF using JavaScript
-    function downloadStudentPDF(studentRow, studentID, filters, schoolName, schoolLogo) {
+    async function downloadStudentPDF(studentRow, studentID, filters, schoolName, schoolLogo, schoolStamp, schoolSignature) {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
-        
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.height;
+
+        // Helper to load image as Base64 or Image Object
+        const loadImage = (url) => {
+            return new Promise((resolve, reject) => {
+                if (!url) { resolve(null); return; }
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => resolve(img);
+                img.onerror = () => resolve(null); // Resolve with null on error to proceed without image
+                img.src = url;
+            });
+        };
+
+        // Preload all images
+        const [logoImg, stampImg, signImg] = await Promise.all([
+            loadImage(schoolLogo),
+            loadImage(schoolStamp),
+            loadImage(schoolSignature)
+        ]);
+
         let yPos = 15;
         
+        // 1. HEADER (Logo and School Name)
+        if (logoImg) {
+            const logoWidth = 22;
+            const logoHeight = (logoImg.height * logoWidth) / logoImg.width;
+            doc.addImage(logoImg, 'PNG', 14, yPos - 5, logoWidth, logoHeight);
+        }
+
         // School name header (centered)
         doc.setFontSize(20);
         doc.setTextColor(148, 0, 0);
         doc.setFont('helvetica', 'bold');
-        const pageWidth = doc.internal.pageSize.getWidth();
         doc.text(schoolName, pageWidth / 2, yPos, { align: 'center' });
         yPos += 10;
 
@@ -5400,32 +5514,39 @@ $(document).ready(function() {
             }
         }
 
-        // Footer
+        // Page Footer and Official Stamping
         const pageCount = doc.internal.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
-            const pageHeight = doc.internal.pageSize.height;
-            const pageWidth = doc.internal.pageSize.getWidth();
             
-            // Generated date
-            doc.setFontSize(8);
-            doc.setTextColor(128, 128, 128);
-            doc.text('Generated on ' + new Date().toLocaleString(), pageWidth / 2, pageHeight - 25, { align: 'center' });
-            
-            // Powered by: EmCa Technologies LTD
-            doc.setFontSize(8);
-            doc.setTextColor(148, 0, 0);
-            doc.setFont('helvetica', 'bold');
-            doc.text('Powered by: EmCa Technologies LTD', pageWidth / 2, pageHeight - 20, { align: 'center' });
-            
-            // Headmaster's Sign (Blue ink)
-            doc.setDrawColor(0, 0, 255); // Blue color
+            // Signature Line (Higher up to allow image)
+            doc.setDrawColor(0, 0, 255);
             doc.setLineWidth(0.5);
-            doc.line(pageWidth - 50, pageHeight - 10, pageWidth - 10, pageHeight - 10); // Signature line
+            doc.line(pageWidth - 70, pageHeight - 30, pageWidth - 14, pageHeight - 30);
+            
             doc.setFontSize(10);
-            doc.setTextColor(0, 0, 255); // Blue text
+            doc.setTextColor(0, 0, 255);
             doc.setFont('helvetica', 'bold');
-            doc.text('Headmaster\'s Sign', pageWidth - 30, pageHeight - 5, { align: 'center' });
+            doc.text('Headmaster\'s Signature', pageWidth - 42, pageHeight - 25, { align: 'center' });
+
+            // DRAW SIGNATURE IMAGE OVER LINE
+            if (signImg) {
+                const sW = 40;
+                const sH = (signImg.height * sW) / signImg.width;
+                doc.addImage(signImg, 'PNG', pageWidth - 55, pageHeight - 48, sW, sH);
+            }
+
+            // DRAW STAMP IMAGE
+            if (stampImg) {
+                const stW = 35;
+                const stH = (stampImg.height * stW) / stampImg.width;
+                doc.addImage(stampImg, 'PNG', pageWidth - 100, pageHeight - 55, stW, stH, undefined, 'FAST');
+            }
+
+            // Standard Footer Brand
+            doc.setFontSize(8);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Generated: ' + new Date().toLocaleString() + ' | Powered by EmCa Technologies', pageWidth / 2, pageHeight - 10, { align: 'center' });
         }
 
         // Generate filename from filtering description
