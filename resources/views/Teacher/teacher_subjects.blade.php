@@ -922,10 +922,17 @@ function updateStudentTotal(studentID) {
     // Update UI elements only for this student
     jQuery(`.student-question-total[data-student="${studentID}"]`).text(hasMarks ? displayTotal : 0);
     const $mainMarksInput = jQuery(`#marks_${studentID}`);
-    $mainMarksInput.val(hasMarks ? displayTotal : '');
-    
-    // Pass the row to autoCalculateGrade for precision
-    autoCalculateGrade(studentID, $studentRow);
+
+    if (hasMarks) {
+        // Teacher has entered question-level marks — update the total
+        $mainMarksInput.val(displayTotal);
+        // Pass the row to autoCalculateGrade for precision
+        autoCalculateGrade(studentID, $studentRow);
+    }
+    // If no question marks are entered (hasMarks = false), preserve the existing
+    // marks input value (could be from loadExistingResults or manual entry).
+    // Do NOT clear it — that would delete marks from students who have results
+    // saved in the results table but do not have question-level breakdown yet.
 }
 
 // View Students
