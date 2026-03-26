@@ -673,6 +673,14 @@ class ResultManagementController extends Controller
                     $average = $data['marks_count'] > 0 ? $data['marks_sum'] / $data['marks_count'] : 0;
                     $gradeResult = $classID ? $this->getGradeFromDefinition($average, $classID) : null;
                     $overallGrade = $gradeResult ? $gradeResult['grade'] : null;
+                    // Fallback: if grade_definitions table has no data, calculate manually
+                    if (!$overallGrade) {
+                        if ($average >= 75) $overallGrade = 'A';
+                        elseif ($average >= 65) $overallGrade = 'B';
+                        elseif ($average >= 45) $overallGrade = 'C';
+                        elseif ($average >= 30) $overallGrade = 'D';
+                        else $overallGrade = 'F';
+                    }
 
                     $subjects[] = [
                         'subject_name' => $subjectName,
@@ -2895,8 +2903,14 @@ class ResultManagementController extends Controller
             }
         }
 
+        // Filter students to only those with results
+        $students = $students->filter(function($student) use ($resultsData) {
+            return isset($resultsData[$student->studentID]);
+        });
+
         // Fetch detailed data for single student (CAs and Exam breakdowns)
         $detailedSingleData = null;
+        $detailedBulkData = [];
         if ($option === 'single' && count($students) > 0) {
             $reqClone = $request->duplicate();
             $reqClone->merge(['getSubjectDetails' => true, 'studentID' => $studentID]);
@@ -2904,13 +2918,19 @@ class ResultManagementController extends Controller
             if ($res instanceof \Illuminate\Http\JsonResponse) {
                 $detailedSingleData = json_decode($res->content(), true);
             }
+        } elseif ($option === 'bulk_single' && count($students) > 0) {
+            set_time_limit(300); // 5 minutes execution time
+            ini_set('memory_limit', '1024M'); // Allow up to 1GB for heavy PDF generation
+            
+            foreach ($students as $student) {
+                $reqClone = $request->duplicate();
+                $reqClone->merge(['getSubjectDetails' => true, 'studentID' => $student->studentID]);
+                $res = $this->index($reqClone);
+                if ($res instanceof \Illuminate\Http\JsonResponse) {
+                    $detailedBulkData[$student->studentID] = json_decode($res->content(), true);
+                }
+            }
         }
-
-
-        // Filter students to only those with results
-        $students = $students->filter(function($student) use ($resultsData) {
-            return isset($resultsData[$student->studentID]);
-        });
 
         // Build title based on filters
         $title = '';
@@ -2938,6 +2958,7 @@ class ResultManagementController extends Controller
             'students' => $students,
             'resultsData' => $resultsData,
             'detailedSingleData' => $detailedSingleData,
+            'detailedBulkData' => $detailedBulkData,
             'filters' => [
                 'term' => $termFilter,
                 'year' => $yearFilter,

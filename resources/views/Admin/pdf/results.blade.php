@@ -114,64 +114,69 @@
 </head>
 <body>
 
-{{-- HEADER --}}
-<table class="header-table">
-    <tr>
-        <td class="logo-cell">
-            @if($school && $school->school_logo)
-                <img src="{{ public_path($school->school_logo) }}" alt="Logo">
-            @endif
-        </td>
-        <td class="school-name-cell">
-            <div class="school-name">{{ $school->school_name ?? 'School' }}</div>
-            @if($school)
-                <div class="school-sub">{{ $school->address ?? '' }}</div>
-                <div class="school-sub">Tel: {{ $school->phone ?? 'N/A' }}  |  Email: {{ $school->email ?? '' }}</div>
-            @endif
-        </td>
-        <td style="width:75px;"></td>
-    </tr>
-</table>
-<div class="header-line"></div>
-
-{{-- TITLE BAND --}}
-<div class="title-band">
-    @if($option === 'single' && $students->count() > 0)
-        @php $stu = $students->first(); @endphp
-        {{ strtoupper(trim($stu->first_name . ' ' . ($stu->middle_name ?? '') . ' ' . $stu->last_name)) }}
-        - {{ $title ?? ($filters['type'] === 'report' ? 'Term Report' : 'Exam Results') }}
-    @else
-        {{ $title ?? ($filters['type'] === 'report' ? 'Term Report' : 'Exam Results') }}
-    @endif
-</div>
-
-{{-- META BAR --}}
-<div class="meta-bar">
-    <strong>Term:</strong> {{ $filters['term'] ? ucwords(str_replace('_', ' ', $filters['term'])) : 'All Terms' }} &nbsp;|&nbsp;
-    <strong>Year:</strong> {{ $filters['year'] }} &nbsp;|&nbsp;
-    <strong>Type:</strong> {{ $filters['type'] === 'exam' ? 'Exam Results' : 'Term Report' }}
-    @if($filters['examID'])
-        @php $exam = \App\Models\Examination::find($filters['examID']); @endphp
-        &nbsp;|&nbsp; <strong>Exam:</strong> {{ $exam->exam_name ?? 'N/A' }}
-    @endif
-    @if($filters['class'])
-        @php $cls = \App\Models\ClassModel::find($filters['class']); @endphp
-        &nbsp;|&nbsp; <strong>Class:</strong> {{ $cls->class_name ?? 'N/A' }}
-    @endif
-    @if($filters['subclass'])
-        @php $sub = \App\Models\Subclass::find($filters['subclass']); @endphp
-        &nbsp;|&nbsp; <strong>Subclass:</strong> {{ $sub->subclass_name ?? 'N/A' }}
-    @endif
-    @if($filters['grade']) &nbsp;|&nbsp; <strong>Grade:</strong> {{ $filters['grade'] }} @endif
-    @if($filters['gender']) &nbsp;|&nbsp; <strong>Gender:</strong> {{ $filters['gender'] }} @endif
-    &nbsp;|&nbsp; <strong>Generated:</strong> {{ date('d/m/Y H:i') }}
-</div>
-
 {{-- ====================================================
-     SINGLE STUDENT
+     SINGLE STUDENT OR BULK SINGLE STUDENT
 ==================================================== --}}
-@if($option === 'single' && $students->count() > 0)
-    @php $student = $students->first(); $result = $resultsData[$student->studentID] ?? null; @endphp
+@if(($option === 'single' || $option === 'bulk_single') && $students->count() > 0)
+    @php
+        $studentsToIterate = ($option === 'single') ? $students->take(1) : $students;
+        $idxCount = 0;
+    @endphp
+    @foreach($studentsToIterate as $student)
+        @php 
+            $result = $resultsData[$student->studentID] ?? null; 
+            if ($option === 'bulk_single' && isset($detailedBulkData[$student->studentID])) {
+                $detailedSingleData = $detailedBulkData[$student->studentID];
+            }
+        @endphp
+
+        {{-- HEADER (Printed for each student) --}}
+        <table class="header-table">
+            <tr>
+                <td class="logo-cell">
+                    @if($school && $school->school_logo)
+                        <img src="{{ public_path($school->school_logo) }}" alt="Logo">
+                    @endif
+                </td>
+                <td class="school-name-cell">
+                    <div class="school-name">{{ $school->school_name ?? 'School' }}</div>
+                    @if($school)
+                        <div class="school-sub">{{ $school->address ?? '' }}</div>
+                        <div class="school-sub">Tel: {{ $school->phone ?? 'N/A' }}  |  Email: {{ $school->email ?? '' }}</div>
+                    @endif
+                </td>
+                <td style="width:75px;"></td>
+            </tr>
+        </table>
+        <div class="header-line"></div>
+
+        {{-- TITLE BAND FOR THIS STUDENT --}}
+        <div class="title-band">
+            {{ strtoupper(trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name)) }}
+            - {{ $title ?? ($filters['type'] === 'report' ? 'Term Report' : 'Exam Results') }}
+        </div>
+
+        {{-- META BAR --}}
+        <div class="meta-bar">
+            <strong>Term:</strong> {{ $filters['term'] ? ucwords(str_replace('_', ' ', $filters['term'])) : 'All Terms' }} &nbsp;|&nbsp;
+            <strong>Year:</strong> {{ $filters['year'] }} &nbsp;|&nbsp;
+            <strong>Type:</strong> {{ $filters['type'] === 'exam' ? 'Exam Results' : 'Term Report' }}
+            @if($filters['examID'])
+                @php $exam = \App\Models\Examination::find($filters['examID']); @endphp
+                &nbsp;|&nbsp; <strong>Exam:</strong> {{ $exam->exam_name ?? 'N/A' }}
+            @endif
+            @if($filters['class'])
+                @php $cls = \App\Models\ClassModel::find($filters['class']); @endphp
+                &nbsp;|&nbsp; <strong>Class:</strong> {{ $cls->class_name ?? 'N/A' }}
+            @endif
+            @if($filters['subclass'])
+                @php $sub = \App\Models\Subclass::find($filters['subclass']); @endphp
+                &nbsp;|&nbsp; <strong>Subclass:</strong> {{ $sub->subclass_name ?? 'N/A' }}
+            @endif
+            @if($filters['grade']) &nbsp;|&nbsp; <strong>Grade:</strong> {{ $filters['grade'] }} @endif
+            @if($filters['gender']) &nbsp;|&nbsp; <strong>Gender:</strong> {{ $filters['gender'] }} @endif
+            &nbsp;|&nbsp; <strong>Generated:</strong> {{ date('d/m/Y H:i') }}
+        </div>
 
     <div class="student-info">
         <table style="width:100%; border-collapse:collapse;">
@@ -201,14 +206,18 @@
                     <tr>
                         <th>Subject</th>
                         @php 
-                            // Determine extra columns from the first subject's exams array
-                            $firstSubject = $detailedSingleData['subjects'][0];
+                            // Determine extra columns globally across all subjects
                             $hasBreakdown = false;
                             $examHeaders = [];
-                            if (isset($firstSubject['exams']) && count($firstSubject['exams']) > 0) {
-                                $hasBreakdown = true;
-                                foreach ($firstSubject['exams'] as $ex) {
-                                    $examHeaders[] = $ex['exam_name'] ?? 'Exam';
+                            foreach ($detailedSingleData['subjects'] as $s) {
+                                if (isset($s['exams']) && is_array($s['exams']) && count($s['exams']) > 0) {
+                                    $hasBreakdown = true;
+                                    foreach ($s['exams'] as $ex) {
+                                        $eName = $ex['exam_name'] ?? 'Exam';
+                                        if (!in_array($eName, $examHeaders)) {
+                                            $examHeaders[] = $eName;
+                                        }
+                                    }
                                 }
                             }
                             // Sort headers to maintain consistency if needed (usually already sorted by start_date)
@@ -228,13 +237,17 @@
                         <tr class="{{ $i % 2 == 0 ? '' : 'even' }}">
                             <td>{{ $subj['subject_name'] }}</td>
                             @if($hasBreakdown)
-                                @foreach($examHeaders as $index => $hName)
+                                @foreach($examHeaders as $hName)
                                     @php
-                                        // Find the corresponding exam result (whether it is an associative array or indexed)
+                                        // Find the corresponding exam result dynamically by name
                                         $exResult = null;
-                                        if (isset($subj['exams'])) {
-                                            $examsArr = array_values($subj['exams']);
-                                            $exResult = $examsArr[$index] ?? null;
+                                        if (isset($subj['exams']) && is_array($subj['exams'])) {
+                                            foreach($subj['exams'] as $ex) {
+                                                if (($ex['exam_name'] ?? 'Exam') === $hName) {
+                                                    $exResult = $ex;
+                                                    break;
+                                                }
+                                            }
                                         }
                                     @endphp
                                     <td class="tc">
@@ -353,10 +366,63 @@
         </tr>
     </table>
 
+    @php $idxCount++; @endphp
+    @if($idxCount < $studentsToIterate->count())
+        <div style="page-break-after: always;"></div>
+    @endif
+@endforeach
+
 {{-- ====================================================
      CLASS / SUBCLASS / ALL STUDENTS
 ==================================================== --}}
 @else
+    {{-- HEADER (Printed once for class/subclass bulk mode) --}}
+    <table class="header-table">
+        <tr>
+            <td class="logo-cell">
+                @if($school && $school->school_logo)
+                    <img src="{{ public_path($school->school_logo) }}" alt="Logo">
+                @endif
+            </td>
+            <td class="school-name-cell">
+                <div class="school-name">{{ $school->school_name ?? 'School' }}</div>
+                @if($school)
+                    <div class="school-sub">{{ $school->address ?? '' }}</div>
+                    <div class="school-sub">Tel: {{ $school->phone ?? 'N/A' }}  |  Email: {{ $school->email ?? '' }}</div>
+                @endif
+            </td>
+            <td style="width:75px;"></td>
+        </tr>
+    </table>
+    <div class="header-line"></div>
+
+    {{-- TITLE BAND FOR CLASS --}}
+    <div class="title-band">
+        {{ $title ?? ($filters['type'] === 'report' ? 'Term Report' : 'Exam Results') }}
+    </div>
+
+    {{-- META BAR --}}
+    <div class="meta-bar">
+        <strong>Term:</strong> {{ $filters['term'] ? ucwords(str_replace('_', ' ', $filters['term'])) : 'All Terms' }} &nbsp;|&nbsp;
+        <strong>Year:</strong> {{ $filters['year'] }} &nbsp;|&nbsp;
+        <strong>Type:</strong> {{ $filters['type'] === 'exam' ? 'Exam Results' : 'Term Report' }}
+        @if($filters['examID'])
+            @php $exam = \App\Models\Examination::find($filters['examID']); @endphp
+            &nbsp;|&nbsp; <strong>Exam:</strong> {{ $exam->exam_name ?? 'N/A' }}
+        @endif
+        @if($filters['class'])
+            @php $cls = \App\Models\ClassModel::find($filters['class']); @endphp
+            &nbsp;|&nbsp; <strong>Class:</strong> {{ $cls->class_name ?? 'N/A' }}
+        @endif
+        @if($filters['subclass'])
+            @php $sub = \App\Models\Subclass::find($filters['subclass']); @endphp
+            &nbsp;|&nbsp; <strong>Subclass:</strong> {{ $sub->subclass_name ?? 'N/A' }}
+        @endif
+        @if($filters['grade']) &nbsp;|&nbsp; <strong>Grade:</strong> {{ $filters['grade'] }} @endif
+        @if($filters['gender']) &nbsp;|&nbsp; <strong>Gender:</strong> {{ $filters['gender'] }} @endif
+        &nbsp;|&nbsp; <strong>Generated:</strong> {{ date('d/m/Y H:i') }}
+    </div>
+
     @if($option === 'class' || $option === 'subclass')
         @php
             $groupedStudents = $students->groupBy(function($s) {

@@ -2045,8 +2045,11 @@
 
                                     <!-- All Students Table -->
                                     <div class="card mb-4 border-0 shadow-sm">
-                                        <div class="card-header bg-primary-custom text-white">
+                                        <div class="card-header bg-primary-custom text-white d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0"><i class="bi bi-list-ul"></i> All Students Results</h5>
+                                            <button class="btn btn-sm btn-light text-primary font-weight-bold download-all-students-btn" data-type="exam" title="Download All Students Reports">
+                                                <i class="bi bi-printer"></i> Download All
+                                            </button>
                                         </div>
                                         <div class="card-body">
                                             <div class="table-responsive">
@@ -2951,8 +2954,11 @@
                                     
                                     <!-- All Students Results Table -->
                                     <div class="card mb-4 border-0 shadow-sm">
-                                        <div class="card-header bg-primary-custom text-white">
+                                        <div class="card-header bg-primary-custom text-white d-flex justify-content-between align-items-center">
                                             <h5 class="mb-0"><i class="bi bi-list-ul"></i> All Students Results</h5>
+                                            <button class="btn btn-sm btn-light text-primary font-weight-bold download-all-students-btn" data-type="report" title="Download All Students Reports">
+                                                <i class="bi bi-printer"></i> Download All
+                                            </button>
                                         </div>
                                         <div class="card-body">
                                             <div class="table-responsive">
@@ -3767,7 +3773,7 @@ $(document).ready(function() {
                                     <tr>
                                         <td><strong>${subject.subject_name}</strong></td>
                                         ${examCells}
-                                        <td class="text-center align-middle font-weight-bold">${parseFloat(subject.average).toFixed(1)}</td>
+                                        <td class="text-center align-middle font-weight-bold">${Math.round(parseFloat(subject.average))}</td>
                                         <td class="text-center align-middle"><span class="badge badge-info">${subject.grade ?? 'N/A'}</span></td>
                                     </tr>
                                 `;
@@ -3819,7 +3825,7 @@ $(document).ready(function() {
                                     }
                                     
                                     subjectsHtml += `</div></td>
-                                        <td class="text-center align-middle h5"><strong>${parseFloat(subject.marks).toFixed(1)}</strong></td>
+                                        <td class="text-center align-middle h5"><strong>${Math.round(parseFloat(subject.marks))}</strong></td>
                                         <td class="text-center align-middle font-weight-bold h5 text-primary"><strong>${subject.grade ?? 'N/A'}</strong></td>
                                     </tr>`;
                                 } else {
@@ -4781,6 +4787,170 @@ $(document).ready(function() {
 
     // Update filtering description on page load
     updateFilteringDescription();
+
+    // Download All Bulk Students PDF
+    $(document).on('click', '.download-all-students-btn', function(e) {
+        e.preventDefault();
+        
+        let type = $(this).data('type') || $('#type').val(); // exam or report
+        let term = $('#term').val();
+        let year = $('#year').val();
+        let examID = $('#examID').val() || '';
+        let classID = $('#class').val() || '';
+        let subclassID = $('#subclass').val() || '';
+        let status = $('#status').val() || 'active';
+        
+        @if(isset($isTeacherView) && $isTeacherView)
+            classID = $('#lockedClassID').val() || '';
+            subclassID = $('#lockedSubclassID').val() || '';
+        @elseif(isset($isCoordinatorResultsView) && $isCoordinatorResultsView)
+            classID = $('#lockedClassID').val() || '';
+        @endif
+        
+        let url = '{{ route("admin.download_results_pdf") }}' + 
+                  '?option=bulk_single' + 
+                  '&type=' + type + 
+                  '&term=' + term + 
+                  '&year=' + year + 
+                  '&examID=' + examID + 
+                  '&classID=' + classID + 
+                  '&subclassID=' + subclassID + 
+                  '&status=' + status;
+                  
+        const alertHtml = `
+            <div class="mb-3 mt-2 text-left">
+                <p>Generating <span class="badge bg-primary">${type === 'exam' ? 'Exam Results' : 'Term Reports'}</span> for all filtered students.</p>
+                <p class="text-muted small"><i class="bi bi-info-circle"></i> This might take a few minutes as the server carefully calculates averages and formats each page...</p>
+            </div>
+            <div class="progress mb-2" style="height: 25px; border-radius: 5px;">
+                <div id="pdfProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-danger" role="progressbar" style="width: 2%; font-weight: bold;" aria-valuenow="2" aria-valuemin="0" aria-valuemax="100">0%</div>
+            </div>
+            <div id="pdfProgressText" class="text-muted font-weight-bold small text-right">Initializing...</div>
+        `;
+
+        Swal.fire({
+            title: '<i class="bi bi-file-earmark-pdf text-danger"></i> Building Bulk PDF',
+            html: alertHtml,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                let progress = 2;
+                const progressBar = document.getElementById('pdfProgressBar');
+                const progressText = document.getElementById('pdfProgressText');
+                
+                // Slow fake progress bar UX (stops at 98%)
+                window.pdfProgressInterval = setInterval(() => {
+                    if (progress < 98) {
+                        // Slow down as it gets closer to 98
+                        let increment = 1;
+                        if (progress < 30) increment = 3;
+                        else if (progress < 60) increment = 2;
+                        else if (progress < 85) increment = 1;
+                        else increment = 0.5;
+                        
+                        progress += increment;
+                        let displayProgress = Math.floor(progress);
+                        
+                        if (progressBar) {
+                            progressBar.style.width = displayProgress + '%';
+                            progressBar.setAttribute('aria-valuenow', displayProgress);
+                            progressBar.innerText = displayProgress + '%';
+                        }
+                        if (progressText) {
+                            if (progress < 20) progressText.innerText = "Gathering student data...";
+                            else if (progress < 50) progressText.innerText = "Calculating Subject Averages & Divisions...";
+                            else if (progress < 80) progressText.innerText = "Drawing Tables & Page Breaks...";
+                            else progressText.innerText = "Finalizing PDF Document...";
+                        }
+                    }
+                }, 1000);
+            },
+            willClose: () => {
+                if (window.pdfProgressInterval) clearInterval(window.pdfProgressInterval);
+            }
+        });
+
+        // Use fetch to download the BLOB seamlessly without leaving the page
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                // Read text to get specific error if possible
+                return response.text().then(text => {
+                    throw new Error('Server returned ' + response.status + ' ' + response.statusText);
+                });
+            }
+            
+            // Extract filename from headers if possible
+            const contentDisposition = response.headers.get('content-disposition');
+            let filename = 'Bulk_Students_Report.pdf';
+            if (contentDisposition && contentDisposition.indexOf('attachment') !== -1) {
+                var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                var matches = filenameRegex.exec(contentDisposition);
+                if (matches != null && matches[1]) { 
+                    filename = matches[1].replace(/['"]/g, '');
+                }
+            }
+            
+            return response.blob().then(blob => {
+                return { blob, filename };
+            });
+        })
+        .then(data => {
+            const { blob, filename } = data;
+            
+            // Complete the progress instantly
+            if (window.pdfProgressInterval) clearInterval(window.pdfProgressInterval);
+            
+            const progressBar = document.getElementById('pdfProgressBar');
+            const progressText = document.getElementById('pdfProgressText');
+            
+            if (progressBar) {
+                progressBar.style.width = '100%';
+                progressBar.setAttribute('aria-valuenow', 100);
+                progressBar.classList.remove('bg-danger');
+                progressBar.classList.add('bg-success');
+                progressBar.innerText = '100%';
+            }
+            if (progressText) {
+                progressText.innerText = "Download Ready!";
+                progressText.classList.remove('text-muted');
+                progressText.classList.add('text-success');
+            }
+            
+            // Create object URL and download quietly
+            setTimeout(() => {
+                const blobUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                
+                // Cleanup anchor and object URL
+                setTimeout(() => {
+                    window.URL.revokeObjectURL(blobUrl);
+                    document.body.removeChild(a);
+                    Swal.close();
+                }, 200);
+            }, 600);
+        })
+        .catch(error => {
+            if (window.pdfProgressInterval) clearInterval(window.pdfProgressInterval);
+            console.error('Download error:', error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Download Limit or Failed',
+                html: 'Tumeshindwa kupakua PDF kwa sasa. Hii hutokea ikiwa PDF inazidi uwezo (PHP limits/Timeout) au mtandao unasumbua.<br><br><b>Error:</b> ' + error.message,
+                confirmButtonColor: '#940000'
+            });
+        });
+    });
 
     // Student search functionality
     $('#studentSearch').on('keyup', function() {
