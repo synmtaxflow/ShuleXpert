@@ -4646,7 +4646,8 @@ class TeachersController extends Controller
             $schoolType = $school && $school->school_type ? strtolower($school->school_type) : 'secondary';
             $requiresQuestionMarks = $schoolType === 'secondary' && ($examination->allow_no_format != 1);
 
-            $testWeek = $request->test_week;
+            $testWeek = $request->test_week ? trim($request->test_week) : null;
+            if ($testWeek === '') $testWeek = null;
             
             // Collect all student IDs to fetch subclasses in one go
             $studentIdsInRequest = collect($request->results)->pluck('studentID')->unique()->toArray();
@@ -4764,21 +4765,18 @@ class TeachersController extends Controller
         }
 
         $marksNum = (float) $marks;
-
+        
         if ($marksNum >= 75) {
             return ['grade' => 'A', 'remark' => 'Excellent'];
-        }
-        if ($marksNum >= 65) {
+        } elseif ($marksNum >= 65) {
             return ['grade' => 'B', 'remark' => 'Very Good'];
-        }
-        if ($marksNum >= 45) {
+        } elseif ($marksNum >= 45) {
             return ['grade' => 'C', 'remark' => 'Good'];
-        }
-        if ($marksNum >= 30) {
+        } elseif ($marksNum >= 30) {
             return ['grade' => 'D', 'remark' => 'Pass'];
+        } else {
+            return ['grade' => 'F', 'remark' => 'Fail'];
         }
-
-        return ['grade' => 'F', 'remark' => 'Fail'];
     }
 
     /**

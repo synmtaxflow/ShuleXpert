@@ -2631,22 +2631,20 @@ class ResultManagementController extends Controller
         if ($schoolType === 'Secondary') {
             if (in_array($classNameLower, ['form_one', 'form_two', 'form_three', 'form_four'])) {
                 // O-Level Grading System (Secondary only)
-                if ($marksNum >= 75 && $marksNum <= 100) {
+                if ($marksNum >= 75) {
                     return ['grade' => 'A', 'points' => 1];
-                } elseif ($marksNum >= 65 && $marksNum <= 74) {
+                } elseif ($marksNum >= 65) {
                     return ['grade' => 'B', 'points' => 2];
-                } elseif ($marksNum >= 45 && $marksNum <= 64) {
+                } elseif ($marksNum >= 45) {
                     return ['grade' => 'C', 'points' => 3];
-                } elseif ($marksNum >= 30 && $marksNum <= 44) {
+                } elseif ($marksNum >= 30) {
                     return ['grade' => 'D', 'points' => 4];
-                } elseif ($marksNum <= 29) {
-                    return ['grade' => 'F', 'points' => 5];
                 } else {
                     return ['grade' => 'F', 'points' => 5];
                 }
             } elseif (in_array($classNameLower, ['form_five', 'form_six'])) {
-                // A-Level Grading System
-                if ($marksNum >= 80) {
+                // A-Level Grading System (Secondary only)
+                if ($marksNum >= 75) {
                     return ['grade' => 'A', 'points' => 5];
                 } elseif ($marksNum >= 70) {
                     return ['grade' => 'B', 'points' => 4];
@@ -2656,8 +2654,10 @@ class ResultManagementController extends Controller
                     return ['grade' => 'D', 'points' => 2];
                 } elseif ($marksNum >= 40) {
                     return ['grade' => 'E', 'points' => 1];
+                } elseif ($marksNum >= 35) {
+                    return ['grade' => 'S', 'points' => 0.5];
                 } else {
-                    return ['grade' => 'S/F', 'points' => 0];
+                    return ['grade' => 'F', 'points' => 0];
                 }
             }
         }

@@ -2034,9 +2034,18 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
                 });
             }
 
-            // Skip this student if their total is 0 (all questions blank/zero = not entered)
-            if (total <= 0) {
-                return;
+            // Calculate total from questions only if cache has data
+            if (questionPayload.length === 0) {
+               // Fallback: Use manual input if no question data is present for this student
+               const manualMarks = jQuery(`#marks_${studentID}`).val();
+               if (manualMarks !== '' && manualMarks !== null && !isNaN(manualMarks)) {
+                   total = parseFloat(manualMarks);
+               }
+            }
+
+            if (total === 0 && questionPayload.length === 0) {
+                // Check if mark input was purposely left blank or actually zero
+                if (jQuery(`#marks_${studentID}`).val() === '') return;
             }
 
             const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
