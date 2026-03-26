@@ -1986,11 +1986,16 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
             });
 
             if (!hasAnyMarks) {
-                return;
+                // If no question marks are cached, check if the main marks input has a value
+                const manualMarks = jQuery(`#marks_${studentID}`).val();
+                if (manualMarks === '' || manualMarks === null || isNaN(manualMarks)) {
+                    return; // Skip student if no marks at all
+                }
             }
 
             let total = 0;
             const questionPayload = [];
+            let hasQuestionSpecificMarks = false;
             const selectedOptionalIds = {};
 
             // IMPORTANT: Don't just look at DOM checkboxes (they don't exist if panel is closed)
@@ -2015,12 +2020,17 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
                     continue;
                 }
 
-                const numericValue = (value === undefined || value === null || value === '') ? 0 : parseFloat(value);
+                // If Question has no marks entered, skip it (don't force it to 0 yet)
+                if (value === undefined || value === null || value === '') {
+                    continue;
+                }
+
+                const numericValue = parseFloat(value);
                 if (isNaN(numericValue) || numericValue < 0 || numericValue > parseFloat(question.marks)) {
                     hasValidationError = true;
                     Swal.fire({
                         title: 'Error!',
-                        text: 'Question marks must not exceed the allowed maximum (Max: ' + question.marks + ').',
+                        text: 'Question marks must not exceed the allowed maximum (Max: ' + question.marks + ') for student ' + studentID,
                         icon: 'error',
                         confirmButtonColor: '#940000'
                     });
@@ -2028,36 +2038,35 @@ jQuery(document).on('submit', '#resultsForm', function(e) {
                 }
 
                 total += numericValue;
+                hasQuestionSpecificMarks = true;
                 questionPayload.push({
                     question_id: question.exam_paper_questionID,
                     marks: numericValue
                 });
             }
 
-            // Calculate total from questions only if cache has data
-            if (questionPayload.length === 0) {
-               // Fallback: Use manual input if no question data is present for this student
-               const manualMarks = jQuery(`#marks_${studentID}`).val();
-               if (manualMarks !== '' && manualMarks !== null && !isNaN(manualMarks)) {
-                   total = parseFloat(manualMarks);
-               }
+            // Logic decision: If we found no question marks for this student,
+            // fall back to the manual main marks input (which might have been edited)
+            if (!hasQuestionSpecificMarks) {
+                const manualMarks = jQuery(`#marks_${studentID}`).val();
+                if (manualMarks !== '' && manualMarks !== null && !isNaN(manualMarks)) {
+                    total = parseFloat(manualMarks);
+                } else {
+                    return; // Skip student if no marks at all
+                }
+            } else {
+                // We have question marks — recalculate and update total for UI consistency
+                const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
+                jQuery(`#marks_${studentID}`).val(displayTotal);
+                autoCalculateGrade(studentID);
             }
-
-            if (total === 0 && questionPayload.length === 0) {
-                // Check if mark input was purposely left blank or actually zero
-                if (jQuery(`#marks_${studentID}`).val() === '') return;
-            }
-
-            const displayTotal = Number.isInteger(total) ? total : total.toFixed(2);
-            jQuery(`#marks_${studentID}`).val(displayTotal);
-            autoCalculateGrade(studentID);
 
             results.push({
                 studentID: studentID,
                 marks: total,
                 grade: jQuery(`.grade-input[data-student="${studentID}"]`).val() || null,
                 remark: jQuery(`.remark-input[data-student="${studentID}"]`).val() || null,
-                question_marks: questionPayload
+                question_marks: questionPayload.length > 0 ? questionPayload : null
             });
         });
 
