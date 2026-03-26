@@ -4728,10 +4728,20 @@ class TeachersController extends Controller
 
             // Massive Save 2: Question Wise Marks
             if (!empty($questionMarksToUpsert)) {
-                ExamPaperQuestionMark::upsert($questionMarksToUpsert,
-                    ['exam_paper_questionID', 'studentID'],
-                    ['marks', 'updated_at']
-                );
+                foreach ($questionMarksToUpsert as $qMarkData) {
+                    ExamPaperQuestionMark::updateOrCreate(
+                        [
+                            'exam_paper_questionID' => $qMarkData['exam_paper_questionID'],
+                            'studentID' => $qMarkData['studentID']
+                        ],
+                        [
+                            'examID' => $qMarkData['examID'],
+                            'class_subjectID' => $qMarkData['class_subjectID'],
+                            'marks' => $qMarkData['marks'],
+                            'updated_at' => $qMarkData['updated_at']
+                        ]
+                    );
+                }
             }
 
             DB::commit();
