@@ -2830,6 +2830,10 @@ class ResultManagementController extends Controller
      */
     public function downloadPdf(Request $request)
     {
+        // Increase execution time and memory for large PDF generation
+        set_time_limit(0); // Unlimited execution time
+        ini_set('memory_limit', '2048M'); // 2GB memory for 7,000+ students
+
         $userType = Session::get('user_type');
         $schoolID = Session::get('schoolID');
 
@@ -2945,9 +2949,6 @@ class ResultManagementController extends Controller
                 $detailedSingleData = json_decode($res->content(), true);
             }
         } elseif ($option === 'bulk_single' && count($students) > 0) {
-            set_time_limit(300); // 5 minutes execution time
-            ini_set('memory_limit', '1024M'); // Allow up to 1GB for heavy PDF generation
-            
             foreach ($students as $student) {
                 $reqClone = $request->duplicate();
                 $reqClone->merge(['getSubjectDetails' => true, 'studentID' => $student->studentID]);
