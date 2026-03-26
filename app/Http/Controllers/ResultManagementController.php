@@ -392,10 +392,36 @@ class ResultManagementController extends Controller
 
             $incompleteData = [];
 
+            // Get all elected student mappings for Optional Subjects
+            $optionalCidIds = $classSubjects->filter(function($cs) {
+                return strtolower($cs->student_status ?? '') === 'optional';
+            })->pluck('class_subjectID')->toArray();
+
+            $electorsBySubject = collect();
+            if (!empty($optionalCidIds)) {
+                $electorsBySubject = DB::table('subject_electors')
+                    ->whereIn('classSubjectID', $optionalCidIds)
+                    ->get()
+                    ->groupBy('classSubjectID')
+                    ->map(function($rows) {
+                        return $rows->pluck('studentID')->toArray();
+                    });
+            }
+
             foreach ($classSubjects as $cs) {
                 if (!$cs->subclassID) continue;
 
-                $expectedStudents = $studentsBySubclass->get($cs->subclassID) ?: collect();
+                $expectedStudents = clone ($studentsBySubclass->get($cs->subclassID) ?: collect());
+                if ($expectedStudents->isEmpty()) continue;
+
+                // If subject is optional, only process elected students
+                if (strtolower($cs->student_status ?? '') === 'optional') {
+                    $electedIds = $electorsBySubject->get($cs->class_subjectID, []);
+                    $expectedStudents = $expectedStudents->filter(function($st) use ($electedIds) {
+                        return in_array($st->studentID, $electedIds);
+                    });
+                }
+
                 if ($expectedStudents->isEmpty()) continue;
 
                 $completedIds = $completedMarksBySubject->get($cs->class_subjectID) ?: [];

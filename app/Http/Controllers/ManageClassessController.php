@@ -2583,11 +2583,17 @@ class ManageClassessController extends Controller
                     // Check if teacher is the class teacher of this subclass
                     $isClassTeacher = $subclass->teacherID == $teacherID;
 
+                    // Check if teacher teaches any subject in this subclass
+                    $isSubjectTeacher = \App\Models\ClassSubject::where('subclassID', $subclassID)
+                        ->where('teacherID', $teacherID)
+                        ->where('status', 'Active')
+                        ->exists();
+
                     // Check if teacher has view_students permission
                     $hasPermission = $this->hasPermission('view_students');
 
-                    // Allow access if teacher is class teacher OR has view_students permission
-                    if (!$isClassTeacher && !$hasPermission) {
+                    // Allow access if teacher is class teacher, subject teacher, OR has view_students permission
+                    if (!$isClassTeacher && !$isSubjectTeacher && !$hasPermission) {
                         return response()->json([
                             'success' => false,
                             'error' => 'You do not have permission to view students in this subclass.'
