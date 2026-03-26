@@ -790,11 +790,12 @@ function buildQuestionDetails(studentID) {
         if (question.is_optional) {
             const rangeLabel = question.optional_range_number ? `Opt ${question.optional_range_number}` : 'Optional';
             optionalTag = `<span class="badge badge-warning ml-2">${rangeLabel}</span>`;
-            // Only mark as selected if marks value is a real number (not null, not empty string)
+            // Only mark as selected if marks value is strictly > 0
+            // (marks = 0 could be an orphan/stale entry from old duplicate saves)
             const savedMark = examQuestionData.marksByStudent[studentID] &&
                               examQuestionData.marksByStudent[studentID][question.exam_paper_questionID];
             const markValue = (savedMark !== undefined && savedMark !== null && savedMark !== '') ? parseFloat(savedMark) : NaN;
-            isChecked = !isNaN(markValue);
+            isChecked = !isNaN(markValue) && markValue > 0;
         }
         html += `
             <div class="form-row align-items-end mb-2">
