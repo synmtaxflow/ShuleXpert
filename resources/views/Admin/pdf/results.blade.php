@@ -598,10 +598,26 @@
                         <tr class="even"><td>Male</td><td class="tc">{{ $sMale }}</td></tr>
                         <tr><td>Female</td><td class="tc">{{ $sFemale }}</td></tr>
                         <tr class="even"><td>Pass Rate</td><td class="tc bold" style="color:#155724;">{{ number_format($pRate, 0) }}%</td></tr>
-                        <tr><td>Class Average</td><td class="tc bold">{{ number_format($avgMarks, 0) }} marks</td></tr>
-                        <tr class="even"><td>Male Average</td><td class="tc">{{ number_format($mAvg, 0) }}</td></tr>
-                        <tr><td>Female Average</td><td class="tc">{{ number_format($fAvg, 0) }}</td></tr>
-                        <tr class="even"><td>Fail Rate</td><td class="tc bold" style="color:#721c24;">{{ number_format((100 - $pRate), 1) }}%</td></tr>
+                        @php
+                            // Calculate Class GPA from subjMap
+                            $gpaPoints = 0; $gpaTotal = 0;
+                            $ptMapGPA = ($schoolType === 'Primary')
+                                ? ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0]
+                                : ['A'=>1,'B'=>2,'C'=>3,'D'=>4,'F'=>5];
+                            foreach($subjMap as $sn => $sg) {
+                                foreach($ptMapGPA as $g => $pts) {
+                                    $cnt = $sg[$g]['T'] ?? 0;
+                                    $gpaPoints += $cnt * $pts;
+                                    $gpaTotal  += $cnt;
+                                }
+                            }
+                            $classGPAVal = $gpaTotal > 0 ? number_format($gpaPoints / $gpaTotal, 2) : '0.00';
+                        @endphp
+                        <tr><td>Class GPA</td><td class="tc bold">{{ $classGPAVal }}</td></tr>
+                        <tr class="even"><td>Pass Rate</td><td class="tc bold" style="color:#155724;">{{ number_format($pRate, 0) }}%</td></tr>
+                        <tr><td>Male Average</td><td class="tc">{{ number_format($mAvg, 0) }}</td></tr>
+                        <tr class="even"><td>Female Average</td><td class="tc">{{ number_format($fAvg, 0) }}</td></tr>
+                        <tr><td>Fail Rate</td><td class="tc bold" style="color:#721c24;">{{ number_format((100 - $pRate), 1) }}%</td></tr>
                         @php
                             $rmk = ''; $cmt = '';
                             if ($avgMarks >= 75) { $rmk = 'Excellent'; $cmt = 'The class has performed excellently with an outstanding average score. Keep up the great work!'; }
@@ -655,22 +671,39 @@
                     <thead>
                         <tr>
                             <th>Subject</th>
-                            @foreach(['A','B','C','D','E','F'] as $gr)
+                            @php $gradeHeaders = ($schoolType === 'Primary') ? ['A','B','C','D','E','F'] : ['A','B','C','D','F']; @endphp
+                            @foreach($gradeHeaders as $gr)
                             <th class="tc">{{ $gr }}</th>
                             @endforeach
+                            <th class="tc">GPA</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @php $si = 0; @endphp
+                        @php
+                            $si = 0;
+                            $ptMapSubj = ($schoolType === 'Primary')
+                                ? ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0]
+                                : ['A'=>1,'B'=>2,'C'=>3,'D'=>4,'F'=>5];
+                        @endphp
                         @foreach($subjMap as $sName => $sGrades)
+                            @php
+                                $subjPts = 0; $subjTot = 0;
+                                foreach($ptMapSubj as $g => $pts) {
+                                    $c = $sGrades[$g]['T'] ?? 0;
+                                    $subjPts += $c * $pts;
+                                    $subjTot += $c;
+                                }
+                                $subjGPA = $subjTot > 0 ? number_format($subjPts / $subjTot, 2) : '0.00';
+                            @endphp
                             <tr class="{{ $si % 2 == 0 ? '' : 'even' }}">
                                 <td class="bold">{{ $sName }}</td>
-                                @foreach(['A','B','C','D','E','F'] as $gr)
+                                @foreach($gradeHeaders as $gr)
                                 <td class="tc" style="font-size:7.5px;">
-                                    <strong>{{ $sGrades[$gr]['T'] }}</strong><br>
-                                    <span style="color:#666;">M:{{ $sGrades[$gr]['M'] }}, F:{{ $sGrades[$gr]['F'] }}</span>
+                                    <strong>{{ $sGrades[$gr]['T'] ?? 0 }}</strong><br>
+                                    <span style="color:#666;">M:{{ $sGrades[$gr]['M'] ?? 0 }}, F:{{ $sGrades[$gr]['F'] ?? 0 }}</span>
                                 </td>
                                 @endforeach
+                                <td class="tc bold">{{ $subjGPA }}</td>
                             </tr>
                             @php $si++; @endphp
                         @endforeach
@@ -803,61 +836,179 @@
             </table>
         @endforeach
     @else
-        {{-- ALL STUDENTS FLAT TABLE --}}
-        <div class="group-head" style="font-size:11px;">ALL STUDENTS RESULTS LIST</div>
-        <table class="data">
-            <thead>
-                <tr>
-                    <th style="width:5%" class="tc">Pos</th>
-                    <th style="width:18%">Student Name</th>
-                    <th style="width:12%">Class</th>
-                    <th style="width:60%">Subject</th>
-                    <th style="width:5%" class="tc">Div/Gr</th>
-                </tr>
-            </thead>
-            <tbody>
-                @php $posCount = 1; @endphp
-                @foreach($students as $index => $student)
-                    @if(isset($resultsData[$student->studentID]))
-                        @php
-                            $r = $resultsData[$student->studentID];
-                            $res = ($filters['type'] === 'report') ? $r : (is_array($r) && !empty($r) ? $r[0] : null);
-                            if(!$res) continue;
+        {{-- ALL STUDENTS — GROUPED BY CLASS, SORTED BY MARKS DESCENDING --}}
+        @php
+            // Group students by class, sorted by marks descending within each class
+            $allGrouped = $students->groupBy(function($s) {
+                if ($s->subclass && $s->subclass->class) return $s->subclass->class->class_name;
+                if ($s->oldSubclass && $s->oldSubclass->class) return $s->oldSubclass->class->class_name;
+                return 'Unknown';
+            });
+        @endphp
 
-                            $cn = '';
-                            if ($student->subclass && $student->subclass->class) {
-                                $cn = $student->subclass->class->class_name;
-                            } elseif ($student->oldSubclass && $student->oldSubclass->class) {
-                                $cn = $student->oldSubclass->class->class_name . ' (H)';
+        @foreach($allGrouped as $className => $classStudents)
+            <div class="group-head" style="font-size:11px;">{{ $className }} — RESULTS</div>
+            @php
+                // Build stats for this class group
+                $sTotal = 0; $sMale = 0; $sFemale = 0; $sPass = 0;
+                $sMarks = 0; $mMarks = 0; $fMarks = 0;
+                $subjMapAll = [];
+                $topAll = [];
+
+                foreach($classStudents as $s) {
+                    if(!isset($resultsData[$s->studentID])) continue;
+                    $r = $resultsData[$s->studentID];
+                    $res = ($filters['type'] === 'report') ? $r : (is_array($r) && !empty($r) ? $r[0] : null);
+                    if(!$res) continue;
+
+                    $sTotal++;
+                    $marks = (float)($res['average_marks'] ?? 0);
+                    $sMarks += $marks;
+                    $isMale = strtolower($s->gender ?? '') === 'male';
+                    if($isMale) { $sMale++; $mMarks += $marks; } else { $sFemale++; $fMarks += $marks; }
+
+                    $dv = $res['division'] ?? '0';
+                    $dvSplit = explode('.', $dv);
+                    $dvCode = preg_replace('/[^IV0]/', '', $dvSplit[0]);
+                    if($dvCode == '') $dvCode = '0';
+                    if(!in_array($dvCode, ['IV', '0']) && $dvCode !== '') $sPass++;
+
+                    if(isset($res['subjects']) && is_array($res['subjects'])) {
+                        foreach($res['subjects'] as $subItem) {
+                            $sn = $subItem['subject_name'] ?? 'Unknown';
+                            if(!isset($subjMapAll[$sn])) {
+                                $subjMapAll[$sn] = array_fill_keys(['A','B','C','D','E','F'], ['M'=>0,'F'=>0,'T'=>0]);
                             }
+                            $gr = strtoupper($subItem['grade'] ?? 'F');
+                            if(!isset($subjMapAll[$sn][$gr])) $gr = 'F';
+                            $subjMapAll[$sn][$gr][$isMale ? 'M' : 'F']++;
+                            $subjMapAll[$sn][$gr]['T']++;
+                        }
+                    }
 
-                            $divstr = $res['division'] ?? ($res['grade'] ?? 'N/A');
+                    $topAll[] = ['student' => $s, 'marks' => $marks, 'div' => $dv];
+                }
 
-                            $subjStrs = [];
-                            if(isset($res['subjects']) && is_array($res['subjects'])) {
-                                foreach($res['subjects'] as $subj) {
-                                    $sn = $subj['subject_name'] ?? 'U';
-                                    $mk = number_format(floatval($subj['marks'] ?? 0), 0);
-                                    $gr = $subj['grade'] ?? 'F';
-                                    $subjStrs[] = "{$sn}-{$mk}-{$gr}";
-                                }
-                            }
-                            $subText = implode(', ', $subjStrs);
-                            $cls = ($posCount % 2 == 0) ? 'even' : '';
-                            $name = trim($student->first_name . ' ' . ($student->middle_name ?? '') . ' ' . $student->last_name);
-                        @endphp
-                        <tr class="{{ $cls }}">
-                            <td class="tc">{{ $posCount }}</td>
-                            <td class="bold" style="font-size:7.5px;">{{ $name }}</td>
-                            <td style="font-size:7px;">{{ $cn }}</td>
-                            <td style="font-size:7px; line-height:1.2;">{{ $subText }}</td>
-                            <td class="tc bold">{{ $divstr }}</td>
+                // Sort by marks descending
+                usort($topAll, function($a, $b) { return $b['marks'] <=> $a['marks']; });
+                $pRate = $sTotal > 0 ? ($sPass / $sTotal) * 100 : 0;
+                $avgMarks = $sTotal > 0 ? $sMarks / $sTotal : 0;
+                $mAvg = $sMale > 0 ? $mMarks / $sMale : 0;
+                $fAvg = $sFemale > 0 ? $fMarks / $sFemale : 0;
+
+                // Class GPA
+                $gpaPoints = 0; $gpaTotal = 0;
+                $ptMapGPA = ($schoolType === 'Primary')
+                    ? ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0]
+                    : ['A'=>1,'B'=>2,'C'=>3,'D'=>4,'F'=>5];
+                foreach($subjMapAll as $sn => $sg) {
+                    foreach($ptMapGPA as $g => $pts) {
+                        $cnt = $sg[$g]['T'] ?? 0;
+                        $gpaPoints += $cnt * $pts;
+                        $gpaTotal  += $cnt;
+                    }
+                }
+                $classGPAVal = $gpaTotal > 0 ? number_format($gpaPoints / $gpaTotal, 2) : '0.00';
+            @endphp
+
+            @if($sTotal > 0)
+                {{-- Overview --}}
+                <div class="sub-head">Overview Statistics</div>
+                <table class="data" style="margin-bottom:12px;">
+                    <tbody>
+                        <tr><td style="width:50%;">Total Students</td><td class="tc bold">{{ $sTotal }}</td></tr>
+                        <tr class="even"><td>Male</td><td class="tc">{{ $sMale }}</td></tr>
+                        <tr><td>Female</td><td class="tc">{{ $sFemale }}</td></tr>
+                        <tr class="even"><td>Class GPA</td><td class="tc bold">{{ $classGPAVal }}</td></tr>
+                        <tr><td>Pass Rate</td><td class="tc bold" style="color:#155724;">{{ number_format($pRate, 0) }}%</td></tr>
+                        <tr class="even"><td>Fail Rate</td><td class="tc bold" style="color:#721c24;">{{ number_format((100 - $pRate), 1) }}%</td></tr>
+                    </tbody>
+                </table>
+
+                {{-- Subject Performance Statistics --}}
+                @if(!empty($subjMapAll))
+                    @php
+                        $gradeHdrs = ($schoolType === 'Primary') ? ['A','B','C','D','E','F'] : ['A','B','C','D','F'];
+                        $ptMapSubj = ($schoolType === 'Primary')
+                            ? ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0]
+                            : ['A'=>1,'B'=>2,'C'=>3,'D'=>4,'F'=>5];
+                    @endphp
+                    <div class="sub-head" style="margin-top:2px;">Subject Performance Statistics</div>
+                    <table class="data" style="margin-bottom:15px;">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                @foreach($gradeHdrs as $gr)<th class="tc">{{ $gr }}</th>@endforeach
+                                <th class="tc">GPA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @php $si2 = 0; @endphp
+                            @foreach($subjMapAll as $sName => $sGrades)
+                                @php
+                                    $subjPts = 0; $subjTot = 0;
+                                    foreach($ptMapSubj as $g => $pts) {
+                                        $c = $sGrades[$g]['T'] ?? 0;
+                                        $subjPts += $c * $pts;
+                                        $subjTot += $c;
+                                    }
+                                    $subjGPA = $subjTot > 0 ? number_format($subjPts / $subjTot, 2) : '0.00';
+                                @endphp
+                                <tr class="{{ $si2 % 2 == 0 ? '' : 'even' }}">
+                                    <td class="bold">{{ $sName }}</td>
+                                    @foreach($gradeHdrs as $gr)
+                                    <td class="tc" style="font-size:7.5px;">
+                                        <strong>{{ $sGrades[$gr]['T'] ?? 0 }}</strong><br>
+                                        <span style="color:#666;">M:{{ $sGrades[$gr]['M'] ?? 0 }}, F:{{ $sGrades[$gr]['F'] ?? 0 }}</span>
+                                    </td>
+                                    @endforeach
+                                    <td class="tc bold">{{ $subjGPA }}</td>
+                                </tr>
+                                @php $si2++; @endphp
+                            @endforeach
+                        </tbody>
+                    </table>
+                @endif
+
+                {{-- Students list sorted by marks descending --}}
+                <div class="group-head" style="font-size:10px;">STUDENT RESULTS DETAILED LIST</div>
+                <table class="data">
+                    <thead>
+                        <tr>
+                            <th style="width:5%" class="tc">Pos</th>
+                            <th style="width:20%">Student Name</th>
+                            <th style="width:60%">Subjects</th>
+                            <th style="width:5%" class="tc">Avg</th>
+                            <th style="width:10%" class="tc">Div/Gr</th>
                         </tr>
-                        @php $posCount++; @endphp
-                    @endif
-                @endforeach
-            </tbody>
-        </table>
+                    </thead>
+                    <tbody>
+                        @foreach($topAll as $pIdx => $item)
+                            @php
+                                $s2 = $item['student'];
+                                $r2 = $resultsData[$s2->studentID];
+                                $res2 = ($filters['type'] === 'report') ? $r2 : (is_array($r2) && !empty($r2) ? $r2[0] : null);
+                                $name2 = trim($s2->first_name . ' ' . ($s2->middle_name ?? '') . ' ' . $s2->last_name);
+                                $subjStrs2 = [];
+                                if(isset($res2['subjects'])) {
+                                    foreach($res2['subjects'] as $subj2) {
+                                        $subjStrs2[] = ($subj2['subject_name'] ?? 'U') . '-' . number_format(floatval($subj2['marks'] ?? 0), 0) . '-' . ($subj2['grade'] ?? 'F');
+                                    }
+                                }
+                                $cls2 = ($pIdx % 2 == 0) ? '' : 'even';
+                            @endphp
+                            <tr class="{{ $cls2 }}">
+                                <td class="tc">{{ $pIdx + 1 }}</td>
+                                <td class="bold" style="font-size:7.5px;">{{ $name2 }}</td>
+                                <td style="font-size:7px; line-height:1.2;">{{ implode(', ', $subjStrs2) }}</td>
+                                <td class="tc bold">{{ number_format($item['marks'], 0) }}</td>
+                                <td class="tc bold">{{ $item['div'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            @endif
+        @endforeach
 
         <table class="sig-table">
             <tr>
