@@ -24,36 +24,54 @@
         .obs-title { font-weight: bold; color: #940000; margin-bottom: 5px; border-bottom: 1px solid #eee; }
 
         .footer { position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 9px; color: #777; border-top: 1px solid #eee; padding-top: 5px; }
+        
+        /* ── SIGNATURE AND STAMP ─────────────────── */
+        .sig-table { width: 100%; margin-top: 30px; border-collapse: collapse; }
+        .sig-table td { border: none; padding: 0; vertical-align: bottom; }
+        .stamp-cell { width: 50%; text-align: center; vertical-align: middle; }
+        .stamp-cell img { max-width: 125px; max-height: 125px; opacity: 0.85; }
+        .sign-cell { width: 45%; text-align: center; padding-bottom: 5px; }
+        .school-signature-img { height: 45px; margin-bottom: 4px; }
+        .school-signature-img img { max-width: 170px; max-height: 45px; }
+        .sig-line   { border-top: 1.5px solid #940000; width: 180px; margin: 0 auto; display: block; }
+        .sig-label  { font-size: 8.5px; color: #940000; font-weight: bold; padding-top: 4px; display: block; text-transform: uppercase;}
+        
         .status-stamp { position: absolute; top: 100px; right: 50px; border: 3px solid #ccc; padding: 10px; font-size: 20px; font-weight: bold; color: #ccc; transform: rotate(-15deg); text-transform: uppercase; border-radius: 5px; opacity: 0.3; }
         .status-approved { border-color: green; color: green; }
         .status-sent { border-color: blue; color: blue; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="school-name">{{ $school->school_name ?? 'School Report' }}</div>
-        <div>{{ $school->address ?? '' }}</div>
-        <div>Phone: {{ $school->phone ?? 'N/A' }} | Email: {{ $school->email ?? 'N/A' }}</div>
-        <div class="report-title">DAILY ATTENDANCE & DUTY REPORT</div>
-    </div>
     @php
+        /**
+         * Smart Image Resolver for DomPDF
+         * Checks multiple possible server locations (cPanel vs Local)
+         */
         if (!function_exists('getSmartBase64')) {
             function getSmartBase64($path) {
                 if (!$path) return null;
+                
                 $path = ltrim($path, '/');
                 $base = base_path();
                 $parent = dirname($base);
+                
                 $possibilities = [
-                    public_path($path),
-                    public_path('uploads/' . $path),
-                    $parent . '/public_html/' . $path,
-                    $parent . '/public_html/uploads/' . $path,
-                    base_path($path),
-                    base_path('public/' . $path),
-                    base_path('../public_html/' . $path),
-                    rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/') . '/' . $path,
-                    rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/') . '/uploads/' . $path,
+                    public_path($path),                             // Standard Laravel Public
+                    public_path('uploads/' . $path),                // Standard Laravel Public Uploads
+                    $parent . '/public_html/' . $path,              // cPanel / Shared Hosting
+                    $parent . '/public_html/uploads/' . $path,      // cPanel / Shared Hosting Uploads
                 ];
+                
+                if (isset($_SERVER['DOCUMENT_ROOT'])) {
+                    $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+                    $possibilities[] = $docRoot . '/' . $path;
+                    $possibilities[] = $docRoot . '/uploads/' . $path;
+                }
+                
+                $possibilities[] = base_path($path);
+                $possibilities[] = base_path('public/' . $path);
+                $possibilities[] = base_path('../public_html/' . $path);
+                
                 foreach ($possibilities as $fullPath) {
                     if (@file_exists($fullPath) && is_file($fullPath)) {
                         try {
@@ -63,13 +81,23 @@
                         } catch (\Exception $e) {}
                     }
                 }
+                
                 return null;
             }
         }
+        
+        $schoolLogoBase64  = getSmartBase64($school->school_logo ?? '');
         $schoolStampBase64 = getSmartBase64($school->school_stamp ?? '');
         $schoolSignBase64  = getSmartBase64($school->school_signature ?? '');
     @endphp
 
+    <div class="header">
+        <div class="school-name">{{ $school->school_name ?? 'School Report' }}</div>
+        <div>{{ $school->address ?? '' }}</div>
+        <div>Phone: {{ $school->phone ?? 'N/A' }} | Email: {{ $school->email ?? 'N/A' }}</div>
+        <div class="report-title">DAILY ATTENDANCE & DUTY REPORT</div>
+    </div>
+    
     @if($report->status == 'Approved')
         @if($schoolStampBase64)
             <div class="status-stamp" style="border:none; opacity: 0.6; top: 80px; right: 40px; transform: rotate(-10deg);">
@@ -85,7 +113,7 @@
     <table class="info-table">
         <tr>
             <td class="label">Teacher:</td>
-            <td class="value">{{ $teacher->first_name }} {{ $teacher->last_name }}</td>
+            <td class="value">{{ $teacher?->first_name ?? 'N/A' }} {{ $teacher?->last_name ?? '' }}</td>
             <td class="label">Date:</td>
             <td class="value">{{ $report->report_date->format('l, d F Y') }}</td>
         </tr>
@@ -176,46 +204,47 @@
 
     @if($report->admin_comments)
     <div style="margin-top: 20px; padding: 10px; border: 1px solid #ddd; background: #fffdf0;">
-        <div class="obs-title">Admin / Headmaster Comments</div>
+        <div class="obs-title">Headmaster Comments</div>
         <div style="font-style: italic;">"{{ $report->admin_comments }}"</div>
     </div>
     @endif
 
-    <div style="margin-top: 30px;">
-        <table style="width: 100%;">
-            <tr>
-                <td style="width: 100%; text-align: right;">
-                    <div style="font-weight: bold;">Admin / Headmaster's Signature:</div>
-                    @if($report->signature_image)
-                        <div style="margin-top: 5px;">
-                            <img src="{{ $report->signature_image }}" style="max-height: 50px; max-width: 150px;">
-                        </div>
-                        <div style="border-bottom: 1px solid #333; width: 150px; display: inline-block;"></div>
-                        <div style="font-size: 9px; font-weight: bold;">{{ $report->signed_by }}</div>
-                        <div style="font-size: 8px;">Signed on {{ $report->signed_at->format('d/m/Y H:i') }}</div>
-                    @elseif($report->signed_by)
-                        <div style="margin-top: 5px;">
-                            @if($schoolSignBase64)
-                                <img src="{{ $schoolSignBase64 }}" style="max-height: 50px; max-width: 150px;">
-                            @else
-                                <div style="margin-top: 10px; font-family: 'Courier', monospace; font-size: 14px; font-style: italic; color: #000080;">
-                                    {{ $report->signed_by }}
-                                </div>
-                            @endif
-                        </div>
-                        <div style="margin-top: 2px; border-bottom: 1px solid #333; width: 150px; height: 1px; display: inline-block;"></div>
-                        <div style="font-size: 8px; margin-top: 2px;">Signed on {{ $report->signed_at->format('d/m/Y H:i') }}</div>
-                    @else
-                        <div style="margin-top: 10px; border-bottom: 1px solid #333; width: 150px; height: 15px; display: inline-block;"></div>
-                        <div style="font-size: 9px; margin-top: 5px;">Headmaster / Administrator</div>
+    <table class="sig-table">
+        <tr>
+            <td class="stamp-cell">
+                @if($schoolStampBase64)
+                    <img src="{{ $schoolStampBase64 }}" alt="Stamp">
+                @else
+                    <div style="width:100px; height:100px; border:1px dashed #ccc; margin:0 auto; line-height:100px; color:#ccc;">STAMP</div>
+                @endif
+            </td>
+            <td class="sign-cell">
+                @if($report->signature_image)
+                    {{-- User specific signature --}}
+                    <div class="school-signature-img">
+                        <img src="{{ $report->signature_image }}" alt="Signature">
+                    </div>
+                @elseif($report->signed_at && $schoolSignBase64)
+                    {{-- Standard school signature --}}
+                    <div class="school-signature-img">
+                        <img src="{{ $schoolSignBase64 }}" alt="Signature">
+                    </div>
+                @else
+                    <div style="width:160px; height:45px; border-bottom:1.5px solid #940000; margin: 0 auto 4px auto; color:#ccc;">{{ $report->signed_by ?? 'SIGNATURE' }}</div>
+                @endif
+                <div class="sig-line"></div>
+                <span class="sig-label">
+                    {{ $report->signed_by ?: 'Headmaster' }}
+                    @if($report->signed_at)
+                        <br><small style="font-size: 7px;">Signed on {{ $report->signed_at->format('d/m/Y H:i') }}</small>
                     @endif
-                </td>
-            </tr>
-        </table>
-    </div>
+                </span>
+            </td>
+        </tr>
+    </table>
 
     <div class="footer">
-        Generated by ShuleXpert Support System | {{ date('d/m/Y H:i') }} | Teacher: {{ $teacher->first_name }} {{ $teacher->last_name }}
+        Generated by ShuleXpert Support System | {{ date('d/m/Y H:i') }} | Teacher: {{ $teacher?->first_name ?? 'N/A' }} {{ $teacher?->last_name ?? '' }}
     </div>
 </body>
 </html>

@@ -707,13 +707,14 @@
 
         // Download PDF Handler (Individual Report) using AJAX
         $('#downloadReportPdf').click(function() {
-            let date = $('#report_date').val();
+            const date = $('#report_date').val();
+            const reportID = $('#reportID').val();
             const $btn = $(this);
             const originalHtml = $btn.html();
             
             $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Generating PDF...');
 
-            fetch("{{ route('teacher.duty_book.export_report') }}?date=" + date)
+            fetch("{{ route('teacher.duty_book.export_report') }}?date=" + date + "&reportID=" + reportID)
                 .then(response => {
                     if(!response.ok) throw new Error('Network response was not ok');
                     return response.blob();

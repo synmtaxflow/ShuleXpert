@@ -459,45 +459,6 @@ $(document).ready(function() {
         });
     });
 
-    // Download Individual Report PDF
-    $('#downloadReportPdf').click(function() {
-        let date = $('#report_date').val();
-        const $btn = $(this);
-        const originalHtml = $btn.html();
-        
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Generating PDF...');
-
-        fetch("{{ route('teacher.duty_book.export_report') }}?date=" + date)
-            .then(response => {
-                if(!response.ok) throw new Error('Network response was not ok');
-                return response.blob();
-            })
-            .then(blob => {
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'Daily_Duty_Report_' + date + '.pdf';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                Swal.fire({
-                    title: 'Downloaded',
-                    text: 'Your report has been generated successfully.',
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-            })
-            .catch(error => {
-                console.error('Download error:', error);
-                Swal.fire('Error', 'Failed to generate PDF. Please try again.', 'error');
-            })
-            .finally(() => {
-                $btn.prop('disabled', false).html(originalHtml);
-            });
-    });
-
     // Export Roster PDF using AJAX
     $('#exportRosterBtn').click(function() {
         const fromDate = $(this).data('from');
@@ -525,6 +486,41 @@ $(document).ready(function() {
             .catch(error => {
                 console.error('Download error:', error);
                 Swal.fire('Error', 'Failed to generate Roster PDF.', 'error');
+            })
+            .finally(() => {
+                $btn.prop('disabled', false).html(originalHtml);
+            });
+    });
+    
+    // Download Individual Report PDF
+    $('#downloadReportPdf').click(function() {
+        const date = $('#report_date').val();
+        const reportID = $('#reportID').val();
+        const $btn = $(this);
+        const originalHtml = $btn.html();
+        
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Generating PDF...');
+
+        fetch("{{ route('teacher.duty_book.export_report') }}?date=" + date + "&reportID=" + reportID)
+            .then(response => {
+                if(!response.ok) throw new Error('Network response was not ok');
+                return response.blob();
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'Daily_Duty_Report_' + date + '.pdf';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                
+                Swal.fire({ title: 'Success', text: 'Report downloaded.', icon: 'success', timer: 1500, showConfirmButton: false });
+            })
+            .catch(error => {
+                console.error('Download error:', error);
+                Swal.fire('Error', 'Failed to generate PDF Report. ' + error.message, 'error');
             })
             .finally(() => {
                 $btn.prop('disabled', false).html(originalHtml);

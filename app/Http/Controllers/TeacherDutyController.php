@@ -9,6 +9,7 @@ use App\Models\AcademicYear;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class TeacherDutyController extends Controller
@@ -114,17 +115,15 @@ class TeacherDutyController extends Controller
         $school = \App\Models\School::find($schoolID);
         $monthTitle = Carbon::parse($fromDate)->format('F Y');
 
-        $dompdf = new \Dompdf\Dompdf();
-        $html = view('Admin.teacher_duties.pdf_roster', compact('duties', 'school', 'fromDate', 'toDate', 'monthTitle'))->render();
+        try {
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('Admin.teacher_duties.pdf_roster', compact('duties', 'school', 'fromDate', 'toDate', 'monthTitle'))
+                ->setPaper('a4', 'portrait');
 
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
-
-        $filename = 'Teacher_Duty_Roster_' . $monthTitle . '.pdf';
-        return response()->streamDownload(function() use ($dompdf) {
-            echo $dompdf->output();
-        }, $filename, ['Content-Type' => 'application/pdf']);
+            return $pdf->download('Teacher_Duty_Roster_' . $monthTitle . '.pdf');
+        } catch (\Exception $e) {
+            Log::error("Roster PDF Generation failed for period $fromDate to $toDate: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to generate PDF: ' . $e->getMessage());
+        }
     }
 
     public function teacherIndex(Request $request)
@@ -384,7 +383,7 @@ class TeacherDutyController extends Controller
                     $school = \App\Models\School::find($schoolID);
                     $teacher = \App\Models\Teacher::find($teacherID);
                     if ($school && $school->phone) {
-                        $teacherName = $teacher ? $teacher->first_name . ' ' . $teacher->last_name : 'Mwalimu';
+                        $teacherName = $teacher?->first_name . ' ' . $teacher?->last_name ?? 'Mwalimu';
                         $smsMsg = "Habari Admin, " . $teacherName . " ametuma ripoti ya duty book ya tarehe " . date('d/m/Y', strtotime($date)) . ". Tafadhali ipitie ShuleXpert.";
                         $this->smsService->sendSms($school->phone, $smsMsg);
                     }
@@ -562,38 +561,79 @@ class TeacherDutyController extends Controller
 
     public function exportDailyReportPdf(Request $request)
     {
-        $schoolID = Session::get('schoolID');
         $date = $request->get('date');
-        $teacherID = $request->get('teacherID'); // Allow passing teacherID
+        $reportID = $request->get('reportID');
+        $schoolID = Session::get('schoolID');
 
-        if (!$date) return redirect()->back();
-
-        $query = \App\Models\DailyDutyReport::where('schoolID', $schoolID)
-            ->whereDate('report_date', $date);
-
-        if ($teacherID) {
-            $query->where('teacherID', $teacherID);
+        $query = \App\Models\DailyDutyReport::query();
+        if ($reportID) {
+            $query->where('reportID', $reportID);
+        } else {
+            $query->where('schoolID', $schoolID)->whereDate('report_date', $date);
         }
-
+        
         $report = $query->first();
 
-        if (!$report) return redirect()->back()->with('error', 'Report not found.');
+        if (!$report) {
+            return response()->json(['success' => false, 'message' => 'Duty report not found.'], 404);
+        }
 
-        $school = \App\Models\School::find($schoolID);
-        $teacher = \App\Models\Teacher::find($report->teacherID);
-        $classes = \App\Models\ClassModel::where('schoolID', $schoolID)->orderBy('class_name', 'asc')->get();
+        // Try to find the mwalimu by any means
+        $targetTeacherId = 0;
+        if (is_object($report)) {
+            $targetTeacherId = $report->teacherID ?? 0;
+        }
 
-        $dompdf = new \Dompdf\Dompdf();
-        $html = view('Teacher.duty_report_pdf', compact('report', 'school', 'teacher', 'classes'))->render();
+        $teacher = null;
+        if ($targetTeacherId > 0) {
+            $teacher = \App\Models\Teacher::where('id', $targetTeacherId)
+                ->orWhere('fingerprint_id', $targetTeacherId)
+                ->first();
+        }
+            
+        if (!$teacher) {
+            // Check User model
+            $user = null;
+            if ($targetTeacherId > 0) {
+                $user = \App\Models\User::where('id', $targetTeacherId)
+                    ->orWhere('fingerprint_id', $targetTeacherId)
+                    ->first();
+            }
+                
+            if ($user && is_object($user)) {
+                $teacher = (object)[
+                    'first_name' => $user->name ?? 'Staff',
+                    'last_name' => ''
+                ];
+            } else {
+                $teacher = (object)[
+                    'first_name' => 'Duty Officer',
+                    'last_name' => ''
+                ];
+            }
+        }
 
-        $dompdf->loadHtml($html);
-        $dompdf->setPaper('A4', 'portrait');
-        $dompdf->render();
+        $school = \App\Models\School::find($report->schoolID);
+        if (!$school) {
+            $school = \App\Models\School::find($schoolID);
+        }
+        $classes = \App\Models\ClassModel::where('schoolID', $report->schoolID)->orderBy('class_name', 'asc')->get();
 
-        $filename = 'Daily_Duty_Report_' . $date . '.pdf';
-        return response()->streamDownload(function() use ($dompdf) {
-            echo $dompdf->output();
-        }, $filename, ['Content-Type' => 'application/pdf']);
+        Log::info("PDF Exporting for Report: " . $report->reportID, [
+            'report_teacherID' => $report->teacherID,
+            'resolved_teacher_first_name' => $teacher?->first_name ?? 'NOT FOUND'
+        ]);
+
+        try {
+            // For debug per your request: exactly the same as teacher pattern
+            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('Teacher.duty_report_pdf', compact('report', 'school', 'teacher', 'classes'))
+                ->setPaper('a4', 'portrait');
+
+            return $pdf->download('Daily_Duty_Report_' . $report->report_date->format('Y-m-d') . '.pdf');
+        } catch (\Exception $e) {
+            Log::error("PDF Generation failed: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'PDF Error: ' . $e->getMessage()], 500);
+        }
     }
 
     public function approveReport(Request $request)

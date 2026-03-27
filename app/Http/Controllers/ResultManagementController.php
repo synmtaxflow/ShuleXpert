@@ -1726,6 +1726,164 @@ class ResultManagementController extends Controller
         ));
     }
 
+    public function exportSubjectAnalysisPdf(Request $request)
+    {
+        set_time_limit(0);
+        ini_set('memory_limit', '2048M');
+
+        $schoolID = Session::get('schoolID');
+        if (!$schoolID) {
+            return response()->json(['success' => false, 'message' => 'Session expired']);
+        }
+
+        $year = $request->get('year', '');
+        $term = $request->get('term', '');
+        $examID = $request->get('examID', '');
+        $classID = $request->get('classID', '');
+        $subclassID = $request->get('subclassID', '');
+        $subjectID = $request->get('subjectID', '');
+        $allSubclasses = $request->get('all_subclasses', '') === '1';
+
+        $school = \App\Models\School::find($schoolID);
+        $selectedExam = Examination::where('examID', $examID)->where('schoolID', $schoolID)->first();
+
+        if (!$selectedExam) {
+            return redirect()->back()->with('error', 'Exam not found');
+        }
+
+        // Logic copied from subjectAnalysis for data gathering
+        $analysisData = [];
+        $classSubjectsQuery = ClassSubject::with(['subject', 'class', 'subclass', 'teacher'])
+            ->where('status', 'Active');
+
+        if ($classID) {
+            $classSubjectsQuery->where('classID', $classID);
+        }
+
+        if ($subclassID && !$allSubclasses) {
+            $classSubjectsQuery->where('subclassID', $subclassID);
+        }
+
+        if ($subjectID) {
+            $classSubjectsQuery->where('subjectID', $subjectID);
+        }
+
+        $classSubjects = $classSubjectsQuery->get();
+
+        foreach ($classSubjects as $classSubject) {
+            // Processing each subject (same as subjectAnalysis...)
+            $classSubjectID = $classSubject->class_subjectID;
+            $subjectName = $classSubject->subject->subject_name ?? 'N/A';
+            $className = $classSubject->class->class_name ?? 'N/A';
+            $subclassName = $classSubject->subclass->subclass_name ?? '';
+            $classDisplay = trim($className . ' ' . $subclassName);
+
+            $results = Result::with(['student'])
+                ->where('examID', $examID)
+                ->where('class_subjectID', $classSubjectID)
+                ->get();
+
+            $studentsQuery = Student::where('status', 'Active');
+            if ($classSubject->subclassID) {
+                $studentsQuery->where('subclassID', $classSubject->subclassID);
+            } elseif ($classSubject->classID) {
+                $subclassIds = Subclass::where('classID', $classSubject->classID)->pluck('subclassID')->toArray();
+                $studentsQuery->whereIn('subclassID', $subclassIds);
+            }
+            $students = $studentsQuery->get();
+
+            $resultsByStudent = $results->keyBy('studentID');
+            $resultRows = $students->map(function ($student) use ($resultsByStudent) {
+                $result = $resultsByStudent->get($student->studentID);
+                return [
+                    'student' => $student,
+                    'marks' => $result ? $result->marks : null,
+                    'grade' => $result ? $result->grade : null,
+                    'remark' => $result ? $result->remark : null,
+                ];
+            });
+
+            $answeredRows = $resultRows->filter(fn($row) => $row['marks'] !== null);
+            $passCount = $answeredRows->filter(fn($row) => in_array(strtoupper($row['grade'] ?? ''), ['A', 'B', 'C', 'D']))->count();
+            $failCount = $answeredRows->filter(fn($row) => strtoupper($row['grade'] ?? '') === 'F')->count();
+            
+            $overallRemark = $answeredRows->count() > 0 ? ($passCount >= $failCount ? 'Pass' : 'Fail') : 'Incomplete';
+            $overallClass = $overallRemark === 'Pass' ? 'success' : ($overallRemark === 'Fail' ? 'danger' : 'secondary');
+
+            $examPaper = ExamPaper::where('examID', $examID)
+                ->where('class_subjectID', $classSubjectID)
+                ->where('status', 'approved')
+                ->first();
+
+            $questionStats = [];
+            $bestQuestion = null;
+            $worstQuestion = null;
+
+            if ($examPaper) {
+                $questions = ExamPaperQuestion::where('exam_paperID', $examPaper->exam_paperID)->orderBy('question_number')->get();
+                $marks = ExamPaperQuestionMark::where('examID', $examID)->where('class_subjectID', $classSubjectID)->get();
+
+                foreach ($questions as $question) {
+                    $qMarks = $marks->where('exam_paper_questionID', $question->exam_paper_questionID)->pluck('marks')->filter(fn($v) => $v !== null);
+                    $selectedCount = $qMarks->count();
+                    $avg = $selectedCount > 0 ? $qMarks->avg() : null;
+                    $percent = ($selectedCount > 0 && $question->marks > 0) ? round(($avg / $question->marks) * 100, 1) : null;
+
+                    $questionStats[] = [
+                        'question' => $question,
+                        'average' => $avg !== null ? round($avg, 2) : null,
+                        'percent' => $percent,
+                        'selected_count' => $selectedCount,
+                    ];
+                }
+
+                $scoredQuestions = collect($questionStats)->filter(fn($stat) => $stat['percent'] !== null);
+                if ($scoredQuestions->isNotEmpty()) {
+                    $bestQuestion = $scoredQuestions->sortByDesc('percent')->first();
+                    $worstQuestion = $scoredQuestions->sortBy('percent')->first();
+                }
+            }
+
+            $totalAnswered = $answeredRows->count();
+            $passRate = $totalAnswered > 0 ? round(($passCount / $totalAnswered) * 100, 1) : 0;
+            $failRate = $totalAnswered > 0 ? round(($failCount / $totalAnswered) * 100, 1) : 0;
+
+            $analysisData[] = [
+                'subject_name' => $subjectName,
+                'class_display' => $classDisplay,
+                'teacher' => $classSubject->teacher,
+                'result_rows' => $resultRows,
+                'question_stats' => $questionStats,
+                'best_question' => $bestQuestion,
+                'worst_question' => $worstQuestion,
+                'overall_stats' => [
+                    'answered' => $totalAnswered,
+                    'pass' => $passCount,
+                    'fail' => $failCount,
+                    'pass_rate' => $passRate,
+                    'fail_rate' => $failRate,
+                    'remark' => $overallRemark,
+                    'remark_class' => $overallClass,
+                ],
+            ];
+        }
+
+        $groupedAnalysis = collect($analysisData)->groupBy('class_display');
+
+        $data = [
+            'school' => $school,
+            'selectedExam' => $selectedExam,
+            'groupedAnalysis' => $groupedAnalysis,
+            'title' => 'Subject Analysis - ' . $selectedExam->exam_name,
+        ];
+
+        $pdf = PDF::loadView('Admin.pdf.subject_analysis_pdf', $data);
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'Subject_Analysis_' . str_replace(' ', '_', $selectedExam->exam_name) . '_' . date('YmdHis') . '.pdf';
+        return $pdf->download($filename);
+    }
+
     public function getClassSubjectsForAnalysis(Request $request)
     {
         try {

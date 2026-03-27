@@ -89,10 +89,15 @@
                             <option value="">All</option>
                         </select>
                     </div>
-                    <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <div class="col-md-3 mt-3 mb-3 d-flex align-items-end">
                         <button class="btn btn-primary-custom w-100" type="submit">
                             <i class="fa fa-filter"></i> Filter
                         </button>
+                        @if($examID)
+                            <button id="downloadAnalysisPdf" class="btn btn-danger-custom ml-2 w-100" type="button">
+                                <i class="fa fa-file-pdf-o"></i> PDF
+                            </button>
+                        @endif
                     </div>
                 </div>
             </form>
@@ -666,6 +671,20 @@ $(document).ready(function() {
             @endforeach
         @endforeach
     @endif
+
+    $('#downloadAnalysisPdf').on('click', function() {
+        const year = $('#analysis_year').val();
+        const term = $('#analysis_term').val();
+        const examID = $('#analysis_exam').val();
+        const classID = $('#analysis_class').val();
+        const subclassID = $('#analysis_subclass').val();
+        const subjectID = $('#analysis_subject').val();
+        
+        let url = '{{ route("admin.export_subject_analysis_pdf") }}';
+        url += `?year=${year}&term=${term}&examID=${examID}&classID=${classID}&subclassID=${subclassID}&subjectID=${subjectID}`;
+        
+        window.location.href = url;
+    });
 
 });
 </script>
