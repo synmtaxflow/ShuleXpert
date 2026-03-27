@@ -36,9 +36,47 @@
         <div>Phone: {{ $school->phone ?? 'N/A' }} | Email: {{ $school->email ?? 'N/A' }}</div>
         <div class="report-title">DAILY ATTENDANCE & DUTY REPORT</div>
     </div>
+    @php
+        if (!function_exists('getSmartBase64')) {
+            function getSmartBase64($path) {
+                if (!$path) return null;
+                $path = ltrim($path, '/');
+                $base = base_path();
+                $parent = dirname($base);
+                $possibilities = [
+                    public_path($path),
+                    public_path('uploads/' . $path),
+                    $parent . '/public_html/' . $path,
+                    $parent . '/public_html/uploads/' . $path,
+                    base_path($path),
+                    base_path('public/' . $path),
+                    base_path('../public_html/' . $path),
+                    rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/') . '/' . $path,
+                    rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/') . '/uploads/' . $path,
+                ];
+                foreach ($possibilities as $fullPath) {
+                    if (@file_exists($fullPath) && is_file($fullPath)) {
+                        try {
+                            $data = base64_encode(file_get_contents($fullPath));
+                            $ext = pathinfo($fullPath, PATHINFO_EXTENSION);
+                            return 'data:image/' . ($ext ?: 'png') . ';base64,' . $data;
+                        } catch (\Exception $e) {}
+                    }
+                }
+                return null;
+            }
+        }
+        $schoolStampBase64 = getSmartBase64($school->school_stamp ?? '');
+    @endphp
 
     @if($report->status == 'Approved')
-        <div class="status-stamp status-approved">APPROVED</div>
+        @if($schoolStampBase64)
+            <div class="status-stamp" style="border:none; opacity: 0.6; top: 80px; right: 40px; transform: rotate(-10deg);">
+                <img src="{{ $schoolStampBase64 }}" style="max-height: 120px; max-width: 120px;">
+            </div>
+        @else
+            <div class="status-stamp status-approved">APPROVED</div>
+        @endif
     @elseif($report->status == 'Sent')
         <div class="status-stamp status-sent">SENT</div>
     @endif
