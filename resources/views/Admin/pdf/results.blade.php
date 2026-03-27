@@ -575,13 +575,35 @@
                         }
                     }
                     
+                    // Calculate academic rank weight for robust sorting
+                    $divRank = 99; $ptsRank = 99;
+                    if($schoolType === 'Secondary') {
+                        $dvCodeChar = preg_replace('/[^IV0]/', '', explode('.', $dv)[0] ?: '0');
+                        $divMap = ['I'=>1, 'II'=>2, 'III'=>3, 'IV'=>4, '0'=>5];
+                        $divRank = $divMap[$dvCodeChar] ?? 5;
+                        $ptsPart = explode('.', $dv)[1] ?? 35;
+                        $ptsRank = is_numeric($ptsPart) ? (int)$ptsPart : 35;
+                    } else {
+                        $grChar = strtoupper($res['grade'] ?? 'F');
+                        $grMap = ['A'=>1, 'B'=>2, 'C'=>3, 'D'=>4, 'E'=>5, 'F'=>6];
+                        $divRank = $grMap[$grChar] ?? 6;
+                    }
+
+                    // Weight = (Div * 1000) + Points - (Average / 100)
+                    $rankWeight = ($divRank * 1000) + ($ptsRank) - ($marks / 1000);
+
                     $top[] = [
+                        'id' => $s->admission_number ?? 'N/A',
                         'name' => trim($s->first_name . ' ' . ($s->middle_name ?? '') . ' ' . $s->last_name),
                         'div' => $dv,
-                        'mark' => $marks
+                        'mark' => $marks,
+                        'rank_weight' => $rankWeight
                     ];
                 }
-                usort($top, function($a, $b) { return $b['mark'] <=> $a['mark']; });
+                // Sort by academic rank weight (ascending)
+                usort($top, function($a, $b) { 
+                    return $a['rank_weight'] <=> $b['rank_weight'];
+                });
                 $top5 = array_slice($top, 0, 5);
                 $pRate = $sTotal > 0 ? ($sPass / $sTotal) * 100 : 0;
                 $avgMarks = $sTotal > 0 ? $sMarks / $sTotal : 0;
@@ -653,12 +675,18 @@
                 <div class="sub-head">Top 5 Students</div>
                 <table class="data" style="margin-bottom: 12px;">
                     <thead>
-                        <tr><th style="width:10%;" class="tc">#</th><th style="width: 60%;">Student Name</th><th class="tc" style="width: 30%;">Div/Gr</th></tr>
+                        <tr>
+                            <th style="width:10%;" class="tc">#</th>
+                            <th style="width:25%;">Student Number</th>
+                            <th style="width:40%;">Student Name</th>
+                            <th class="tc" style="width:25%;">Division</th>
+                        </tr>
                     </thead>
                     <tbody>
                         @foreach($top5 as $i => $t)
                             <tr class="{{ $i % 2 == 0 ? '' : 'even' }}">
                                 <td class="tc">{{ $i + 1 }}</td>
+                                <td>{{ $t['id'] }}</td>
                                 <td>{{ $t['name'] }}</td>
                                 <td class="tc bold">{{ $t['div'] }}</td>
                             </tr>
@@ -714,13 +742,32 @@
             <div class="group-head" style="font-size:10px;">STUDENT RESULTS DETAILED LIST</div>
 
             @php
-                // Sort students by average_marks descending to get rank order
-                $classStudentsSorted = $classStudents->sortByDesc(function($s) use ($resultsData, $filters) {
-                    if(!isset($resultsData[$s->studentID])) return -1;
+                // Sort students by academic rank weight descending/ascending order
+                // Actually we need them sorted by rank (best first)
+                $classStudentsSorted = $classStudents->map(function($s) use ($resultsData, $filters, $schoolType) {
+                    if(!isset($resultsData[$s->studentID])) return ['s' => $s, 'weight' => 999999, 'found' => false];
                     $r = $resultsData[$s->studentID];
                     $res = ($filters['type'] === 'report') ? $r : (is_array($r) && !empty($r) ? $r[0] : null);
-                    return floatval($res['average_marks'] ?? 0);
-                });
+                    if(!$res) return ['s' => $s, 'weight' => 999999, 'found' => false];
+                    
+                    $dv = $res['division'] ?? '0';
+                    $marks = floatval($res['average_marks'] ?? 0);
+                    
+                    $divRank = 99; $ptsRank = 99;
+                    if($schoolType === 'Secondary') {
+                        $dvCodeChar = preg_replace('/[^IV0]/', '', explode('.', $dv)[0] ?: '0');
+                        $divMap = ['I'=>1, 'II'=>2, 'III'=>3, 'IV'=>4, '0'=>5];
+                        $divRank = $divMap[$dvCodeChar] ?? 5;
+                        $ptsPart = explode('.', $dv)[1] ?? 35;
+                        $ptsRank = is_numeric($ptsPart) ? (int)$ptsPart : 35;
+                    } else {
+                        $grChar = strtoupper($res['grade'] ?? 'F');
+                        $grMap = ['A'=>1, 'B'=>2, 'C'=>3, 'D'=>4, 'E'=>5, 'F'=>6];
+                        $divRank = $grMap[$grChar] ?? 6;
+                    }
+                    $weight = ($divRank * 1000) + ($ptsRank) - ($marks / 1000);
+                    return ['s' => $s, 'weight' => $weight, 'found' => true];
+                })->sortBy('weight')->pluck('s');
 
                 // Helper block for rendering the table
                 $renderTableItems = function($studentsList, $resultsData, $filters) {
@@ -886,11 +933,28 @@
                         }
                     }
 
-                    $topAll[] = ['student' => $s, 'marks' => $marks, 'div' => $dv];
+                    // Academic rank weight
+                    $divRank = 99; $ptsRank = 99;
+                    if($schoolType === 'Secondary') {
+                        $dvCodeChar = preg_replace('/[^IV0]/', '', explode('.', $dv)[0] ?: '0');
+                        $divMap = ['I'=>1, 'II'=>2, 'III'=>3, 'IV'=>4, '0'=>5];
+                        $divRank = $divMap[$dvCodeChar] ?? 5;
+                        $ptsPart = explode('.', $dv)[1] ?? 35;
+                        $ptsRank = is_numeric($ptsPart) ? (int)$ptsPart : 35;
+                    } else {
+                        $grChar = strtoupper($res['grade'] ?? 'F');
+                        $grMap = ['A'=>1, 'B'=>2, 'C'=>3, 'D'=>4, 'E'=>5, 'F'=>6];
+                        $divRank = $grMap[$grChar] ?? 6;
+                    }
+                    $rankWeight = ($divRank * 1000) + ($ptsRank) - ($marks / 1000);
+
+                    $topAll[] = ['student' => $s, 'marks' => $marks, 'div' => $dv, 'rank_weight' => $rankWeight];
                 }
 
-                // Sort by marks descending
-                usort($topAll, function($a, $b) { return $b['marks'] <=> $a['marks']; });
+                // Sort by academic rank weight (ascending)
+                usort($topAll, function($a, $b) { 
+                    return $a['rank_weight'] <=> $b['rank_weight'];
+                });
                 $pRate = $sTotal > 0 ? ($sPass / $sTotal) * 100 : 0;
                 $avgMarks = $sTotal > 0 ? $sMarks / $sTotal : 0;
                 $mAvg = $sMale > 0 ? $mMarks / $sMale : 0;
