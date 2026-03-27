@@ -1209,27 +1209,6 @@
                                         ->get()
                                         ->groupBy('subclassID');
 
-                                    // Identify all optional subjects to fetch electors
-                                    $optionalCidIds = [];
-                                    foreach ($allClassSubjects as $sc_id => $cs_list) {
-                                        foreach ($cs_list as $cs) {
-                                            if (strtolower($cs->student_status ?? '') === 'optional') {
-                                                $optionalCidIds[] = $cs->class_subjectID;
-                                            }
-                                        }
-                                    }
-                                    
-                                    $electorsBySubject = collect();
-                                    if (!empty($optionalCidIds)) {
-                                        $electorsBySubject = \DB::table('subject_electors')
-                                            ->whereIn('classSubjectID', $optionalCidIds)
-                                            ->get()
-                                            ->groupBy('classSubjectID')
-                                            ->map(function($rows) {
-                                                return $rows->pluck('studentID')->toArray();
-                                            });
-                                    }
-
                                     // 2. Loop through each student to cross-reference with expected subjects
                                     foreach ($examStudents as $examStudent) {
                                         $gender = $examStudent['student']->gender ?? '';
@@ -1243,14 +1222,6 @@
                                         $resultsBySubjectName = collect($studentSubjects)->keyBy('subject_name')->toArray();
                                         
                                         foreach ($expectedSubjects as $cs) {
-                                            // Optional subject check: if optional, student must be an elector
-                                            if (strtolower($cs->student_status ?? '') === 'optional') {
-                                                $electedIds = $electorsBySubject->get($cs->class_subjectID, []);
-                                                if (!in_array($examStudent['student']->studentID, $electedIds)) {
-                                                    continue; // Skip this student for this optional subject
-                                                }
-                                            }
-
                                             $subjectName = $cs->subject->subject_name ?? 'N/A';
                                             
                                             // Initialize subject stats if not exists
@@ -1802,7 +1773,6 @@
                                                                         <th>E</th>
                                                                     @endif
                                                                     <th>F</th>
-                                                                    <th>Incomplete</th>
                                                                     <th>GPA</th>
                                                                 </tr>
                                                             </thead>
@@ -1811,7 +1781,7 @@
                                                                     <tr>
                                                                         <td><strong>{{ $subjectName }}</strong></td>
                                                                         @php
-                                                                            $gradesToLoop = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] : ['A', 'B', 'C', 'D', 'F', 'Incomplete'];
+                                                                            $gradesToLoop = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F'] : ['A', 'B', 'C', 'D', 'F'];
                                                                         @endphp
                                                                         @foreach($gradesToLoop as $grade)
                                                                             @php
@@ -2467,27 +2437,6 @@
                                         ->get()
                                         ->groupBy('subclassID');
 
-                                    // Identify all optional subjects to fetch electors
-                                    $optionalCidIds = [];
-                                    foreach ($allClassSubjects as $sc_id => $cs_list) {
-                                        foreach ($cs_list as $cs) {
-                                            if (strtolower($cs->student_status ?? '') === 'optional') {
-                                                $optionalCidIds[] = $cs->class_subjectID;
-                                            }
-                                        }
-                                    }
-                                    
-                                    $electorsBySubject = collect();
-                                    if (!empty($optionalCidIds)) {
-                                        $electorsBySubject = \DB::table('subject_electors')
-                                            ->whereIn('classSubjectID', $optionalCidIds)
-                                            ->get()
-                                            ->groupBy('classSubjectID')
-                                            ->map(function($rows) {
-                                                return $rows->pluck('studentID')->toArray();
-                                            });
-                                    }
-
                                     // 2. Loop through each student to cross-reference with expected subjects
                                     foreach ($reportStudents as $reportStudent) {
                                         $student = $reportStudent['student'];
@@ -2510,14 +2459,6 @@
                                                 ->toArray();
                                             
                                             foreach ($expectedSubjects as $cs) {
-                                                // Optional subject check: if optional, student must be an elector
-                                                if (strtolower($cs->student_status ?? '') === 'optional') {
-                                                    $electedIds = $electorsBySubject->get($cs->class_subjectID, []);
-                                                    if (!in_array($studentID, $electedIds)) {
-                                                        continue; // Skip this student for this optional subject
-                                                    }
-                                                }
-
                                                 $subjectName = $cs->subject->subject_name ?? 'N/A';
                                                 
                                                 // Initialize subject stats if not exists
@@ -3013,7 +2954,6 @@
                                                                     <th>E</th>
                                                                 @endif
                                                                 <th>F</th>
-                                                                <th>Incomplete</th>
                                                                 <th>GPA</th>
                                                             </tr>
                                                         </thead>
@@ -3022,7 +2962,7 @@
                                                                 <tr>
                                                                     <td><strong>{{ $subjectName }}</strong></td>
                                                                     @php
-                                                                        $gradesToLoop = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] : ['A', 'B', 'C', 'D', 'F', 'Incomplete'];
+                                                                        $gradesToLoop = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F'] : ['A', 'B', 'C', 'D', 'F'];
                                                                     @endphp
                                                                     @foreach($gradesToLoop as $grade)
                                                                         @php
@@ -6157,7 +6097,7 @@ $(document).ready(function() {
                 // Build table header and data
                 const isPrimary = (schoolType === 'Primary');
                 const gradesToInclude = isPrimary ? ['A', 'B', 'C', 'D', 'E', 'F'] : ['A', 'B', 'C', 'D', 'F'];
-                const header = ['Subject', ...gradesToInclude, 'Incomp', 'GPA'];
+                const header = ['Subject', ...gradesToInclude, 'GPA'];
 
                 const subjectStatsData = [];
                 subjectNames.forEach(function(subjectName) {
@@ -6189,9 +6129,6 @@ $(document).ready(function() {
                         }
                     });
 
-                    // Add Incomplete
-                    const incData = grades['Incomplete'] || { male: 0, female: 0, total: 0 };
-                    row.push(incData.total.toString() + '\nM:' + (incData.male || 0) + ',F:' + (incData.female || 0));
 
                     // Add GPA
                     const sGPA = (sTotal > 0) ? (sPointsCount / sTotal).toFixed(2) : '0.00';
@@ -6202,7 +6139,7 @@ $(document).ready(function() {
 
                 if (subjectStatsData.length > 0) {
                     const numGradeColumns = gradesToInclude.length;
-                    const numExtraColumns = 2; // Incomp, GPA
+                    const numExtraColumns = 1; // GPA only
                     const totalDynamicColumns = numGradeColumns + numExtraColumns;
                     const dynamicColumnWidth = (availableWidth * 0.75) / totalDynamicColumns; // 0.75 of availableWidth for dynamic columns
 
