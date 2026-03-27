@@ -164,39 +164,36 @@
                         </div>
                     </div>
 
-                    <!-- Admin Feedback Section (Hidden by default) -->
+                    <!-- Admin Feedback Section (Simplified for Auto-Sign) -->
                     <div class="card shadow-sm border-0 border-top border-warning overflow-hidden" id="adminFeedbackSection" style="display: none; border-top-width: 5px !important;">
                         <div class="card-header bg-white py-3">
                             <h6 class="text-warning mb-0 font-weight-bold">
-                                <i class="fa fa-gavel mr-2"></i> HEADMASTER / ADMINISTRATOR REVIEW & SIGNATURE
+                                <i class="fa fa-gavel mr-2"></i> HEADMASTER / ADMINISTRATOR REVIEW
                             </h6>
                         </div>
                         <div class="card-body bg-light">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-group mb-0">
-                                        <label class="font-weight-bold text-muted small uppercase">Admin / Headmaster General Comments:</label>
-                                        <textarea name="admin_comments" id="admin_comments" class="form-control border-0 shadow-sm" rows="6" placeholder="Enter feedback, instructions or observations here..." style="resize: none;"></textarea>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="signature-container">
-                                        <label class="font-weight-bold text-muted small uppercase mb-2 d-block">Digital Signature & Name:</label>
-                                        <div class="bg-white border rounded shadow-sm p-2 mb-2" style="position: relative;">
-                                            <canvas id="signature-pad" class="signature-pad" style="width: 100%; height: 150px; cursor: crosshair;"></canvas>
-                                            <button type="button" id="clear-signature" class="btn btn-xs btn-link text-danger" style="position: absolute; bottom: 5px; right: 5px;">
-                                                <i class="fa fa-eraser"></i> Clear
-                                            </button>
-                                            <div id="view-only-signature" style="display: none; width: 100%; height: 150px; text-align: center;">
-                                                <img id="signature-image-preview" src="" style="max-height: 100%; max-width: 100%;">
-                                            </div>
-                                        </div>
-                                        <input type="hidden" name="signature_image" id="signature_image_input">
+                            <div id="approvalPrompt" class="text-center py-3">
+                                <p class="mb-0 text-muted">Click the button below to officially approve and sign this report.</p>
+                                <small class="text-info"><i class="fa fa-info-circle"></i> Digital stamp and signature will be applied automatically.</small>
+                            </div>
+                            
+                            <div id="signedDisplayArea" style="display: none;">
+                                <div class="row align-items-center">
+                                    <div class="col-md-6">
                                         <div class="form-group mb-0">
-                                            <input type="text" name="signed_by" id="signed_by" class="form-control font-weight-bold border-0 shadow-sm" placeholder="Type Your Full Name Here" style="background: #fff; color: #000080; border-top: 1px solid #eee !important;">
+                                            <label class="font-weight-bold text-muted small uppercase">Admin Comments:</label>
+                                            <div id="admin_comments_display" class="p-2 bg-white rounded border border-light" style="min-height: 50px; font-style: italic;">---</div>
                                         </div>
-                                        <div id="signedAtDisplay" class="text-success small mt-2 font-weight-bold" style="display: none;">
-                                            <i class="fa fa-check-circle"></i> SIGNED ON <span id="signedAtDate"></span>
+                                    </div>
+                                    <div class="col-md-6 text-right">
+                                        <div id="view-only-signature" style="display: inline-block; text-align: center;">
+                                            <img id="signature-image-preview" src="" style="max-height: 80px; max-width: 200px;">
+                                            <div class="mt-1 border-top pt-1">
+                                                <span id="signed_by_display" class="font-weight-bold" style="color: #000080;"></span><br>
+                                                <small id="signedAtDisplay" class="text-success font-weight-bold">
+                                                    <i class="fa fa-check-circle"></i> SIGNED ON <span id="signedAtDate"></span>
+                                                </small>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

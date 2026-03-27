@@ -603,7 +603,7 @@ class TeacherDutyController extends Controller
 
         $request->validate([
             'reportID' => 'required|exists:daily_duty_reports,reportID',
-            'signed_by' => 'required|string|max:255',
+            'signed_by' => 'nullable|string|max:255',
             'admin_comments' => 'nullable|string',
             'signature_image' => 'nullable|string'
         ]);
@@ -613,16 +613,22 @@ class TeacherDutyController extends Controller
                 ->where('reportID', $request->reportID)
                 ->firstOrFail();
 
+            $signedBy = $request->signed_by;
+            if (!$signedBy) {
+                // If no name provided, use session name or generic Administrator
+                $signedBy = Session::get('admin_name') ?: Session::get('name') ?: 'Administrator';
+            }
+
             $report->update([
                 'status' => 'Approved',
-                'signed_by' => $request->signed_by,
+                'signed_by' => $signedBy,
                 'signed_at' => now(),
                 'admin_comments' => $request->admin_comments,
                 'signature_image' => $request->signature_image,
-                'approved_by_id' => Session::get('adminID') // Assuming adminID is in session
+                'approved_by_id' => Session::get('adminID')
             ]);
 
-            return response()->json(['success' => true, 'message' => 'Report approved and signed successfully.']);
+            return response()->json(['success' => true, 'message' => 'Report approved successfully.']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to approve: ' . $e->getMessage()], 500);
         }

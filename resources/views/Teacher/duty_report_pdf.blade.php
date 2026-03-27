@@ -67,6 +67,7 @@
             }
         }
         $schoolStampBase64 = getSmartBase64($school->school_stamp ?? '');
+        $schoolSignBase64  = getSmartBase64($school->school_signature ?? '');
     @endphp
 
     @if($report->status == 'Approved')
@@ -193,8 +194,14 @@
                         <div style="font-size: 9px; font-weight: bold;">{{ $report->signed_by }}</div>
                         <div style="font-size: 8px;">Signed on {{ $report->signed_at->format('d/m/Y H:i') }}</div>
                     @elseif($report->signed_by)
-                        <div style="margin-top: 10px; font-family: 'Courier', monospace; font-size: 14px; font-style: italic; color: #000080;">
-                            {{ $report->signed_by }}
+                        <div style="margin-top: 5px;">
+                            @if($schoolSignBase64)
+                                <img src="{{ $schoolSignBase64 }}" style="max-height: 50px; max-width: 150px;">
+                            @else
+                                <div style="margin-top: 10px; font-family: 'Courier', monospace; font-size: 14px; font-style: italic; color: #000080;">
+                                    {{ $report->signed_by }}
+                                </div>
+                            @endif
                         </div>
                         <div style="margin-top: 2px; border-bottom: 1px solid #333; width: 150px; height: 1px; display: inline-block;"></div>
                         <div style="font-size: 8px; margin-top: 2px;">Signed on {{ $report->signed_at->format('d/m/Y H:i') }}</div>

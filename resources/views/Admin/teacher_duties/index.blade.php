@@ -581,37 +581,33 @@
             const date = $btn.data('date');
             const isSigning = $btn.hasClass('view-sign-report');
 
-            console.log('Click detected:', { reportID, date, isSigning });
-
             try {
                 // Initialize Modal State
                 $('#dutyReportModal').modal('show');
                 $('#dailyDutyForm')[0].reset();
-                $('#display_teacher_name').text('Loading report data...');
                 $('#reportID').val(reportID || '');
                 $('#report_date').val(date || '');
                 
                 if (typeof moment !== 'undefined' && date) {
                     $('#display_date').text(moment(date).format('DD/MM/YYYY'));
                     $('#display_day').text(moment(date).format('dddd').toUpperCase());
-                } else {
-                    $('#display_date').text(date || '---');
                 }
 
                 $('#dailyDutyForm input, #dailyDutyForm textarea').prop('readonly', true);
-                $('#dailyDutyForm input[type="number"]').css('background-color', '#f8f9fa');
                 $('#saveDraft, #saveAndSend, #syncFromAttendance').hide();
                 $('#downloadReportPdf').show();
                 
+                // Show admin feedback section for both viewing and signing
+                $('#adminFeedbackSection').show();
+                
                 if (isSigning) {
-                    $('#adminFeedbackSection').show();
+                    $('#approvalPrompt').show();
+                    $('#signedDisplayArea').hide();
                     $('#btnApproveReport').show();
-                    $('#admin_comments, #signed_by').prop('readonly', false).css('background-color', '#fff');
-                    $('#signedAtDisplay').hide();
                 } else {
-                    $('#adminFeedbackSection').show();
+                    $('#approvalPrompt').hide();
+                    $('#signedDisplayArea').show();
                     $('#btnApproveReport').hide();
-                    $('#admin_comments, #signed_by').prop('readonly', true).css('background-color', '#f8f9fa');
                 }
 
                 // Load Data
@@ -619,10 +615,8 @@
                     date: date,
                     reportID: reportID
                 }, function(response) {
-                    window.totalActiveStudentsInSchool = response.total_active_students || 0;
                     if (response.success && response.report) {
                         const report = response.report;
-                        $('#reportID').val(report.reportID);
                         $('#display_teacher_name').text(report.teacher_name || '---');
                         $('input[name="attendance_percentage"]').val(report.attendance_percentage);
                         $('input[name="school_environment"]').val(report.school_environment);
@@ -633,26 +627,25 @@
                         $('input[name="special_events"]').val(report.special_events);
                         $('textarea[name="teacher_comments"]').val(report.teacher_comments);
                         
-                        $('#admin_comments').val(report.admin_comments);
-                        $('#signed_by').val(report.signed_by);
+                        // Populate Signed Display Area if already approved
+                        if (report.status === 'Approved') {
+                            $('#approvalPrompt').hide();
+                            $('#signedDisplayArea').show();
+                            $('#admin_comments_display').text(report.admin_comments || 'No comments left.');
+                            $('#signed_by_display').text(report.signed_by || '---');
+                            
+                            if (report.signature_image) {
+                                $('#signature-image-preview').attr('src', report.signature_image);
+                                $('#view-only-signature').show();
+                            } else {
+                                $('#view-only-signature').show(); // Still show for name
+                                $('#signature-image-preview').hide();
+                            }
 
-                        // Digital Signature Display Logic
-                        if (report.signature_image) {
-                            $('#signature-image-preview').attr('src', report.signature_image);
-                            $('#view-only-signature').show();
-                            $('#signature-pad, #clear-signature').hide();
-                        } else if (isSigning) {
-                            $('#view-only-signature').hide();
-                            $('#signature-pad, #clear-signature').show();
-                            if(signaturePad) signaturePad.clear();
-                        } else {
-                            $('#view-only-signature').hide();
-                            $('#signature-pad, #clear-signature').hide();
-                        }
-
-                        if (report.signed_at && typeof moment !== 'undefined') {
-                            $('#signedAtDate').text(moment(report.signed_at).format('DD/MM/YYYY HH:mm'));
-                            $('#signedAtDisplay').show();
+                            if (report.signed_at) {
+                                $('#signedAtDate').text(moment(report.signed_at).format('DD/MM/YYYY HH:mm'));
+                                $('#signedAtDisplay').show();
+                            }
                         }
 
                         if (report.attendance_data) {
@@ -678,8 +671,6 @@
                             });
                             refreshModalTableTotals();
                         }
-                    } else {
-                        Swal.fire('Info', 'Could not load report details.', 'info');
                     }
                 }).fail(function() {
                     Swal.fire('Error', 'Server connection failed.', 'error');
@@ -690,27 +681,13 @@
             }
         });
 
-        // Admin Approval/Sign logic
+        // Admin Approval/Sign logic (AUTO-SIGN)
         $('#btnApproveReport').click(function() {
             const reportID = $('#reportID').val();
-            const signedBy = $('#signed_by').val();
-            const comments = $('#admin_comments').val();
-            
-            if (signaturePad && signaturePad.isEmpty()) {
-                Swal.fire('Signature Drawing Required', 'Please draw your signature in the signature area.', 'warning');
-                return;
-            }
-
-            if (!signedBy) {
-                Swal.fire('Name Required', 'Please type your full name below the signature area.', 'warning');
-                return;
-            }
-
-            const signatureImage = signaturePad ? signaturePad.toDataURL() : null;
 
             Swal.fire({
-                title: 'Signing Report...',
-                text: 'Please wait while we record your signature and approve the report.',
+                title: 'Approving Report...',
+                text: 'Wait as we apply digital credentials.',
                 allowOutsideClick: false,
                 didOpen: () => {
                     Swal.showLoading();
@@ -719,24 +696,12 @@
 
             $.post("{{ route('admin.duty_book.approve') }}", {
                 _token: "{{ csrf_token() }}",
-                reportID: reportID,
-                signed_by: signedBy,
-                admin_comments: comments,
-                signature_image: signatureImage
+                reportID: reportID
             }, function(response) {
-                Swal.fire({
-                    title: 'Approved!',
-                    text: response.message,
-                    icon: 'success',
-                    timer: 2000,
-                    showConfirmButton: false
-                }).then(() => {
-                    location.reload();
-                });
+                Swal.fire({ title: 'Approved!', text: response.message, icon: 'success', timer: 2000, showConfirmButton: false })
+                .then(() => { location.reload(); });
             }).fail(function(err) {
-                let msg = 'Failed to approve report.';
-                if (err.responseJSON && err.responseJSON.message) msg = err.responseJSON.message;
-                Swal.fire('Error', msg, 'error');
+                Swal.fire('Error', 'Failed to approve report.', 'error');
             });
         });
 
