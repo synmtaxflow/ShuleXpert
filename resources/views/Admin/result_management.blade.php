@@ -1195,47 +1195,64 @@
                                         }
                                     }
                                     
-                                    // Calculate Subject Statistics (Grade distribution per subject with Male/Female counts)
-                                    $subjectStats = []; // Format: ['SUBJECT_NAME' => ['A' => ['male' => 0, 'female' => 0, 'total' => 0], ...]]
+                                    // Calculate Subject Statistics for exam view
+                                    $subjectStats = [];
                                     
+                                    // 1. Get ALL active class subjects relevant to the filtered students
+                                    $relevantSubclassIDs = array_unique(array_filter(array_map(function($s) { 
+                                        return $s['student']->subclassID ?? $s['student']->oldSubclassID ?? null; 
+                                    }, $examStudents)));
+                                    
+                                    $allClassSubjects = \App\Models\ClassSubject::whereIn('subclassID', $relevantSubclassIDs)
+                                        ->where('status', 'Active')
+                                        ->with(['subject'])
+                                        ->get()
+                                        ->groupBy('subclassID');
+
+                                    // 2. Loop through each student to cross-reference with expected subjects
                                     foreach ($examStudents as $examStudent) {
                                         $gender = $examStudent['student']->gender ?? '';
-                                        $subjects = $examStudent['result']['subjects'] ?? [];
+                                        $subclassID = $examStudent['student']->subclassID ?? $examStudent['student']->oldSubclassID ?? null;
                                         
-                                        foreach ($subjects as $subject) {
-                                            $subjectName = $subject['subject_name'] ?? 'N/A';
-                                            $subjectGrade = $subject['grade'] ?? null;
+                                        // Expected subjects for this student's subclass
+                                        $expectedSubjects = $allClassSubjects[$subclassID] ?? collect();
+                                        
+                                        // Student's results indexed by subject name/ID
+                                        $studentSubjects = $examStudent['result']['subjects'] ?? [];
+                                        $resultsBySubjectName = collect($studentSubjects)->keyBy('subject_name')->toArray();
+                                        
+                                        foreach ($expectedSubjects as $cs) {
+                                            $subjectName = $cs->subject->subject_name ?? 'N/A';
                                             
-                                            // Determine grade category
-                                            $marksVal = $subject['marks'] ?? null;
-                                            $category = ($marksVal === null || $marksVal === '') ? 'Incomplete' : ($subjectGrade ?: 'F');
-                                            
-                                            if (!in_array($category, ['A', 'B', 'C', 'D', 'E', 'F'])) {
-                                                $category = 'Incomplete';
-                                            }
-
-                                            // Initialize subject if not exists
+                                            // Initialize subject stats if not exists
                                             if (!isset($subjectStats[$subjectName])) {
                                                 $subjectStats[$subjectName] = [];
                                                 $gradesToInit = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] : ['A', 'B', 'C', 'D', 'F', 'Incomplete'];
-                                                foreach ($gradesToInit as $grade) {
-                                                    $subjectStats[$subjectName][$grade] = [
-                                                        'male' => 0,
-                                                        'female' => 0,
-                                                        'total' => 0
-                                                    ];
+                                                foreach ($gradesToInit as $g) {
+                                                    $subjectStats[$subjectName][$g] = ['male' => 0, 'female' => 0, 'total' => 0];
                                                 }
                                             }
+
+                                            // Determine current grade/category
+                                            $res = $resultsBySubjectName[$subjectName] ?? null;
+                                            $marksVal = $res['marks'] ?? null;
+                                            $subjectGrade = $res['grade'] ?? 'Incomplete';
                                             
+                                            if ($marksVal === null || $marksVal === '') {
+                                                $subjectGrade = 'Incomplete';
+                                            }
+
+                                            if ($subjectGrade !== 'Incomplete' && !in_array($subjectGrade, ['A', 'B', 'C', 'D', 'E', 'F'])) {
+                                                $subjectGrade = 'Incomplete';
+                                            }
+
                                             // Count by gender
                                             if ($gender === 'Male') {
-                                                $subjectStats[$subjectName][$category]['male']++;
+                                                $subjectStats[$subjectName][$subjectGrade]['male']++;
                                             } elseif ($gender === 'Female') {
-                                                $subjectStats[$subjectName][$category]['female']++;
+                                                $subjectStats[$subjectName][$subjectGrade]['female']++;
                                             }
-                                            
-                                            // Update total
-                                            $subjectStats[$subjectName][$category]['total']++;
+                                            $subjectStats[$subjectName][$subjectGrade]['total']++;
                                         }
                                     }
                                     
@@ -2407,66 +2424,82 @@
                                         }
                                     }
                                     
-                                    // Calculate Subject Statistics (Grade distribution per subject with Male/Female counts) for report view
-                                    $subjectStats = []; // Format: ['SUBJECT_NAME' => ['A' => ['male' => 0, 'female' => 0, 'total' => 0], ...]]
+                                    // Calculate Subject Statistics for report view
+                                    $subjectStats = [];
                                     
+                                    // 1. Get ALL active class subjects relevant to the filtered students
+                                    $relevantSubclassIDs = array_unique(array_filter(array_map(function($s) { 
+                                        return $s['student']->subclassID ?? $s['student']->oldSubclassID ?? null; 
+                                    }, $reportStudents)));
+                                    
+                                    $allClassSubjects = \App\Models\ClassSubject::whereIn('subclassID', $relevantSubclassIDs)
+                                        ->where('status', 'Active')
+                                        ->with(['subject'])
+                                        ->get()
+                                        ->groupBy('subclassID');
+
+                                    // 2. Loop through each student to cross-reference with expected subjects
                                     foreach ($reportStudents as $reportStudent) {
-                                        $gender = $reportStudent['student']->gender ?? '';
-                                        $exams = $reportStudent['exams'] ?? [];
+                                        $student = $reportStudent['student'];
+                                        $studentID = $student->studentID;
+                                        $gender = $student->gender ?? '';
+                                        $subclassID = $student->subclassID ?? $student->oldSubclassID ?? null;
                                         
-                                        // Loop through all exams for this student
-                                        foreach ($exams as $examData) {
-                                            // Get subjects from this exam - need to fetch from results data
-                                            $studentID = $reportStudent['student']->studentID;
-                                            if (isset($resultsData[$studentID])) {
-                                                $studentReportData = $resultsData[$studentID];
-                                                $exam = $examData['exam'] ?? null;
+                                        // Expected subjects for this student's subclass
+                                        $expectedSubjects = $allClassSubjects[$subclassID] ?? collect();
+                                        
+                                        // Loop through all exams for this report student
+                                        foreach (($reportStudent['exams'] ?? []) as $examData) {
+                                            $exam = $examData['exam'] ?? null;
+                                            if (!$exam) continue;
+                                            
+                                            // Get results for this student/exam
+                                            $examResults = \App\Models\Result::where('studentID', $studentID)
+                                                ->where('examID', $exam->examID)
+                                                ->pluck('marks', 'class_subjectID')
+                                                ->toArray();
+                                            
+                                            foreach ($expectedSubjects as $cs) {
+                                                $subjectName = $cs->subject->subject_name ?? 'N/A';
                                                 
-                                                if ($exam) {
-                                                    // Get results for this student and exam to extract subjects
-                                                    $examResults = \App\Models\Result::where('studentID', $studentID)
-                                                        ->where('examID', $exam->examID)
-                                                        ->where('status', 'allowed')
-                                                        ->with(['classSubject.subject'])
-                                                        ->get();
-                                                    
-                                                    foreach ($examResults as $result) {
-                                                        $subjectName = $result->classSubject->subject->subject_name ?? 'N/A';
-                                                        $marks = $result->marks ?? null;
-                                                        
-                                                        $subjectGrade = 'Incomplete'; // Initialize as Incomplete
-                                                        if ($marks !== null && $marks !== '') {
-                                                            // Calculate grade for this subject
-                                                            $marksNum = (float) $marks;
-                                                            if ($schoolType === 'Primary') {
-                                                                if ($marksNum >= 75) $subjectGrade = 'A';
-                                                                elseif ($marksNum >= 65) $subjectGrade = 'B';
-                                                                elseif ($marksNum >= 45) $subjectGrade = 'C';
-                                                                elseif ($marksNum >= 30) $subjectGrade = 'D';
-                                                                elseif ($marksNum >= 20) $subjectGrade = 'E';
-                                                                else $subjectGrade = 'F';
-                                                            } else {
-                                                                        $subjectStats[$subjectName][$g] = [
-                                                                            'male' => 0,
-                                                                            'female' => 0,
-                                                                            'total' => 0
-                                                                        ];
-                                                                    }
-                                                                }
-                                                                
-                                                                // Count by gender
-                                                                if ($gender === 'Male') {
-                                                                    $subjectStats[$subjectName][$subjectGrade]['male']++;
-                                                                } elseif ($gender === 'Female') {
-                                                                    $subjectStats[$subjectName][$subjectGrade]['female']++;
-                                                                }
-                                                                
-                                                                // Update total
-                                                                $subjectStats[$subjectName][$subjectGrade]['total']++;
-                                                            }
-                                                        }
+                                                // Initialize subject stats if not exists
+                                                if (!isset($subjectStats[$subjectName])) {
+                                                    $subjectStats[$subjectName] = [];
+                                                    $gradesToInit = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] : ['A', 'B', 'C', 'D', 'F', 'Incomplete'];
+                                                    foreach ($gradesToInit as $g) {
+                                                        $subjectStats[$subjectName][$g] = ['male' => 0, 'female' => 0, 'total' => 0];
                                                     }
                                                 }
+
+                                                // Determine if incomplete or graded
+                                                $marksNum = $examResults[$cs->class_subjectID] ?? null;
+                                                $subjectGrade = 'Incomplete';
+                                                
+                                                if ($marksNum !== null && $marksNum !== '') {
+                                                    $m = (float)$marksNum;
+                                                    if ($schoolType === 'Primary') {
+                                                        if ($m >= 75) $subjectGrade = 'A';
+                                                        elseif ($m >= 65) $subjectGrade = 'B';
+                                                        elseif ($m >= 45) $subjectGrade = 'C';
+                                                        elseif ($m >= 30) $subjectGrade = 'D';
+                                                        elseif ($m >= 20) $subjectGrade = 'E';
+                                                        else $subjectGrade = 'F';
+                                                    } else {
+                                                        if ($m >= 75) $subjectGrade = 'A';
+                                                        elseif ($m >= 65) $subjectGrade = 'B';
+                                                        elseif ($m >= 45) $subjectGrade = 'C';
+                                                        elseif ($m >= 30) $subjectGrade = 'D';
+                                                        else $subjectGrade = 'F';
+                                                    }
+                                                }
+
+                                                // Count it
+                                                if ($gender === 'Male') {
+                                                    $subjectStats[$subjectName][$subjectGrade]['male']++;
+                                                } elseif ($gender === 'Female') {
+                                                    $subjectStats[$subjectName][$subjectGrade]['female']++;
+                                                }
+                                                $subjectStats[$subjectName][$subjectGrade]['total']++;
                                             }
                                         }
                                     }
