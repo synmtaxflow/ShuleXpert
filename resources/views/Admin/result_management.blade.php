@@ -1209,6 +1209,27 @@
                                         ->get()
                                         ->groupBy('subclassID');
 
+                                    // Identify all optional subjects to fetch electors
+                                    $optionalCidIds = [];
+                                    foreach ($allClassSubjects as $sc_id => $cs_list) {
+                                        foreach ($cs_list as $cs) {
+                                            if (strtolower($cs->student_status ?? '') === 'optional') {
+                                                $optionalCidIds[] = $cs->class_subjectID;
+                                            }
+                                        }
+                                    }
+                                    
+                                    $electorsBySubject = collect();
+                                    if (!empty($optionalCidIds)) {
+                                        $electorsBySubject = \DB::table('subject_electors')
+                                            ->whereIn('classSubjectID', $optionalCidIds)
+                                            ->get()
+                                            ->groupBy('classSubjectID')
+                                            ->map(function($rows) {
+                                                return $rows->pluck('studentID')->toArray();
+                                            });
+                                    }
+
                                     // 2. Loop through each student to cross-reference with expected subjects
                                     foreach ($examStudents as $examStudent) {
                                         $gender = $examStudent['student']->gender ?? '';
@@ -1222,6 +1243,14 @@
                                         $resultsBySubjectName = collect($studentSubjects)->keyBy('subject_name')->toArray();
                                         
                                         foreach ($expectedSubjects as $cs) {
+                                            // Optional subject check: if optional, student must be an elector
+                                            if (strtolower($cs->student_status ?? '') === 'optional') {
+                                                $electedIds = $electorsBySubject->get($cs->class_subjectID, []);
+                                                if (!in_array($examStudent['student']->studentID, $electedIds)) {
+                                                    continue; // Skip this student for this optional subject
+                                                }
+                                            }
+
                                             $subjectName = $cs->subject->subject_name ?? 'N/A';
                                             
                                             // Initialize subject stats if not exists
@@ -2438,6 +2467,27 @@
                                         ->get()
                                         ->groupBy('subclassID');
 
+                                    // Identify all optional subjects to fetch electors
+                                    $optionalCidIds = [];
+                                    foreach ($allClassSubjects as $sc_id => $cs_list) {
+                                        foreach ($cs_list as $cs) {
+                                            if (strtolower($cs->student_status ?? '') === 'optional') {
+                                                $optionalCidIds[] = $cs->class_subjectID;
+                                            }
+                                        }
+                                    }
+                                    
+                                    $electorsBySubject = collect();
+                                    if (!empty($optionalCidIds)) {
+                                        $electorsBySubject = \DB::table('subject_electors')
+                                            ->whereIn('classSubjectID', $optionalCidIds)
+                                            ->get()
+                                            ->groupBy('classSubjectID')
+                                            ->map(function($rows) {
+                                                return $rows->pluck('studentID')->toArray();
+                                            });
+                                    }
+
                                     // 2. Loop through each student to cross-reference with expected subjects
                                     foreach ($reportStudents as $reportStudent) {
                                         $student = $reportStudent['student'];
@@ -2460,6 +2510,14 @@
                                                 ->toArray();
                                             
                                             foreach ($expectedSubjects as $cs) {
+                                                // Optional subject check: if optional, student must be an elector
+                                                if (strtolower($cs->student_status ?? '') === 'optional') {
+                                                    $electedIds = $electorsBySubject->get($cs->class_subjectID, []);
+                                                    if (!in_array($studentID, $electedIds)) {
+                                                        continue; // Skip this student for this optional subject
+                                                    }
+                                                }
+
                                                 $subjectName = $cs->subject->subject_name ?? 'N/A';
                                                 
                                                 // Initialize subject stats if not exists
