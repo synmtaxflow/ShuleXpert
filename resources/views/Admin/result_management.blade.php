@@ -1296,7 +1296,31 @@
                                     } else {
                                         $classAverageGrade = 'F';
                                     }
-                                    
+
+                                    // Calculate Class GPA from all students' subject grades
+                                    $classGPASum = 0;
+                                    $classGPAStudentCount = 0;
+                                    $ptMapGPA = ($schoolType === 'Primary')
+                                        ? ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0]
+                                        : ['A'=>1,'B'=>2,'C'=>3,'D'=>4,'F'=>5];
+                                    foreach ($examStudents as $examStudent) {
+                                        $subs = $examStudent['result']['subjects'] ?? [];
+                                        $stuPoints = 0; $stuSubCount = 0;
+                                        foreach ($subs as $sub) {
+                                            $sg = $sub['grade'] ?? null;
+                                            $sm = $sub['marks'] ?? null;
+                                            if ($sm !== null && $sm !== '' && isset($ptMapGPA[$sg])) {
+                                                $stuPoints += $ptMapGPA[$sg];
+                                                $stuSubCount++;
+                                            }
+                                        }
+                                        if ($stuSubCount > 0) {
+                                            $classGPASum += $stuPoints / $stuSubCount;
+                                            $classGPAStudentCount++;
+                                        }
+                                    }
+                                    $classGPA = $classGPAStudentCount > 0 ? number_format($classGPASum / $classGPAStudentCount, 2) : '0.00';
+
                                     // Calculate pass/fail rates (Primary: A-E = pass, F = fail; Secondary: I-IV = pass, 0 = fail)
                                     $passedCount = 0;
                                     $failedCount = 0;
@@ -1389,6 +1413,7 @@
                                         'femaleCount' => $femaleCount,
                                         'averageMarks' => number_format($classAverage, 1),
                                         'averageGrade' => $classAverageGrade,
+                                        'classGPA' => $classGPA,
                                         'maleAverage' => is_numeric($maleAverage) ? number_format($maleAverage, 1) : '0.0',
                                         'femaleAverage' => is_numeric($femaleAverage) ? number_format($femaleAverage, 1) : '0.0',
                                         'gradeStats' => $gradeStats,
@@ -1706,7 +1731,7 @@
                                                             <div class="card bg-light">
                                                                 <div class="card-body">
                                                                     <h6 class="text-primary-custom mb-3">Performance Summary</h6>
-                                                                    <p><strong>Class Grade:</strong> <span class="badge badge-info">{{ $classAverageGrade }}</span></p>
+                                                                    <p><strong>Class GPA:</strong> <span class="badge badge-info">{{ $classGPA }}</span></p>
                                                                     <p><strong>Performance Remark:</strong> <span class="badge badge-info">{{ $performanceRemark }}</span></p>
                                                                     <p><strong>Pass Rate:</strong> <span class="badge badge-success">{{ is_numeric($passRate) ? number_format($passRate, 1) : '0.0' }}%</span></p>
                                                                     <p><strong>Fail Rate:</strong> <span class="badge badge-danger">{{ is_numeric($failRate) ? number_format($failRate, 1) : '0.0' }}%</span></p>
@@ -2601,7 +2626,22 @@
                                             $classAverageGrade = 'F';
                                         }
                                     }
-                                    
+
+                                    // Calculate Class GPA from aggregated subjectStats
+                                    $classGPAPoints = 0;
+                                    $classGPATotal = 0;
+                                    $rPtMap = ($schoolType === 'Primary')
+                                        ? ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0]
+                                        : ['A'=>1,'B'=>2,'C'=>3,'D'=>4,'F'=>5];
+                                    foreach ($subjectStats as $sName => $sGrades) {
+                                        foreach ($rPtMap as $g => $pts) {
+                                            $cnt = $sGrades[$g]['total'] ?? 0;
+                                            $classGPAPoints += $cnt * $pts;
+                                            $classGPATotal += $cnt;
+                                        }
+                                    }
+                                    $classGPA = $classGPATotal > 0 ? number_format($classGPAPoints / $classGPATotal, 2) : '0.00';
+
                                     // Calculate pass/fail rates (assuming >= 30 is pass for both)
                                     $passedCount = count(array_filter($reportStudents, function($s) {
                                         return $s['average_marks'] >= 30;
@@ -2669,6 +2709,7 @@
                                         'femaleCount' => $femaleCount,
                                         'averageMarks' => number_format($classAverage, 1),
                                         'averageGrade' => $classAverageGrade,
+                                        'classGPA' => $classGPA,
                                         'maleAverage' => $maleAverage > 0 ? number_format($maleAverage, 1) : '0.0',
                                         'femaleAverage' => $femaleAverage > 0 ? number_format($femaleAverage, 1) : '0.0',
                                         'gradeStats' => $gradeStats,
@@ -2904,6 +2945,7 @@
                                                     <div class="card bg-light">
                                                         <div class="card-body">
                                                             <h6 class="text-primary-custom mb-3">Performance Summary</h6>
+                                                            <p><strong>Class GPA:</strong> <span class="badge badge-info">{{ $classGPA }}</span></p>
                                                             <p><strong>Class Average:</strong> 
                                                                 @if($schoolType === 'Primary')
                                                                     <span class="badge badge-info">{{ $classAverageGrade }}</span> 
@@ -6039,7 +6081,7 @@ $(document).ready(function() {
             
             // Class Overview Statistics
             const overviewData = [
-                ['Class Average', (data.averageGrade || 'N/A') + ' (' + data.averageMarks + ' marks)'],
+                ['Class GPA', (data.classGPA || '0.00')],
                 ['Male Average', (data.maleAverage || '0') + ' marks'],
                 ['Female Average', (data.femaleAverage || '0') + ' marks'],
                 ['Pass Rate', data.passRate + '%'],
