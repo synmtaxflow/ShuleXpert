@@ -1207,15 +1207,18 @@
                                             $subjectGrade = $subject['grade'] ?? null;
                                             
                                             // Determine grade category
-                                            $category = 'Incomplete';
-                                            if ($subjectGrade && in_array($subjectGrade, ['A', 'B', 'C', 'D', 'E', 'F'])) {
-                                                $category = $subjectGrade;
-                                            }
+                                            $marksVal = $subject['marks'] ?? null;
+                                            $category = ($marksVal === null || $marksVal === '') ? 'Incomplete' : ($subjectGrade ?: 'F');
                                             
+                                            if (!in_array($category, ['A', 'B', 'C', 'D', 'E', 'F'])) {
+                                                $category = 'Incomplete';
+                                            }
+
                                             // Initialize subject if not exists
                                             if (!isset($subjectStats[$subjectName])) {
                                                 $subjectStats[$subjectName] = [];
-                                                foreach (['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] as $grade) {
+                                                $gradesToInit = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] : ['A', 'B', 'C', 'D', 'F', 'Incomplete'];
+                                                foreach ($gradesToInit as $grade) {
                                                     $subjectStats[$subjectName][$grade] = [
                                                         'male' => 0,
                                                         'female' => 0,
@@ -1749,16 +1752,22 @@
                                                                     <th>B</th>
                                                                     <th>C</th>
                                                                     <th>D</th>
-                                                                    <th>E</th>
+                                                                    @if($schoolType === 'Primary')
+                                                                        <th>E</th>
+                                                                    @endif
                                                                     <th>F</th>
                                                                     <th>Incomplete</th>
+                                                                    <th>GPA</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
                                                                 @foreach($subjectStats as $subjectName => $grades)
                                                                     <tr>
                                                                         <td><strong>{{ $subjectName }}</strong></td>
-                                                                        @foreach(['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] as $grade)
+                                                                        @php
+                                                                            $gradesToLoop = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] : ['A', 'B', 'C', 'D', 'F', 'Incomplete'];
+                                                                        @endphp
+                                                                        @foreach($gradesToLoop as $grade)
                                                                             @php
                                                                                 $maleCount = $grades[$grade]['male'] ?? 0;
                                                                                 $femaleCount = $grades[$grade]['female'] ?? 0;
@@ -1779,6 +1788,28 @@
                                                                                 </div>
                                                                             </td>
                                                                         @endforeach
+
+                                                                        @php
+                                                                            // Calculate Subject GPA
+                                                                            $sTotal = 0;
+                                                                            $sPoints = 0;
+                                                                            $sGrades = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F'] : ['A', 'B', 'C', 'D', 'F'];
+                                                                            foreach($sGrades as $sg) {
+                                                                                $c = $grades[$sg]['total'] ?? 0;
+                                                                                $sTotal += $c;
+                                                                                if ($schoolType === 'Primary') {
+                                                                                    $ptMap = ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0];
+                                                                                } else {
+                                                                                    // Secondary: Lower is better (NECTA GPA)
+                                                                                    $ptMap = ['A' => 1, 'B' => 2, 'C' => 3, 'D' => 4, 'F' => 5];
+                                                                                }
+                                                                                $sPoints += ($c * ($ptMap[$sg] ?? 0));
+                                                                            }
+                                                                            $sGPA = ($sTotal > 0) ? number_format($sPoints / $sTotal, 2) : '0.00';
+                                                                        @endphp
+                                                                        <td class="tc font-weight-bold" style="background-color: #f8f9fa;">
+                                                                            {{ $sGPA }}
+                                                                        </td>
                                                                     </tr>
                                                                 @endforeach
                                                             </tbody>
@@ -2395,7 +2426,6 @@
                                                     // Get results for this student and exam to extract subjects
                                                     $examResults = \App\Models\Result::where('studentID', $studentID)
                                                         ->where('examID', $exam->examID)
-                                                        ->whereNotNull('marks')
                                                         ->where('status', 'allowed')
                                                         ->with(['classSubject.subject'])
                                                         ->get();
@@ -2404,42 +2434,18 @@
                                                         $subjectName = $result->classSubject->subject->subject_name ?? 'N/A';
                                                         $marks = $result->marks ?? null;
                                                         
+                                                        $subjectGrade = 'Incomplete'; // Initialize as Incomplete
                                                         if ($marks !== null && $marks !== '') {
                                                             // Calculate grade for this subject
-                                                            $subjectGrade = null;
                                                             $marksNum = (float) $marks;
                                                             if ($schoolType === 'Primary') {
-                                                                if ($marksNum >= 75) {
-                                                                    $subjectGrade = 'A';
-                                                                } elseif ($marksNum >= 65) {
-                                                                    $subjectGrade = 'B';
-                                                                } elseif ($marksNum >= 45) {
-                                                                    $subjectGrade = 'C';
-                                                                } elseif ($marksNum >= 30) {
-                                                                    $subjectGrade = 'D';
-                                                                } else {
-                                                                    $subjectGrade = 'F';
-                                                                }
+                                                                if ($marksNum >= 75) $subjectGrade = 'A';
+                                                                elseif ($marksNum >= 65) $subjectGrade = 'B';
+                                                                elseif ($marksNum >= 45) $subjectGrade = 'C';
+                                                                elseif ($marksNum >= 30) $subjectGrade = 'D';
+                                                                elseif ($marksNum >= 20) $subjectGrade = 'E';
+                                                                else $subjectGrade = 'F';
                                                             } else {
-                                                                // For Secondary: same grading
-                                                                if ($marksNum >= 75) {
-                                                                    $subjectGrade = 'A';
-                                                                } elseif ($marksNum >= 65) {
-                                                                    $subjectGrade = 'B';
-                                                                } elseif ($marksNum >= 45) {
-                                                                    $subjectGrade = 'C';
-                                                                } elseif ($marksNum >= 30) {
-                                                                    $subjectGrade = 'D';
-                                                                } else {
-                                                                    $subjectGrade = 'F';
-                                                                }
-                                                            }
-                                                            
-                                                            if ($subjectGrade) {
-                                                                // Initialize subject if not exists
-                                                                if (!isset($subjectStats[$subjectName])) {
-                                                                    $subjectStats[$subjectName] = [];
-                                                                    foreach (['A', 'B', 'C', 'D', 'E', 'F'] as $g) {
                                                                         $subjectStats[$subjectName][$g] = [
                                                                             'male' => 0,
                                                                             'female' => 0,
@@ -2912,15 +2918,22 @@
                                                                 <th>B</th>
                                                                 <th>C</th>
                                                                 <th>D</th>
-                                                                <th>E</th>
+                                                                @if($schoolType === 'Primary')
+                                                                    <th>E</th>
+                                                                @endif
                                                                 <th>F</th>
+                                                                <th>Incomplete</th>
+                                                                <th>GPA</th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
                                                             @foreach($subjectStats as $subjectName => $grades)
                                                                 <tr>
                                                                     <td><strong>{{ $subjectName }}</strong></td>
-                                                                    @foreach(['A', 'B', 'C', 'D', 'E', 'F'] as $grade)
+                                                                    @php
+                                                                        $gradesToLoop = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F', 'Incomplete'] : ['A', 'B', 'C', 'D', 'F', 'Incomplete'];
+                                                                    @endphp
+                                                                    @foreach($gradesToLoop as $grade)
                                                                         @php
                                                                             $maleCount = $grades[$grade]['male'] ?? 0;
                                                                             $femaleCount = $grades[$grade]['female'] ?? 0;
@@ -2941,6 +2954,26 @@
                                                                             </div>
                                                                         </td>
                                                                     @endforeach
+                                                                    @php
+                                                                        // Calculate Subject GPA
+                                                                        $sTotal = 0;
+                                                                        $sPoints = 0;
+                                                                        $sGrades = ($schoolType === 'Primary') ? ['A', 'B', 'C', 'D', 'E', 'F'] : ['A', 'B', 'C', 'D', 'F'];
+                                                                        foreach($sGrades as $sg) {
+                                                                            $c = $grades[$sg]['total'] ?? 0;
+                                                                            $sTotal += $c;
+                                                                            if ($schoolType === 'Primary') {
+                                                                                $ptMap = ['A'=>5,'B'=>4,'C'=>3,'D'=>2,'E'=>1,'F'=>0];
+                                                                            } else {
+                                                                                $ptMap = ['A' => 1, 'B' => 2, 'C' => 3, 'D' => 4, 'F' => 5];
+                                                                            }
+                                                                            $sPoints += ($c * ($ptMap[$sg] ?? 0));
+                                                                        }
+                                                                        $sGPA = ($sTotal > 0) ? number_format($sPoints / $sTotal, 2) : '0.00';
+                                                                    @endphp
+                                                                    <td class="tc font-weight-bold" style="background-color: #f8f9fa;">
+                                                                        {{ $sGPA }}
+                                                                    </td>
                                                                 </tr>
                                                             @endforeach
                                                         </tbody>
@@ -6027,56 +6060,83 @@ $(document).ready(function() {
                 doc.setFont('helvetica', 'bold');
                 doc.text('Subject Performance Statistics', tableMargin.left, yPos);
                 yPos += 7;
-                
+
                 // Get all subjects and sort alphabetically
                 const subjectNames = Object.keys(data.subjectStats).sort();
-                
-                // Build table data
+                // Build table header and data
+                const isPrimary = (schoolType === 'Primary');
+                const gradesToInclude = isPrimary ? ['A', 'B', 'C', 'D', 'E', 'F'] : ['A', 'B', 'C', 'D', 'F'];
+                const header = ['Subject', ...gradesToInclude, 'Incomp', 'GPA'];
+
                 const subjectStatsData = [];
                 subjectNames.forEach(function(subjectName) {
                     const grades = data.subjectStats[subjectName];
                     const row = [subjectName];
-                    
-                    // Add grade counts with male/female breakdown
-                    ['A', 'B', 'C', 'D', 'E', 'F'].forEach(function(grade) {
+
+                    let sTotal = 0;
+                    let sPointsCount = 0;
+
+                    // Add grade counts
+                    gradesToInclude.forEach(function(grade) {
                         const gradeData = grades[grade] || { male: 0, female: 0, total: 0 };
                         const total = gradeData.total || 0;
                         const male = gradeData.male || 0;
                         const female = gradeData.female || 0;
-                        // Format: "Total\nM: X, F: Y"
+
                         row.push(total.toString() + '\nM:' + male + ',F:' + female);
+
+                        // GPA Points
+                        if (total > 0) {
+                            sTotal += total;
+                            if (isPrimary) {
+                                const ptMap = {'A':5,'B':4,'C':3,'D':2,'E':1,'F':0};
+                                sPointsCount += (total * (ptMap[grade] || 0));
+                            } else {
+                                const ptMap = {'A':1,'B':2,'C':3,'D':4,'F':5};
+                                sPointsCount += (total * (ptMap[grade] || 0));
+                            }
+                        }
                     });
-                    
+
+                    // Add Incomplete
+                    const incData = grades['Incomplete'] || { male: 0, female: 0, total: 0 };
+                    row.push(incData.total.toString() + '\nM:' + (incData.male || 0) + ',F:' + (incData.female || 0));
+
+                    // Add GPA
+                    const sGPA = (sTotal > 0) ? (sPointsCount / sTotal).toFixed(2) : '0.00';
+                    row.push(sGPA);
+
                     subjectStatsData.push(row);
                 });
-                
+
                 if (subjectStatsData.length > 0) {
+                    const numGradeColumns = gradesToInclude.length;
+                    const numExtraColumns = 2; // Incomp, GPA
+                    const totalDynamicColumns = numGradeColumns + numExtraColumns;
+                    const dynamicColumnWidth = (availableWidth * 0.75) / totalDynamicColumns; // 0.75 of availableWidth for dynamic columns
+
+                    const columnStyles = {
+                        0: { cellWidth: availableWidth * 0.25, fontStyle: 'bold', halign: 'left', fontSize: 7 }, // Subject
+                    };
+
+                    // Add styles for grades, Incomp, GPA
+                    for (let i = 0; i < totalDynamicColumns; i++) {
+                        columnStyles[i + 1] = { cellWidth: dynamicColumnWidth, halign: 'center', fontSize: 6 };
+                    }
+
                     doc.autoTable({
                         startY: yPos,
-                        head: [['Subject', 'A', 'B', 'C', 'D', 'E', 'F']],
+                        head: [header],
                         body: subjectStatsData,
                         theme: 'striped',
-                        headStyles: { fillColor: [148, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 8 },
-                        styles: { fontSize: 7, cellPadding: 2 },
-                        margin: { 
-                            left: tableMargin.left, 
-                            right: tableMargin.right, 
-                            top: tableMargin.left,
-                            bottom: 25 // Bottom margin to avoid footer overlap
-                        },
+                        headStyles: { fillColor: [148, 0, 0], textColor: 255, fontStyle: 'bold', fontSize: 7 },
+                        styles: { fontSize: 6, cellPadding: 1, halign: 'center' },
+                        margin: { left: tableMargin.left, right: tableMargin.right, bottom: 25 },
                         tableWidth: availableWidth,
-                        columnStyles: {
-                            0: { cellWidth: availableWidth * 0.25, fontStyle: 'bold' }, // Subject name
-                            1: { cellWidth: availableWidth * 0.125, halign: 'center', fontSize: 6 }, // Grade A
-                            2: { cellWidth: availableWidth * 0.125, halign: 'center', fontSize: 6 }, // Grade B
-                            3: { cellWidth: availableWidth * 0.125, halign: 'center', fontSize: 6 }, // Grade C
-                            4: { cellWidth: availableWidth * 0.125, halign: 'center', fontSize: 6 }, // Grade D
-                            5: { cellWidth: availableWidth * 0.125, halign: 'center', fontSize: 6 }, // Grade E
-                            6: { cellWidth: availableWidth * 0.125, halign: 'center', fontSize: 6 }  // Grade F
-                        },
+                        columnStyles: columnStyles,
                         didParseCell: function(data) {
-                            // Handle multi-line cells (total and M:F breakdown)
-                            if (data.section === 'body' && data.column.index > 0) {
+                            // Handle multi-line cells (total and M:F breakdown) for grade and incomplete columns
+                            if (data.section === 'body' && data.column.index > 0 && data.column.index <= numGradeColumns + 1) { // Grades and Incomp
                                 const cellValue = data.cell.text[0];
                                 if (cellValue && cellValue.includes('\n')) {
                                     data.cell.text = cellValue.split('\n');
