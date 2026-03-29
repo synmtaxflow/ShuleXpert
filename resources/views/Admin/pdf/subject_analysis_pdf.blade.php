@@ -82,15 +82,28 @@
         if (!function_exists('getSmartBase64')) {
             function getSmartBase64($path) {
                 if (!$path) return null;
+                
                 $path = ltrim($path, '/');
+                $base = base_path();
+                $parent = dirname($base);
+                
                 $possibilities = [
-                    public_path($path),
-                    public_path('uploads/' . $path),
-                    base_path('../public_html/' . $path),
-                    base_path('../public_html/uploads/' . $path),
-                    base_path($path),
-                    base_path('public/' . $path),
+                    public_path($path),                             // Standard Laravel Public
+                    public_path('uploads/' . $path),                // Standard Laravel Public Uploads
+                    $parent . '/public_html/' . $path,              // cPanel / Shared Hosting
+                    $parent . '/public_html/uploads/' . $path,      // cPanel / Shared Hosting Uploads
                 ];
+                
+                if (isset($_SERVER['DOCUMENT_ROOT'])) {
+                    $docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/');
+                    $possibilities[] = $docRoot . '/' . $path;
+                    $possibilities[] = $docRoot . '/uploads/' . $path;
+                }
+                
+                $possibilities[] = base_path($path);
+                $possibilities[] = base_path('public/' . $path);
+                $possibilities[] = base_path('../public_html/' . $path);
+                
                 foreach ($possibilities as $fullPath) {
                     if (@file_exists($fullPath) && is_file($fullPath)) {
                         try {
@@ -100,6 +113,7 @@
                         } catch (\Exception $e) {}
                     }
                 }
+                
                 return null;
             }
         }
