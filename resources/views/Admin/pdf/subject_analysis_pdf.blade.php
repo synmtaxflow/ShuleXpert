@@ -14,7 +14,7 @@
         .info-table td { padding: 5px; border-bottom: 1px solid #eee; }
         .label { font-weight: bold; color: #555; width: 25%; }
 
-        .analysis-card { margin-bottom: 30px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; page-break-inside: avoid; }
+        .analysis-card { margin-bottom: 20px; border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
         .subject-header { border-bottom: 2px solid #940000; padding-bottom: 5px; margin-bottom: 15px; }
         .subject-title { font-size: 14px; font-weight: bold; color: #940000; }
         .teacher-info { font-style: italic; color: #666; font-size: 10px; }
@@ -53,9 +53,31 @@
         .best-worst td { padding: 5px; border: 1px solid #eee; width: 50%; }
         .best-label { color: #28a745; font-weight: bold; }
         .worst-label { color: #dc3545; font-weight: bold; }
+
+        /* ── CHART IMAGES (QUICKCHART) ─────────────────── */
+        .charts-row { width: 100%; margin: 15px 0; clear: both; }
+        .chart-wrapper { width: 100%; margin-bottom: 20px; text-align: center; }
+        .chart-img { width: 100%; max-width: 650px; height: auto; border: 1px solid #f1f1f1; border-radius: 4px; padding: 10px; background: #fff; }
+
+        /* ── WATERMARK ─────────────────── */
+        .watermark {
+            position: fixed;
+            top: 45%;
+            left: 5%;
+            width: 100%;
+            text-align: center;
+            opacity: 0.05;
+            transform: rotate(-45deg);
+            font-size: 100px;
+            font-weight: bold;
+            color: #000;
+            z-index: 1000;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
+    <div class="watermark">ShuleXpert</div>
     @php
         if (!function_exists('getSmartBase64')) {
             function getSmartBase64($path) {
@@ -168,7 +190,7 @@
                         <tbody>
                             @foreach($subject['question_stats'] as $stat)
                                 <tr>
-                                    <td>Qn {{ $stat['question']->question_number }}</td>
+                                    <td>Qn {{ $stat['question']->question_number }}{{ $stat['question']->question_description ? ': ' . $stat['question']->question_description : '' }}</td>
                                     <td>{{ $stat['question']->marks }}</td>
                                     <td>{{ $stat['average'] ?? '0' }}</td>
                                     <td>{{ $stat['percent'] ?? '0' }}%</td>
@@ -183,12 +205,122 @@
                         </tbody>
                     </table>
 
+                    <div class="charts-row">
+                        @php
+                            $labels = [];
+                            $passData = [];
+                            $failData = [];
+                            foreach($subject['question_stats'] as $stat) {
+                                $labels[] = 'Q'.$stat['question']->question_number;
+                                $passVal = $stat['percent'] ?? 0;
+                                $passData[] = round($passVal, 0);
+                                $failData[] = round(max(0, 100 - $passVal), 0);
+                            }
+                            
+                            $baseUrl = "http://quickchart.io/chart?w=650&h=300&bkg=transparent&c=";
+                            
+                            // Line Chart config with % suffix in datalabels
+                            $lineConfig = [
+                                'type' => 'line',
+                                'data' => [
+                                    'labels' => $labels,
+                                    'datasets' => [
+                                        [
+                                            'label' => 'Pass %',
+                                            'data' => $passData,
+                                            'borderColor' => '#28a745',
+                                            'backgroundColor' => 'rgba(40, 167, 69, 0.1)',
+                                            'fill' => true,
+                                            'datalabels' => [
+                                                'display' => true,
+                                                'align' => 'top',
+                                                'anchor' => 'end',
+                                                'font' => ['size' => 10, 'weight' => 'bold'],
+                                                'formatter' => ' (v) => v + "%" '
+                                            ]
+                                        ],
+                                        [
+                                            'label' => 'Fail %',
+                                            'data' => $failData,
+                                            'borderColor' => '#dc3545',
+                                            'backgroundColor' => 'rgba(220, 53, 69, 0.1)',
+                                            'fill' => true,
+                                            'datalabels' => [
+                                                'display' => true,
+                                                'align' => 'bottom',
+                                                'anchor' => 'start',
+                                                'font' => ['size' => 10, 'weight' => 'bold'],
+                                                'formatter' => ' (v) => v + "%" '
+                                            ]
+                                        ]
+                                    ]
+                                ],
+                                'options' => [
+                                    'title' => ['display' => true, 'text' => 'Question Performance Trend (Pass% vs Fail%)'],
+                                    'scales' => [
+                                        'yAxes' => [['ticks' => ['min' => 0, 'max' => 100, 'stepSize' => 20]]]
+                                    ]
+                                ]
+                            ];
+
+                            $lineUrl = $baseUrl . urlencode(json_encode($lineConfig));
+                        @endphp
+
+                        <div class="chart-wrapper">
+                            <img src="{{ $lineUrl }}" class="chart-img">
+                        </div>
+
+                        @if(!empty($subject['optional_selections']))
+                            @php
+                                $optLabels = [];
+                                $optData = [];
+                                $allOpt = collect($subject['optional_selections'])->sortBy('question.question_number');
+                                $totalAns = max(1, $subject['overall_stats']['answered']);
+                                foreach($allOpt as $opt) {
+                                    $optLabels[] = 'Q'.$opt['question']->question_number;
+                                    $optData[] = round(($opt['count'] / $totalAns) * 100, 0);
+                                }
+
+                                $barConfig = [
+                                    'type' => 'bar',
+                                    'data' => [
+                                        'labels' => $optLabels,
+                                        'datasets' => [[
+                                            'label' => 'Selection %',
+                                            'data' => $optData,
+                                            'backgroundColor' => '#940000',
+                                            'datalabels' => [
+                                                'display' => true,
+                                                'anchor' => 'end',
+                                                'align' => 'top',
+                                                'color' => '#000',
+                                                'font' => ['size' => 10, 'weight' => 'bold'],
+                                                'formatter' => ' (v) => v + "%" '
+                                            ]
+                                        ]]
+                                    ],
+                                    'options' => [
+                                        'title' => ['display' => true, 'text' => 'Optional Question Selections (%)'],
+                                        'scales' => [
+                                            'yAxes' => [['ticks' => ['min' => 0, 'max' => 100]]]
+                                        ]
+                                    ]
+                                ];
+                                $barUrl = $baseUrl . urlencode(json_encode($barConfig));
+                            @endphp
+                            <div class="chart-wrapper">
+                                <img src="{{ $barUrl }}" class="chart-img">
+                            </div>
+                        @endif
+                    </div>
+                    <div style="clear: both; margin-bottom: 20px;"></div>
+
                     <table class="best-worst">
                         <tr>
                             <td>
                                 <div class="best-label">Best Performed Question</div>
                                 @if($subject['best_question'])
-                                    <div>Question {{ $subject['best_question']['question']->question_number }} ({{ $subject['best_question']['percent'] }}%)</div>
+                                    <div>Question {{ $subject['best_question']['question']->question_number }}{{ $subject['best_question']['question']->question_description ? ': ' . $subject['best_question']['question']->question_description : '' }} ({{ $subject['best_question']['percent'] }}%)</div>
                                 @else
                                     <div>N/A</div>
                                 @endif
@@ -196,13 +328,39 @@
                             <td>
                                 <div class="worst-label">Worst Performed Question</div>
                                 @if($subject['worst_question'])
-                                    <div>Question {{ $subject['worst_question']['question']->question_number }} ({{ $subject['worst_question']['percent'] }}%)</div>
+                                    <div>Question {{ $subject['worst_question']['question']->question_number }}{{ $subject['worst_question']['question']->question_description ? ': ' . $subject['worst_question']['question']->question_description : '' }} ({{ $subject['worst_question']['percent'] }}%)</div>
                                 @else
                                     <div>N/A</div>
                                 @endif
                             </td>
                         </tr>
                     </table>
+
+                    @if(!empty($subject['optional_selections']))
+                        <div class="summary-title" style="font-size: 11px; margin-top: 15px;">Optional Question Selections</div>
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Question</th>
+                                    <th>Selected By</th>
+                                    <th>Selection %</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($subject['optional_selections'] as $opt)
+                                    @php
+                                        $totalStudents = max(1, $subject['overall_stats']['answered']);
+                                        $optPercent = round(($opt['count'] / $totalStudents) * 100, 1);
+                                    @endphp
+                                    <tr>
+                                        <td>Qn {{ $opt['question']->question_number }}{{ $opt['question']->question_description ? ': ' . $opt['question']->question_description : '' }}</td>
+                                        <td>{{ $opt['count'] }} Students</td>
+                                        <td>{{ $optPercent }}%</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @endif
                 @endif
             </div>
         @endforeach
@@ -229,7 +387,7 @@
     </table>
 
     <div class="footer">
-        Generated by ShuleLink Web Management System &copy; {{ date('Y') }}
+        Generated by ShuleXpert (School Management System), Powered By EmCa Techonology &copy; {{ date('Y') }}
     </div>
 </body>
 </html>

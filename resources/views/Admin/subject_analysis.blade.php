@@ -9,7 +9,7 @@
 
 <style>
     .subject-analysis-wrapper,
-    .subject-analysis-wrapper * {
+    .subject-analysis-wrapper *:not(.fa) {
         font-family: "Century Gothic", "Segoe UI", Tahoma, sans-serif;
     }
     .analysis-card {
@@ -95,7 +95,7 @@
                         </button>
                         @if($examID)
                             <button id="downloadAnalysisPdf" class="btn btn-danger-custom ml-2 w-100" type="button">
-                                <i class="fa fa-file-pdf-o"></i> PDF
+                                <i class="fa fa-download"></i> Download PDF
                             </button>
                         @endif
                     </div>
@@ -103,6 +103,35 @@
             </form>
         </div>
     </div>
+
+    <!-- ADDING DOWNLOAD PROGRESS MODAL -->
+    <div class="modal fade" id="downloadProgressModal" data-backdrop="static" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-4">
+                        <i class="fa fa-file-pdf-o fa-3x text-danger animate-pulse"></i>
+                    </div>
+                    <h5 class="mb-4" style="color: #940000; font-weight: bold;">Generating Subject Analysis Report</h5>
+                    <div class="progress mb-2" style="height: 12px; border-radius: 6px;">
+                        <div id="pdfProgressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-danger" 
+                            role="progressbar" style="width: 0%;"></div>
+                    </div>
+                    <div id="pdfProgressPercent" class="font-weight-bold text-muted" style="font-size: 14px;">0%</div>
+                    <p class="mt-3 text-muted small">Please wait, this might take a moment if the report includes many subjects.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .animate-pulse { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
 
     @if(!$examID)
         <div class="alert alert-info text-center">
@@ -683,7 +712,70 @@ $(document).ready(function() {
         let url = '{{ route("admin.export_subject_analysis_pdf") }}';
         url += `?year=${year}&term=${term}&examID=${examID}&classID=${classID}&subclassID=${subclassID}&subjectID=${subjectID}`;
         
-        window.location.href = url;
+        // Show progress modal
+        $('#downloadProgressModal').modal('show');
+        $('#pdfProgressBar').css('width', '0%');
+        $('#pdfProgressPercent').text('0%');
+
+        let progress = 0;
+        const interval = setInterval(function() {
+            if (progress < 95) {
+                // Slower increment as it gets higher to look more natural
+                let inc = 2 + Math.random() * 5;
+                if (progress > 50) inc = 1 + Math.random() * 2;
+                if (progress > 80) inc = 0.5 + Math.random();
+                
+                progress += inc;
+                if (progress > 95) progress = 95;
+                
+                $('#pdfProgressBar').css('width', progress + '%');
+                $('#pdfProgressPercent').text(Math.round(progress) + '%');
+            }
+        }, 400);
+
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('Server error: ' + response.statusText);
+                return response.blob();
+            })
+            .then(blob => {
+                clearInterval(interval);
+                $('#pdfProgressBar').css('width', '100%');
+                $('#pdfProgressPercent').text('100%');
+                
+                setTimeout(() => {
+                    const downloadUrl = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = downloadUrl;
+                    
+                    // Try to extract filename from header if possible, or use default
+                    const examName = $('#analysis_exam option:selected').text().trim().replace(/ /g, '_');
+                    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+                    a.download = `Subject_Analysis_${examName}_${timestamp}.pdf`;
+                    
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(downloadUrl);
+                    document.body.removeChild(a);
+                    
+                    // Small delay before hide
+                    setTimeout(() => {
+                        $('#downloadProgressModal').modal('hide');
+                        // Reset for next time
+                        setTimeout(() => {
+                            $('#pdfProgressBar').css('width', '0%');
+                            $('#pdfProgressPercent').text('0%');
+                        }, 500);
+                    }, 800);
+                }, 400);
+            })
+            .catch(error => {
+                clearInterval(interval);
+                $('#downloadProgressModal').modal('hide');
+                alert('Failed to generate PDF: ' + error.message);
+                console.error('PDF Export Error:', error);
+            });
     });
 
 });

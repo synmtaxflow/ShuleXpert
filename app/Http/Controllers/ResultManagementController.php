@@ -1816,6 +1816,7 @@ class ResultManagementController extends Controller
                 ->first();
 
             $questionStats = [];
+            $optionalSelections = [];
             $bestQuestion = null;
             $worstQuestion = null;
 
@@ -1835,6 +1836,17 @@ class ResultManagementController extends Controller
                         'percent' => $percent,
                         'selected_count' => $selectedCount,
                     ];
+
+                    if (!empty($question->is_optional)) {
+                        $optionalSelections[] = [
+                            'question' => $question,
+                            'count' => $selectedCount,
+                        ];
+                    }
+                }
+
+                if (!empty($optionalSelections)) {
+                    usort($optionalSelections, fn($a, $b) => $b['count'] <=> $a['count']);
                 }
 
                 $scoredQuestions = collect($questionStats)->filter(fn($stat) => $stat['percent'] !== null);
@@ -1854,6 +1866,7 @@ class ResultManagementController extends Controller
                 'teacher' => $classSubject->teacher,
                 'result_rows' => $resultRows,
                 'question_stats' => $questionStats,
+                'optional_selections' => $optionalSelections,
                 'best_question' => $bestQuestion,
                 'worst_question' => $worstQuestion,
                 'overall_stats' => [
@@ -1878,6 +1891,11 @@ class ResultManagementController extends Controller
         ];
 
         $pdf = PDF::loadView('Admin.pdf.subject_analysis_pdf', $data);
+        $pdf->setOptions([
+            'isRemoteEnabled' => true,
+            'isHtml5ParserEnabled' => true,
+            'chroot' => base_path(),
+        ]);
         $pdf->setPaper('A4', 'portrait');
 
         $filename = 'Subject_Analysis_' . str_replace(' ', '_', $selectedExam->exam_name) . '_' . date('YmdHis') . '.pdf';
