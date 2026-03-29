@@ -8802,14 +8802,31 @@ $(document).ready(function() {
         }
 
         isSendingSms = false;
-        $('#startSendingSms').html('<i class="bi bi-check-all"></i> Completed').prop('disabled', true);
-        $('#btnCancelSms').prop('disabled', false).text('Close');
-        $('.parent-checkbox, #selectAllParents').prop('disabled', false); // Fix: Re-enable checkboxes after completion
+        $('.parent-checkbox, #selectAllParents').prop('disabled', false); 
         
+        // Uncheck successfully delivered rows to allow next batch selection
+        selectedRows.each(function() {
+            const row = $(this);
+            if (row.find('.bi-check-circle-fill').length > 0) {
+                row.find('.parent-checkbox').prop('checked', false);
+            }
+        });
+        updateSelectedCount();
+
+        // Show completion alert
         Swal.fire({
             title: 'Batch Completed',
             text: `SMS sending finished. Delivered: ${delivered}, Failed: ${failed}`,
-            icon: delivered > 0 ? 'success' : 'info'
+            icon: delivered > 0 ? 'success' : 'info',
+            timer: 3000,
+            showConfirmButton: false
+        });
+
+        // Reset button state for next potential batch
+        setTimeout(() => {
+            $('#startSendingSms').html('<i class="bi bi-send"></i> Start Sending SMS');
+            updateSelectedCount(); // Refresh button disabled state based on remaining selections
+        }, 2000);
         });
     });
 
