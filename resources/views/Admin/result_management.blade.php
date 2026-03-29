@@ -8827,7 +8827,6 @@ $(document).ready(function() {
             $('#startSendingSms').html('<i class="bi bi-send"></i> Start Sending SMS');
             updateSelectedCount(); // Refresh button disabled state based on remaining selections
         }, 2000);
-        });
     });
 
     // Export Subject to PDF
