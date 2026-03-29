@@ -151,6 +151,36 @@
         animation: pulse-red 2s infinite;
     }
 
+    /* Datatables SMS Specific */
+    #parentSmsTable_filter {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 12px;
+    }
+    #parentSmsTable_filter input {
+        border: 1px solid rgba(148, 0, 0, 0.2) !important;
+        border-radius: 20px !important;
+        padding: 8px 15px 8px 38px !important;
+        outline: none !important;
+        background: #FFF5F5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23940000' class='bi bi-search' viewBox='0 0 16 16'%3E%3Cpath d='M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z'/%3E%3C/svg%3E") no-repeat 15px center !important;
+        background-size: 14px 14px !important;
+        font-size: 14px !important;
+        width: 320px !important;
+        height: 40px !important;
+        color: #940000 !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #940000 !important;
+        color: #fff !important;
+        border: 1px solid #940000 !important;
+        border-radius: 4px !important;
+    }
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #FFF5F5 !important;
+        color: #940000 !important;
+        border: 1px solid #940000 !important;
+    }
+
     @keyframes pulse-red {
         0% { transform: scale(1); text-shadow: 0 0 0 rgba(255, 255, 255, 0.7); }
         70% { transform: scale(1.1); text-shadow: 0 0 10px rgba(255, 255, 255, 0); }
@@ -8531,6 +8561,12 @@ $(document).ready(function() {
 
     function openSmsModal(title, studentsData, context = {}) {
         $('#modalContextLabel').text(title);
+        
+        // Destroy previous DataTable if exists
+        if ($.fn.DataTable.isDataTable('#parentSmsTable')) {
+            $('#parentSmsTable').DataTable().destroy();
+        }
+        
         const list = $('#parentSmsList');
         list.empty();
 
@@ -8575,11 +8611,30 @@ $(document).ready(function() {
             }
         });
 
-        $('#selectAllParents').prop('checked', false);
+        // Initialize DataTable
+        $('#parentSmsTable').DataTable({
+            paging: true,
+            lengthChange: false,
+            searching: true,
+            ordering: true,
+            info: true,
+            autoWidth: false,
+            pageLength: 50,
+            dom: "<'row'<'col-sm-12'f>>" +
+                 "<'row'<'col-sm-12'tr>>" +
+                 "<'row'<'col-sm-5'i><'col-sm-7'p>>",
+            language: {
+                search: "_INPUT_",
+                searchPlaceholder: "Quick Search..."
+            }
+        });
+
+        $('#selectAllParents').prop('checked', false).prop('disabled', false);
         updateSelectedCount();
         $('#smsProgressArea').addClass('d-none');
         $('#smsProgressBar').css('width', '0%').text('0%').removeClass('bg-info').addClass('bg-success');
         $('#startSendingSms').prop('disabled', true).html('<i class="bi bi-send"></i> Start Sending SMS');
+        $('#btnCancelSms').prop('disabled', false).text('Cancel');
         $('#smsProgressModal').modal('show');
     }
 
@@ -8641,7 +8696,11 @@ $(document).ready(function() {
 
     // Select All Toggle
     $('#selectAllParents').on('change', function() {
-        $('.parent-checkbox:not(:disabled)').prop('checked', $(this).is(':checked'));
+        const isChecked = $(this).is(':checked');
+        const table = $('#parentSmsTable').DataTable();
+        // Select only the rows that are currently visible/filtered
+        const rows = table.rows({ search: 'applied' }).nodes();
+        $('input.parent-checkbox:not(:disabled)', rows).prop('checked', isChecked);
         updateSelectedCount();
     });
 
@@ -8650,14 +8709,16 @@ $(document).ready(function() {
     });
 
     function updateSelectedCount() {
-        const count = $('.parent-checkbox:checked').length;
+        const table = $('#parentSmsTable').DataTable();
+        const count = table.$('.parent-checkbox:checked').length;
         $('#selectedCount').text('Receivers: ' + count);
         $('#startSendingSms').prop('disabled', count === 0);
     }
 
     // Start Sending
     $('#startSendingSms').on('click', async function() {
-        const selectedRows = $('.parent-checkbox:checked').closest('tr');
+        const table = $('#parentSmsTable').DataTable();
+        const selectedRows = table.$('.parent-checkbox:checked').closest('tr');
         if (selectedRows.length === 0) return;
         
         const confirmed = await Swal.fire({
@@ -8743,6 +8804,7 @@ $(document).ready(function() {
         isSendingSms = false;
         $('#startSendingSms').html('<i class="bi bi-check-all"></i> Completed').prop('disabled', true);
         $('#btnCancelSms').prop('disabled', false).text('Close');
+        $('.parent-checkbox, #selectAllParents').prop('disabled', false); // Fix: Re-enable checkboxes after completion
         
         Swal.fire({
             title: 'Batch Completed',
